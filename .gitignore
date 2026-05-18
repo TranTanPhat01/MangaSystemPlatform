@@ -1,0 +1,27 @@
+# Node
+node_modules
+.next
+
+# .NET
+bin
+obj
+
+# Env
+.env
+.env.local
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__
+*.pyc
+venv

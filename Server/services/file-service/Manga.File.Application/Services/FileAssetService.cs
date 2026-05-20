@@ -3,6 +3,8 @@ using Manga.File.Application.Common;
 using Manga.File.Application.DTOs;
 using Manga.File.Domain.Entities;
 using Manga.File.Domain.Enums;
+using Manga.BuildingBlocks.Messaging;
+using Manga.Contracts.Events;
 
 namespace Manga.File.Application.Services;
 
@@ -12,17 +14,20 @@ public sealed class FileAssetService : IFileAssetService
     private readonly IFileUnitOfWork _unitOfWork;
     private readonly IFileStorageService _storage;
     private readonly ICurrentUserService _currentUser;
+    private readonly IEventBus _eventBus;
 
     public FileAssetService(
         IFileAssetRepository fileAssets,
         IFileUnitOfWork unitOfWork,
         IFileStorageService storage,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IEventBus eventBus)
     {
         _fileAssets = fileAssets;
         _unitOfWork = unitOfWork;
         _storage = storage;
         _currentUser = currentUser;
+        _eventBus = eventBus;
     }
 
     public async Task<Result<FileUploadResponse>> UploadAsync(
@@ -58,6 +63,12 @@ public sealed class FileAssetService : IFileAssetService
 
         await _fileAssets.AddAsync(fileAsset, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _eventBus.PublishAsync(new FileUploadedEvent(
+            fileAsset.Id,
+            fileAsset.UploadedByUserId,
+            fileAsset.FileCategory.ToString(),
+            fileAsset.OriginalFileName,
+            fileAsset.CreatedAt), cancellationToken);
 
         return Result<FileUploadResponse>.Success(ToUploadResponse(fileAsset));
     }

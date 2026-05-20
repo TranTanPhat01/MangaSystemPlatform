@@ -3,13 +3,16 @@ using Manga.Editorial.Application.Common;
 using Manga.Editorial.Application.DTOs;
 using Manga.Editorial.Domain.Entities;
 using Manga.Editorial.Domain.Enums;
+using Manga.BuildingBlocks.Messaging;
+using Manga.Contracts.Events;
 
 namespace Manga.Editorial.Application.Services;
 
 public sealed class RankingService : IRankingService
 {
     private readonly IEditorialRepository _repository; private readonly IEditorialUnitOfWork _unitOfWork; private readonly ICurrentUserService _currentUser;
-    public RankingService(IEditorialRepository repository, IEditorialUnitOfWork unitOfWork, ICurrentUserService currentUser) { _repository = repository; _unitOfWork = unitOfWork; _currentUser = currentUser; }
+    private readonly IEventBus _eventBus;
+    public RankingService(IEditorialRepository repository, IEditorialUnitOfWork unitOfWork, ICurrentUserService currentUser, IEventBus eventBus) { _repository = repository; _unitOfWork = unitOfWork; _currentUser = currentUser; _eventBus = eventBus; }
     public async Task<Result<ReaderVoteResponse>> AddReaderVoteAsync(Guid issueId, ReaderVoteRequest request, CancellationToken cancellationToken = default)
     {
         if (request.VoteCount < 0) return Result<ReaderVoteResponse>.Failure("VoteCount cannot be negative.");
@@ -29,12 +32,14 @@ public sealed class RankingService : IRankingService
             snapshot.Items.Add(item);
             if (i >= Math.Max(0, total - 3) || i + 1 >= 10) await CreateWarningIfMissingAsync(votes[i].SeriesId, i + 1, cancellationToken);
         }
-        await _repository.AddAsync(snapshot, cancellationToken); await _unitOfWork.SaveChangesAsync(cancellationToken); return Result<RankingSnapshotResponse>.Success(ToResponse(snapshot));
+        await _repository.AddAsync(snapshot, cancellationToken); await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _eventBus.PublishAsync(new RankingCalculatedEvent(issueId, snapshot.Id, snapshot.GeneratedAt), cancellationToken);
+        return Result<RankingSnapshotResponse>.Success(ToResponse(snapshot));
     }
     public async Task<Result<IReadOnlyList<RankingSnapshotResponse>>> GetRankingsAsync(Guid issueId, CancellationToken cancellationToken = default) => Result<IReadOnlyList<RankingSnapshotResponse>>.Success((await _repository.ListAsync<RankingSnapshot>(s => s.IssueId == issueId, cancellationToken)).Select(ToResponse).ToArray());
     public async Task<Result<IReadOnlyList<RankingItemResponse>>> GetSeriesRankingHistoryAsync(Guid seriesId, CancellationToken cancellationToken = default) => Result<IReadOnlyList<RankingItemResponse>>.Success((await _repository.ListAsync<RankingItem>(i => i.SeriesId == seriesId, cancellationToken)).Select(ToResponse).ToArray());
     public async Task<Result<IReadOnlyList<CancellationWarningResponse>>> GetCancellationWarningsAsync(Guid seriesId, CancellationToken cancellationToken = default) => Result<IReadOnlyList<CancellationWarningResponse>>.Success((await _repository.ListAsync<CancellationWarning>(w => w.SeriesId == seriesId, cancellationToken)).Select(ToResponse).ToArray());
-    private async Task CreateWarningIfMissingAsync(Guid seriesId, int rank, CancellationToken cancellationToken) { var active = await _repository.ListAsync<CancellationWarning>(w => w.SeriesId == seriesId && !w.IsResolved, cancellationToken); if (active.Count == 0) await _repository.AddAsync(new CancellationWarning { SeriesId = seriesId, Reason = $"Series ranked low at position {rank}.", RiskLevel = rank >= 10 ? CancellationRiskLevel.High : CancellationRiskLevel.Medium, CreatedAt = DateTime.UtcNow }, cancellationToken); }
+    private async Task CreateWarningIfMissingAsync(Guid seriesId, int rank, CancellationToken cancellationToken) { var active = await _repository.ListAsync<CancellationWarning>(w => w.SeriesId == seriesId && !w.IsResolved, cancellationToken); if (active.Count == 0) { var warning = new CancellationWarning { SeriesId = seriesId, Reason = $"Series ranked low at position {rank}.", RiskLevel = rank >= 10 ? CancellationRiskLevel.High : CancellationRiskLevel.Medium, CreatedAt = DateTime.UtcNow }; await _repository.AddAsync(warning, cancellationToken); await _eventBus.PublishAsync(new CancellationWarningCreatedEvent(warning.SeriesId, warning.RiskLevel.ToString(), warning.Reason, warning.CreatedAt), cancellationToken); } }
     private static ReaderVoteResponse ToResponse(ReaderVote v) => new() { Id = v.Id, IssueId = v.IssueId, SeriesId = v.SeriesId, VoteCount = v.VoteCount, RankPosition = v.RankPosition, ImportedByUserId = v.ImportedByUserId, CreatedAt = v.CreatedAt };
     private static RankingSnapshotResponse ToResponse(RankingSnapshot s) => new() { Id = s.Id, IssueId = s.IssueId, GeneratedAt = s.GeneratedAt, GeneratedByUserId = s.GeneratedByUserId, Items = s.Items.Select(ToResponse).ToArray() };
     private static RankingItemResponse ToResponse(RankingItem i) => new() { SeriesId = i.SeriesId, VoteCount = i.VoteCount, RankPosition = i.RankPosition, Score = i.Score };

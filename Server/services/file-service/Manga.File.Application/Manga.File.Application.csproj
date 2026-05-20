@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Manga.File.Domain\Manga.File.Domain.csproj" />
+    <ProjectReference Include="..\..\..\shared\Manga.Contracts\Manga.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\shared\Manga.BuildingBlocks\Manga.BuildingBlocks.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

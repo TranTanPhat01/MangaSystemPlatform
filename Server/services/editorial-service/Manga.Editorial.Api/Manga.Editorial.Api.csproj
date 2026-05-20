@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Manga.Editorial.Application\Manga.Editorial.Application.csproj" />
     <ProjectReference Include="..\Manga.Editorial.Infrastructure\Manga.Editorial.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\shared\Manga.BuildingBlocks\Manga.BuildingBlocks.csproj" />
   </ItemGroup>
 
   <ItemGroup>

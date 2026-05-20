@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Manga.BuildingBlocks.DependencyInjection;
 using Manga.File.Api.Services;
 using Manga.File.Application.Services;
 using Manga.File.Infrastructure.DependencyInjection;
@@ -46,6 +47,7 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IFileAssetService, FileAssetService>();
 builder.Services.AddFileInfrastructure(builder.Configuration);
+builder.Services.AddRabbitMqEventBus(builder.Configuration);
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

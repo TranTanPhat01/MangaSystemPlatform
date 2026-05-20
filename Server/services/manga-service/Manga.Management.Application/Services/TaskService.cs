@@ -3,6 +3,8 @@ using Manga.Management.Application.Common;
 using Manga.Management.Application.DTOs;
 using Manga.Management.Domain.Entities;
 using Manga.Management.Domain.Enums;
+using Manga.BuildingBlocks.Messaging;
+using Manga.Contracts.Events;
 using DomainTaskStatus = Manga.Management.Domain.Enums.TaskStatus;
 
 namespace Manga.Management.Application.Services;
@@ -11,11 +13,13 @@ public sealed class TaskService : ITaskService
 {
     private readonly IManagementRepository _repository;
     private readonly IManagementUnitOfWork _unitOfWork;
+    private readonly IEventBus _eventBus;
 
-    public TaskService(IManagementRepository repository, IManagementUnitOfWork unitOfWork)
+    public TaskService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IEventBus eventBus)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _eventBus = eventBus;
     }
 
     public async Task<Result<TaskResponse>> CreateAsync(CreateTaskRequest request, Guid currentUserId, CancellationToken cancellationToken = default)
@@ -45,6 +49,7 @@ public sealed class TaskService : ITaskService
 
         await _repository.AddAsync(task, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _eventBus.PublishAsync(new TaskAssignedEvent(task.Id, task.PageId, task.AssignedToUserId, task.CreatedByUserId, task.CreatedAt), cancellationToken);
 
         return Result<TaskResponse>.Success(ToResponse(task));
     }
@@ -92,12 +97,13 @@ public sealed class TaskService : ITaskService
 
         await _repository.AddAsync(submission, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _eventBus.PublishAsync(new TaskSubmittedEvent(task.Id, currentUserId, request.FileId, submission.SubmittedAt), cancellationToken);
 
         return Result<SubmissionResponse>.Success(ToResponse(submission));
     }
 
     public Task<Result<TaskResponse>> ApproveAsync(Guid id, CancellationToken cancellationToken = default) =>
-        SetStatusAsync(id, DomainTaskStatus.Approved, cancellationToken);
+        ApproveInternalAsync(id, cancellationToken);
 
     public async Task<Result<TaskResponse>> RequestRevisionAsync(Guid id, RequestRevisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default)
     {
@@ -135,6 +141,17 @@ public sealed class TaskService : ITaskService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<TaskResponse>.Success(ToResponse(task));
+    }
+
+    private async Task<Result<TaskResponse>> ApproveInternalAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await SetStatusAsync(id, DomainTaskStatus.Approved, cancellationToken);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            await _eventBus.PublishAsync(new TaskApprovedEvent(id, result.Value.CreatedByUserId, DateTime.UtcNow), cancellationToken);
+        }
+
+        return result;
     }
 
     private static TaskResponse ToResponse(MangaTask task) => new()

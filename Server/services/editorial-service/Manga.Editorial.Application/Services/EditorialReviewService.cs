@@ -3,6 +3,8 @@ using Manga.Editorial.Application.Common;
 using Manga.Editorial.Application.DTOs;
 using Manga.Editorial.Domain.Entities;
 using Manga.Editorial.Domain.Enums;
+using Manga.BuildingBlocks.Messaging;
+using Manga.Contracts.Events;
 
 namespace Manga.Editorial.Application.Services;
 
@@ -11,12 +13,14 @@ public sealed class EditorialReviewService : IEditorialReviewService
     private readonly IEditorialRepository _repository;
     private readonly IEditorialUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
+    private readonly IEventBus _eventBus;
 
-    public EditorialReviewService(IEditorialRepository repository, IEditorialUnitOfWork unitOfWork, ICurrentUserService currentUser)
+    public EditorialReviewService(IEditorialRepository repository, IEditorialUnitOfWork unitOfWork, ICurrentUserService currentUser, IEventBus eventBus)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _eventBus = eventBus;
     }
 
     public async Task<Result<EditorialReviewResponse>> CreateAsync(CreateEditorialReviewRequest request, CancellationToken cancellationToken = default)
@@ -61,6 +65,11 @@ public sealed class EditorialReviewService : IEditorialReviewService
         review.DecisionNote = note;
         review.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        if (status == EditorialReviewStatus.Approved)
+        {
+            await _eventBus.PublishAsync(new ChapterApprovedEvent(review.ChapterId, review.SeriesId, _currentUser.UserId, DateTime.UtcNow), cancellationToken);
+        }
+
         return Result<EditorialReviewResponse>.Success(ToResponse(review));
     }
 

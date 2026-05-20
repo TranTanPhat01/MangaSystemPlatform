@@ -76,6 +76,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseGlobalExceptionHandling();
+
 var storageRoot = Path.GetFullPath(Path.Combine(
     Directory.GetCurrentDirectory(),
     builder.Configuration["FileStorage:RootPath"] ?? "storage/files"));

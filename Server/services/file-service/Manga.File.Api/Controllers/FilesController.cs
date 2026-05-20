@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Manga.BuildingBlocks.Exceptions;
+using Manga.BuildingBlocks.Responses;
 using Manga.File.Application.Common;
 using Manga.File.Application.DTOs;
 using Manga.File.Application.Services;
@@ -84,7 +86,7 @@ public sealed class FilesController : ControllerBase
     public async Task<IActionResult> Delete(Guid fileId, CancellationToken cancellationToken)
     {
         var result = await _fileAssetService.DeleteAsync(fileId, cancellationToken);
-        return result.IsSuccess ? NoContent() : ToActionResult(result);
+        return result.IsSuccess ? Ok(ApiResponse<object>.Ok("File deleted successfully")) : ToActionResult(result);
     }
 
     [HttpGet("my")]
@@ -95,11 +97,39 @@ public sealed class FilesController : ControllerBase
     {
         if (result.IsSuccess)
         {
-            return Ok(result.Value);
+            return Ok(ApiResponse<T>.Ok(result.Value!));
         }
 
-        return result.Error?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true
-            ? NotFound(new { message = result.Error })
-            : BadRequest(new { message = result.Error });
+        throw CreateException(result.Error);
+    }
+
+    private static Exception CreateException(string? error)
+    {
+        var message = error ?? "Request failed.";
+        if (message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+        {
+            return new NotFoundException(message, ToErrorCode(message));
+        }
+
+        return new BadRequestException(message, ToErrorCode(message));
+    }
+
+    private static string ToErrorCode(string message)
+    {
+        if (message.Contains("extension", StringComparison.OrdinalIgnoreCase))
+        {
+            return "INVALID_FILE_EXTENSION";
+        }
+
+        if (message.Contains("size", StringComparison.OrdinalIgnoreCase))
+        {
+            return "FILE_TOO_LARGE";
+        }
+
+        var normalized = message.Replace(".", string.Empty, StringComparison.Ordinal);
+        return string.Join(
+            "_",
+            normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .ToUpperInvariant();
     }
 }

@@ -181,3 +181,49 @@ Da tich hop publisher:
 - Editorial Service publish chapter approval, ranking, cancellation warning events
 
 Ghi chu: consumer hien moi o muc skeleton, chua gan business handler thuc te.
+
+## Phase 7.5 - Global Exception Handling va Standard API Response
+
+Da them exception handling dung chung trong `Manga.BuildingBlocks`:
+
+- `AppException`
+- `BadRequestException`
+- `UnauthorizedException`
+- `ForbiddenException`
+- `NotFoundException`
+- `ConflictException`
+- `ValidationException`
+- `ExternalServiceException`
+
+Da them response format dung chung:
+
+- `ApiResponse<T>`
+- `ApiError`
+
+Da them middleware:
+
+- `GlobalExceptionHandlingMiddleware`
+- `UseGlobalExceptionHandling(...)`
+
+Middleware xu ly:
+
+- `AppException`
+- FluentValidation exception neu phase sau co cai package
+- `DbUpdateException`
+- `UnauthorizedAccessException`
+- fallback `Exception` thanh HTTP 500
+
+Da gan middleware vao:
+
+- Identity API
+- Manga Management API
+- File API
+- Editorial API
+
+Da chuan hoa controller de success response tra ve `ApiResponse<T>` va error response di qua middleware chung. Controller khong con `try/catch` business exception va khong tra `BadRequest/NotFound/Unauthorized` thu cong cho cac flow hien tai.
+
+Da build solution thanh cong:
+
+```bash
+dotnet build MangaSystemPlatform.Server.sln
+```

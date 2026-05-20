@@ -88,6 +88,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseGlobalExceptionHandling();
 app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();

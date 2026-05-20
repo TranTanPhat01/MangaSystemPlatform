@@ -20,6 +20,6 @@ public sealed class AnnotationsController : ApiControllerBase
     public async Task<IActionResult> Delete(Guid annotationId, CancellationToken cancellationToken)
     {
         var result = await _annotationService.DeleteAsync(annotationId, cancellationToken);
-        return result.IsSuccess ? NoContent() : ToActionResult(result);
+        return result.IsSuccess ? ToSuccessResult("Annotation deleted successfully") : ToActionResult(result);
     }
 }

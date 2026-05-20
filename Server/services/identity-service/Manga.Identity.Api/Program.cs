@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Manga.BuildingBlocks.DependencyInjection;
 using Manga.Identity.Application.Options;
 using Manga.Identity.Application.Services;
 using Manga.Identity.Infrastructure.DependencyInjection;
@@ -102,6 +103,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseGlobalExceptionHandling();
 app.UseCors("Frontend");
 
 app.UseAuthentication();

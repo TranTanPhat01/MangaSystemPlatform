@@ -1,6 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Manga.BuildingBlocks.Exceptions;
+using Manga.BuildingBlocks.Responses;
+using Manga.Identity.Application.DTOs;
 using Manga.Identity.Application.Services;
 
 namespace Manga.Identity.Api.Controllers;
@@ -23,10 +26,15 @@ public sealed class UsersController : ControllerBase
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim, out var userId))
         {
-            return Unauthorized(new { message = "Invalid access token." });
+            throw new UnauthorizedException("Invalid access token.", "INVALID_ACCESS_TOKEN");
         }
 
         var result = await _authService.GetCurrentUserAsync(userId, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : NotFound(new { message = result.Error });
+        if (!result.IsSuccess)
+        {
+            throw new NotFoundException(result.Error ?? "User not found.", "USER_NOT_FOUND");
+        }
+
+        return Ok(ApiResponse<UserProfileResponse>.Ok(result.Value!));
     }
 }

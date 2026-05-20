@@ -20,6 +20,7 @@ public sealed class MangaManagementDbContext : DbContext, IManagementUnitOfWork
     public DbSet<MangaTask> Tasks => Set<MangaTask>();
     public DbSet<Submission> Submissions => Set<Submission>();
     public DbSet<Revision> Revisions => Set<Revision>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

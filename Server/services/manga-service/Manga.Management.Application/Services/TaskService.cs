@@ -49,7 +49,7 @@ public sealed class TaskService : ITaskService
 
         await _repository.AddAsync(task, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _eventBus.PublishAsync(new TaskAssignedEvent(task.Id, task.PageId, task.AssignedToUserId, task.CreatedByUserId, task.CreatedAt), cancellationToken);
+        await _eventBus.PublishAsync(new TaskAssignedEvent(Guid.NewGuid(), task.Id, task.PageId, task.AssignedToUserId, task.CreatedByUserId, task.CreatedAt), cancellationToken);
 
         return Result<TaskResponse>.Success(ToResponse(task));
     }
@@ -97,7 +97,7 @@ public sealed class TaskService : ITaskService
 
         await _repository.AddAsync(submission, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        await _eventBus.PublishAsync(new TaskSubmittedEvent(task.Id, currentUserId, request.FileId, submission.SubmittedAt), cancellationToken);
+        await _eventBus.PublishAsync(new TaskSubmittedEvent(Guid.NewGuid(), task.Id, currentUserId, request.FileId, submission.SubmittedAt), cancellationToken);
 
         return Result<SubmissionResponse>.Success(ToResponse(submission));
     }
@@ -148,7 +148,7 @@ public sealed class TaskService : ITaskService
         var result = await SetStatusAsync(id, DomainTaskStatus.Approved, cancellationToken);
         if (result.IsSuccess && result.Value is not null)
         {
-            await _eventBus.PublishAsync(new TaskApprovedEvent(id, result.Value.CreatedByUserId, DateTime.UtcNow), cancellationToken);
+            await _eventBus.PublishAsync(new TaskApprovedEvent(Guid.NewGuid(), id, result.Value.CreatedByUserId, DateTime.UtcNow), cancellationToken);
         }
 
         return result;

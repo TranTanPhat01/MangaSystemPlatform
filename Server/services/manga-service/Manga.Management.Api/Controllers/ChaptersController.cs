@@ -25,7 +25,7 @@ public sealed class ChaptersController : ApiControllerBase
 
     [HttpPatch("{chapterId:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid chapterId, UpdateChapterStatusRequest request, CancellationToken cancellationToken) =>
-        ToActionResult(await _chapterService.UpdateStatusAsync(chapterId, request, cancellationToken));
+        ToActionResult(await _chapterService.UpdateStatusAsync(chapterId, request, CurrentUserId, cancellationToken));
 
     [HttpPost("{chapterId:guid}/pages")]
     public async Task<IActionResult> CreatePage(Guid chapterId, CreatePageRequest request, CancellationToken cancellationToken) =>

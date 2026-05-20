@@ -64,6 +64,7 @@ public sealed class FileAssetService : IFileAssetService
         await _fileAssets.AddAsync(fileAsset, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _eventBus.PublishAsync(new FileUploadedEvent(
+            Guid.NewGuid(),
             fileAsset.Id,
             fileAsset.UploadedByUserId,
             fileAsset.FileCategory.ToString(),

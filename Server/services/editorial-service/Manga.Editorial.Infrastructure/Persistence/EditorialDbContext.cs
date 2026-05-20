@@ -16,6 +16,7 @@ public sealed class EditorialDbContext : DbContext, IEditorialUnitOfWork
     public DbSet<RankingSnapshot> RankingSnapshots => Set<RankingSnapshot>();
     public DbSet<RankingItem> RankingItems => Set<RankingItem>();
     public DbSet<CancellationWarning> CancellationWarnings => Set<CancellationWarning>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

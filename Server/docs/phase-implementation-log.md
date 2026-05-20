@@ -227,3 +227,75 @@ Da build solution thanh cong:
 ```bash
 dotnet build MangaSystemPlatform.Server.sln
 ```
+
+## Phase 8 - Distributed Workflow
+
+Da bien RabbitMQ foundation thanh distributed workflow co consumer xu ly nghiep vu that.
+
+Da cap nhat event contracts de moi integration event co:
+
+- `MessageId`
+- `OccurredAt`
+
+Da hoan thien RabbitMQ consumer infrastructure:
+
+- `RabbitMqEventConsumer<TEvent, THandler>`
+- Dang ky consumer bang `AddRabbitMqConsumer<TEvent, THandler>(serviceName)`
+- Queue naming theo dang `service-name.EventName`
+- Ack khi handler xu ly thanh cong
+- Nack khong requeue khi handler fail
+- Retry handler execution 3 lan
+- Log event received, processed va failed
+- Neu RabbitMQ chua chay, consumer log warning va khong lam app crash
+
+Da them Inbox Pattern cho:
+
+- Manga Management Service
+- Editorial Service
+
+Bang moi:
+
+- `inbox_messages`
+
+Fields:
+
+- `Id`
+- `MessageId`
+- `EventType`
+- `Payload`
+- `Status`
+- `ReceivedAt`
+- `ProcessedAt`
+- `Error`
+
+Da them handlers trong Manga Management:
+
+- `FileUploadedEventHandler`
+- `ChapterApprovedEventHandler`
+- `RankingCalculatedEventHandler`
+
+Da them handlers trong Editorial:
+
+- `TaskAssignedEventHandler`
+- `TaskSubmittedEventHandler`
+- `ChapterSubmittedForReviewEventHandler`
+
+Workflow da co:
+
+- File upload category `MangaPage` -> Manga Management ghi InboxMessage va log.
+- Manga create task -> Editorial ghi InboxMessage va log.
+- Manga submit task -> Editorial ghi InboxMessage va log.
+- Manga submit chapter for review -> Editorial tao `EditorialReview` neu chua ton tai.
+- Editorial approve review -> Manga cap nhat `Chapter.Status = Approved`.
+- Editorial calculate ranking -> Manga ghi InboxMessage va log.
+
+Migration da tao:
+
+- `AddInboxMessagesToMangaManagement`
+- `AddInboxMessagesToEditorial`
+
+Da build solution thanh cong:
+
+```bash
+dotnet build MangaSystemPlatform.Server.sln --no-restore
+```

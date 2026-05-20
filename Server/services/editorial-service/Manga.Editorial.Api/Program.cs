@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Manga.BuildingBlocks.DependencyInjection;
+using Manga.Contracts.Events;
 using Manga.Editorial.Api.Services;
+using Manga.Editorial.Application.EventHandlers;
 using Manga.Editorial.Application.Services;
 using Manga.Editorial.Infrastructure.DependencyInjection;
 
@@ -30,6 +32,9 @@ builder.Services.AddScoped<IPublicationService, PublicationService>();
 builder.Services.AddScoped<IRankingService, RankingService>();
 builder.Services.AddEditorialInfrastructure(builder.Configuration);
 builder.Services.AddRabbitMqEventBus(builder.Configuration);
+builder.Services.AddRabbitMqConsumer<TaskAssignedEvent, TaskAssignedEventHandler>("editorial-service");
+builder.Services.AddRabbitMqConsumer<TaskSubmittedEvent, TaskSubmittedEventHandler>("editorial-service");
+builder.Services.AddRabbitMqConsumer<ChapterSubmittedForReviewEvent, ChapterSubmittedForReviewEventHandler>("editorial-service");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters

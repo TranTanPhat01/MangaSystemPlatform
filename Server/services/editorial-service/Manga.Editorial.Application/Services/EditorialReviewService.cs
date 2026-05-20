@@ -67,7 +67,7 @@ public sealed class EditorialReviewService : IEditorialReviewService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         if (status == EditorialReviewStatus.Approved)
         {
-            await _eventBus.PublishAsync(new ChapterApprovedEvent(review.ChapterId, review.SeriesId, _currentUser.UserId, DateTime.UtcNow), cancellationToken);
+            await _eventBus.PublishAsync(new ChapterApprovedEvent(Guid.NewGuid(), review.ChapterId, review.SeriesId, _currentUser.UserId, DateTime.UtcNow), cancellationToken);
         }
 
         return Result<EditorialReviewResponse>.Success(ToResponse(review));

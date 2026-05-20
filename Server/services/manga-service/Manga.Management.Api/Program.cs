@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Manga.BuildingBlocks.DependencyInjection;
+using Manga.Contracts.Events;
+using Manga.Management.Application.EventHandlers;
 using Manga.Management.Application.Services;
 using Manga.Management.Infrastructure.DependencyInjection;
 
@@ -60,6 +62,9 @@ builder.Services.AddScoped<IAnnotationService, AnnotationService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddMangaManagementInfrastructure(builder.Configuration);
 builder.Services.AddRabbitMqEventBus(builder.Configuration);
+builder.Services.AddRabbitMqConsumer<FileUploadedEvent, FileUploadedEventHandler>("manga-service");
+builder.Services.AddRabbitMqConsumer<ChapterApprovedEvent, ChapterApprovedEventHandler>("manga-service");
+builder.Services.AddRabbitMqConsumer<RankingCalculatedEvent, RankingCalculatedEventHandler>("manga-service");
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

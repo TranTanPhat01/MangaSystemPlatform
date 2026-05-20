@@ -57,6 +57,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manga.Contracts", "shared\M
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manga.SharedKernel", "shared\Manga.SharedKernel\Manga.SharedKernel.csproj", "{4377AA58-00C8-456E-B313-8673B8DE634C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "infrastructure", "infrastructure", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		.env.example = .env.example
+		docker-compose.yml = docker-compose.yml
+		infrastructure\postgres\init-databases.sql = infrastructure\postgres\init-databases.sql
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -336,5 +344,8 @@ Global
 		{56843DB0-D8DC-4908-B20F-E6765A7AEAD0} = {4F52FD11-658E-A102-6CD3-7D7C16FFA15B}
 		{A6701FEF-A0E7-431A-A2B1-B47EF6F6C8B5} = {4F52FD11-658E-A102-6CD3-7D7C16FFA15B}
 		{4377AA58-00C8-456E-B313-8673B8DE634C} = {4F52FD11-658E-A102-6CD3-7D7C16FFA15B}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D36A278E-4DC3-40AD-943C-2CBA4421B93D}
 	EndGlobalSection
 EndGlobal

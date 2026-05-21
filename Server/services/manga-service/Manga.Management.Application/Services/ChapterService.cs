@@ -4,6 +4,7 @@ using Manga.Management.Application.DTOs;
 using Manga.Management.Domain.Entities;
 using Manga.Management.Domain.Enums;
 using Manga.BuildingBlocks.Messaging;
+using Manga.BuildingBlocks.Exceptions;
 using Manga.Contracts.Events;
 
 namespace Manga.Management.Application.Services;
@@ -77,6 +78,28 @@ public sealed class ChapterService : IChapterService
                 currentUserId,
                 chapter.UpdatedAt.Value), cancellationToken);
         }
+
+        return Result<ChapterResponse>.Success(ToResponse(chapter));
+    }
+
+    public async Task<Result<ChapterResponse>> SubmitChapterForReviewAsync(Guid chapterId, Guid currentUserId, CancellationToken cancellationToken = default)
+    {
+        var chapter = await _repository.GetByIdAsync<Chapter>(chapterId, cancellationToken);
+        if (chapter is null)
+        {
+            throw new NotFoundException("Chapter not found.", "CHAPTER_NOT_FOUND");
+        }
+
+        chapter.Status = ChapterStatus.SubmittedForReview;
+        chapter.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await _eventBus.PublishAsync(new ChapterSubmittedForReviewEvent(
+            Guid.NewGuid(),
+            chapter.Id,
+            chapter.SeriesId,
+            currentUserId,
+            DateTime.UtcNow), cancellationToken);
 
         return Result<ChapterResponse>.Success(ToResponse(chapter));
     }

@@ -8,3 +8,12 @@ Each .NET service follows a Clean Architecture skeleton:
 - Application
 - Domain
 - Infrastructure
+
+Current services:
+
+- identity-service
+- manga-service
+- file-service
+- editorial-service
+- notification-service
+- ai-service

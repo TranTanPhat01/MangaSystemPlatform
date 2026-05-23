@@ -9,6 +9,7 @@ Backend nam trong thu muc `Server/` va duoc to chuc theo huong microservice:
 - `services/manga-service`: quan ly studio, series, chapter, page, annotation, task, submission, revision.
 - `services/file-service`: upload file local, metadata file, version file, download, soft delete.
 - `services/editorial-service`: review, comment, board vote, issue, publication schedule, ranking, cancellation warning.
+- `services/notification-service`: persisted notifications, unread count, read/delete actions, RabbitMQ consumers.
 - `services/ai-service`: skeleton Python FastAPI.
 - `shared/Manga.Contracts`: event contracts dung chung giua cac service.
 - `shared/Manga.BuildingBlocks`: building blocks dung chung, hien co RabbitMQ event bus.
@@ -33,6 +34,7 @@ PostgreSQL duoc dung lam database provider. Moi service co database rieng:
 - Manga Management Service: `MangaManagementDB`
 - File Service: `FileDB`
 - Editorial Service: `EditorialDB`
+- Notification Service: `NotificationDB`
 
 Init script local nam tai:
 

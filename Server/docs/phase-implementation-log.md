@@ -299,3 +299,66 @@ Da build solution thanh cong:
 ```bash
 dotnet build MangaSystemPlatform.Server.sln --no-restore
 ```
+
+## Phase 9 - Notification Service
+
+Da them microservice moi:
+
+```text
+Server/services/notification-service/
+```
+
+Projects:
+
+- `Manga.Notification.Api`
+- `Manga.Notification.Application`
+- `Manga.Notification.Domain`
+- `Manga.Notification.Infrastructure`
+
+Da them persisted notifications:
+
+- `Notification`
+- `InboxMessage`
+
+Enums:
+
+- `NotificationType`
+- `NotificationStatus`
+- `InboxMessageStatus`
+
+API endpoints:
+
+- `GET /notifications/my`
+- `GET /notifications/unread-count`
+- `POST /notifications/{notificationId}/read`
+- `POST /notifications/read-all`
+- `DELETE /notifications/{notificationId}`
+
+Da them RabbitMQ consumers cho:
+
+- `TaskAssignedEvent`
+- `TaskSubmittedEvent`
+- `TaskApprovedEvent`
+- `ChapterSubmittedForReviewEvent`
+- `ChapterApprovedEvent`
+- `RankingCalculatedEvent`
+- `CancellationWarningCreatedEvent`
+- `FileUploadedEvent`
+
+Da them Gateway route:
+
+- `/notifications/{**catch-all}` -> Notification API
+
+Da them database:
+
+- `NotificationDB`
+
+Migration da tao:
+
+- `InitialNotificationService`
+
+Da build solution thanh cong:
+
+```bash
+dotnet build MangaSystemPlatform.Server.sln --no-restore
+```

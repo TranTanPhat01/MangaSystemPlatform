@@ -1,3 +1,8 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
 # Node
 node_modules
 .next

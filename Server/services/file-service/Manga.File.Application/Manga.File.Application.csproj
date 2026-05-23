@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Manga.File.Domain\Manga.File.Domain.csproj" />
+    <ProjectReference Include="..\..\..\shared\Manga.Contracts\Manga.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\shared\Manga.BuildingBlocks\Manga.BuildingBlocks.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

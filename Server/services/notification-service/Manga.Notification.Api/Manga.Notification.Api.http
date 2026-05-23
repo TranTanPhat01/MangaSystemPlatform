@@ -1,0 +1,6 @@
+@Manga.Notification.Api_HostAddress = http://localhost:5276
+
+GET {{Manga.Notification.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

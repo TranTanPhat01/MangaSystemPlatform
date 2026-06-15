@@ -1,8 +1,10 @@
 using System.Text;
 using System.Text.Json;
+using Manga.BuildingBlocks.Middleware;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Serilog.Context;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -78,7 +80,17 @@ public sealed class RabbitMqEventConsumer<TEvent, THandler> : BackgroundService,
     private async Task HandleMessageAsync(string eventName, BasicDeliverEventArgs args, CancellationToken cancellationToken)
     {
         var payload = Encoding.UTF8.GetString(args.Body.ToArray());
-        _logger.LogInformation("Received integration event {EventName}", eventName);
+        var messageId = args.BasicProperties?.MessageId ?? Guid.NewGuid().ToString();
+        var correlationId = args.BasicProperties?.CorrelationId;
+
+        using var eventTypeProperty = LogContext.PushProperty("EventType", eventName);
+        using var messageIdProperty = LogContext.PushProperty("MessageId", messageId);
+        using var correlationIdProperty = LogContext.PushProperty("CorrelationId", correlationId);
+
+        _logger.LogInformation(
+            "Received event {EventType} with MessageId {MessageId}",
+            eventName,
+            messageId);
 
         try
         {
@@ -88,13 +100,30 @@ public sealed class RabbitMqEventConsumer<TEvent, THandler> : BackgroundService,
                 throw new InvalidOperationException($"Unable to deserialize integration event {eventName}.");
             }
 
-            await ExecuteWithRetryAsync(eventMessage, cancellationToken);
+            var previousCorrelationId = CorrelationIdContext.Current;
+            CorrelationIdContext.Current = correlationId;
+            try
+            {
+                await ExecuteWithRetryAsync(eventMessage, cancellationToken);
+            }
+            finally
+            {
+                CorrelationIdContext.Current = previousCorrelationId;
+            }
+
             _channel?.BasicAck(args.DeliveryTag, multiple: false);
-            _logger.LogInformation("Processed integration event {EventName}", eventName);
+            _logger.LogInformation(
+                "Processed event {EventType} with MessageId {MessageId} successfully",
+                eventName,
+                messageId);
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Failed to process integration event {EventName}", eventName);
+            _logger.LogError(
+                exception,
+                "Failed to process event {EventType} with MessageId {MessageId}",
+                eventName,
+                messageId);
             _channel?.BasicNack(args.DeliveryTag, multiple: false, requeue: false);
         }
     }
@@ -112,6 +141,10 @@ public sealed class RabbitMqEventConsumer<TEvent, THandler> : BackgroundService,
             }
             catch when (attempt < MaxRetryAttempts)
             {
+                _logger.LogWarning(
+                    "Retrying event {EventType}. RetryCount={RetryCount}",
+                    typeof(TEvent).Name,
+                    attempt);
                 await Task.Delay(TimeSpan.FromMilliseconds(200 * attempt), cancellationToken);
             }
         }

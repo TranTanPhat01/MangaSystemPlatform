@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Manga.BuildingBlocks.Middleware;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
@@ -34,20 +35,35 @@ public sealed class RabbitMqEventBus : IEventBus
             channel.ExchangeDeclare(_options.ExchangeName, ExchangeType.Topic, durable: true, autoDelete: false);
 
             var eventName = typeof(TEvent).Name;
+            var messageId = ReadMessageId(eventMessage);
             var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(eventMessage));
             var properties = channel.CreateBasicProperties();
             properties.Persistent = true;
             properties.ContentType = "application/json";
             properties.Type = eventName;
+            properties.MessageId = messageId;
+            properties.CorrelationId = CorrelationIdContext.Current;
 
             channel.BasicPublish(_options.ExchangeName, eventName, properties, body);
-            _logger.LogInformation("Published integration event {EventName}", eventName);
+            _logger.LogInformation(
+                "Published event {EventType} with MessageId {MessageId} to exchange {Exchange} using routing key {RoutingKey}",
+                eventName,
+                messageId,
+                _options.ExchangeName,
+                eventName);
         }
         catch (Exception exception)
         {
-            _logger.LogWarning(exception, "Failed to publish integration event {EventName}", typeof(TEvent).Name);
+            _logger.LogWarning(exception, "Failed to publish event {EventType}", typeof(TEvent).Name);
         }
 
         return Task.CompletedTask;
+    }
+
+    private static string ReadMessageId<TEvent>(TEvent eventMessage)
+    {
+        var property = typeof(TEvent).GetProperty("MessageId");
+        var value = property?.GetValue(eventMessage);
+        return value?.ToString() ?? Guid.NewGuid().ToString();
     }
 }

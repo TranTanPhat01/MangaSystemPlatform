@@ -39,15 +39,20 @@ public sealed class GlobalExceptionHandlingMiddleware
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         var error = CreateError(exception, context.TraceIdentifier);
+        var correlationId = context.Items.TryGetValue(CorrelationIdMiddleware.ItemName, out var value)
+            ? value?.ToString()
+            : context.TraceIdentifier;
 
         _logger.LogError(
             exception,
-            "API error {ErrorCode} on {Method} {Path}. StatusCode={StatusCode}, TraceId={TraceId}, Message={Message}",
+            "API error {ErrorCode} on {Method} {Path}. StatusCode={StatusCode}, TraceId={TraceId}, CorrelationId={CorrelationId}, ExceptionType={ExceptionType}, Message={Message}",
             error.Error.Code,
             context.Request.Method,
             context.Request.Path,
             error.StatusCode,
             context.TraceIdentifier,
+            correlationId,
+            exception.GetType().Name,
             exception.Message);
 
         context.Response.ContentType = "application/json";
@@ -118,7 +123,8 @@ public sealed class GlobalExceptionHandlingMiddleware
         {
             details,
             traceId,
-            exceptionType = exception.GetType().Name
+            exceptionType = exception.GetType().Name,
+            stackTrace = exception.StackTrace
         };
     }
 

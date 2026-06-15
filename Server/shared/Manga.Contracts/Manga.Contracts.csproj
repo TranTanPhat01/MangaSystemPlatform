@@ -6,4 +6,20 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+    <PackageReference Include="Grpc.Tools" Version="2.81.1">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+
+	  <PackageReference Include="Grpc.Core.Api" Version="2.66.0" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<Protobuf Include="Protos\identity.proto" GrpcServices="Both" />
+		<Protobuf Include="Protos\file.proto" GrpcServices="Both" />
+		<Protobuf Include="Protos\manga.proto" GrpcServices="Both" />
+	</ItemGroup>
+
 </Project>

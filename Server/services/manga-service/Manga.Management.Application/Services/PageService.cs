@@ -9,11 +9,16 @@ public sealed class PageService : IPageService
 {
     private readonly IManagementRepository _repository;
     private readonly IManagementUnitOfWork _unitOfWork;
+    private readonly IFileLookupClient _fileLookupClient;
 
-    public PageService(IManagementRepository repository, IManagementUnitOfWork unitOfWork)
+    public PageService(
+        IManagementRepository repository,
+        IManagementUnitOfWork unitOfWork,
+        IFileLookupClient fileLookupClient)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _fileLookupClient = fileLookupClient;
     }
 
     public async Task<Result<PageResponse>> CreateAsync(Guid chapterId, CreatePageRequest request, CancellationToken cancellationToken = default)
@@ -21,6 +26,12 @@ public sealed class PageService : IPageService
         if (await _repository.GetByIdAsync<Chapter>(chapterId, cancellationToken) is null)
         {
             return Result<PageResponse>.Failure("Chapter not found.");
+        }
+
+        if (request.FileId.HasValue &&
+            !await _fileLookupClient.FileExistsAsync(request.FileId.Value, cancellationToken))
+        {
+            return Result<PageResponse>.Failure("File does not exist or is not accessible.");
         }
 
         var page = new Page

@@ -3,6 +3,7 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Manga.BuildingBlocks.Middleware;
 
 namespace Manga.BuildingBlocks.Grpc;
 
@@ -32,9 +33,14 @@ public sealed class InternalGrpcClientInterceptor : Interceptor
             headers.Add(InternalGrpcOptions.ApiKeyHeaderName, apiKey);
         }
 
-        var correlationId = _configuration["CorrelationId"];
-        if (!string.IsNullOrWhiteSpace(correlationId) &&
-            !headers.Any(header => string.Equals(header.Key, "x-correlation-id", StringComparison.OrdinalIgnoreCase)))
+        var correlationId = CorrelationIdContext.Current;
+        if (string.IsNullOrWhiteSpace(correlationId))
+        {
+            correlationId = Guid.NewGuid().ToString();
+            CorrelationIdContext.Current = correlationId;
+        }
+
+        if (!headers.Any(header => string.Equals(header.Key, "x-correlation-id", StringComparison.OrdinalIgnoreCase)))
         {
             headers.Add("x-correlation-id", correlationId);
         }
@@ -45,11 +51,16 @@ public sealed class InternalGrpcClientInterceptor : Interceptor
             context.Host,
             options);
 
+        _logger.LogInformation(
+            "gRPC client call started Method={Method} CorrelationId={CorrelationId}",
+            context.Method.FullName,
+            correlationId);
+
         var stopwatch = Stopwatch.StartNew();
         var call = continuation(request, nextContext);
 
         return new AsyncUnaryCall<TResponse>(
-            LogResponseAsync(call.ResponseAsync, context.Method.FullName, stopwatch),
+            LogResponseAsync(call.ResponseAsync, context.Method.FullName, stopwatch, correlationId),
             call.ResponseHeadersAsync,
             call.GetStatus,
             call.GetTrailers,
@@ -59,17 +70,19 @@ public sealed class InternalGrpcClientInterceptor : Interceptor
     private async Task<TResponse> LogResponseAsync<TResponse>(
         Task<TResponse> responseTask,
         string method,
-        Stopwatch stopwatch)
+        Stopwatch stopwatch,
+        string correlationId)
     {
         try
         {
             var response = await responseTask;
             stopwatch.Stop();
             _logger.LogInformation(
-                "gRPC client call {Method} completed with {Status} in {ElapsedMilliseconds}ms.",
+                "gRPC call completed Method={Method} Status={Status} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
                 method,
                 StatusCode.OK,
-                stopwatch.ElapsedMilliseconds);
+                stopwatch.ElapsedMilliseconds,
+                correlationId);
             return response;
         }
         catch (RpcException exception)
@@ -77,10 +90,11 @@ public sealed class InternalGrpcClientInterceptor : Interceptor
             stopwatch.Stop();
             _logger.LogWarning(
                 exception,
-                "gRPC client call {Method} completed with {Status} in {ElapsedMilliseconds}ms.",
+                "gRPC call completed Method={Method} Status={Status} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
                 method,
                 exception.StatusCode,
-                stopwatch.ElapsedMilliseconds);
+                stopwatch.ElapsedMilliseconds,
+                correlationId);
             throw;
         }
     }

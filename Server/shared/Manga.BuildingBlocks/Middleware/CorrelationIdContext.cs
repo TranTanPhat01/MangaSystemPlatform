@@ -11,4 +11,9 @@ public static class CorrelationIdContext
         get => CurrentValue.Value;
         set => CurrentValue.Value = value;
     }
+
+    public static void Clear()
+    {
+        CurrentValue.Value = null;
+    }
 }

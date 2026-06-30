@@ -3,11 +3,14 @@ using Manga.File.Application.Common;
 using Manga.File.Application.DTOs;
 using Manga.File.Application.Options;
 using Manga.File.Application.Services;
+using Manga.File.Domain.Enums;
 
 namespace Manga.File.Infrastructure.Services;
 
 internal sealed class LocalFileStorageService : IFileStorageService
 {
+    public StorageProvider Provider => StorageProvider.Local;
+
     private readonly FileStorageOptions _options;
     private readonly HashSet<string> _allowedExtensions;
 

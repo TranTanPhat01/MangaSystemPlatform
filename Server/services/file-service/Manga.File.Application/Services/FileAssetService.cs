@@ -52,7 +52,7 @@ public sealed class FileAssetService : IFileAssetService
             ContentType = contentType,
             Extension = Path.GetExtension(originalFileName).ToLowerInvariant(),
             SizeInBytes = storedFile.SizeInBytes,
-            StorageProvider = StorageProvider.Local,
+            StorageProvider = _storage.Provider,
             StoragePath = storedFile.StoragePath,
             PublicUrl = storedFile.PublicUrl,
             UploadedByUserId = _currentUser.UserId,
@@ -152,6 +152,7 @@ public sealed class FileAssetService : IFileAssetService
         fileAsset.StoredFileName = storedFile.StoredFileName;
         fileAsset.StoragePath = storedFile.StoragePath;
         fileAsset.PublicUrl = storedFile.PublicUrl;
+        fileAsset.StorageProvider = _storage.Provider;
         fileAsset.ContentType = contentType;
         fileAsset.Extension = Path.GetExtension(originalFileName).ToLowerInvariant();
         fileAsset.SizeInBytes = storedFile.SizeInBytes;

@@ -3,6 +3,8 @@ using Grpc.Core;
 using Grpc.Core.Interceptors;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Manga.BuildingBlocks.Middleware;
+using Serilog.Context;
 
 namespace Manga.BuildingBlocks.Grpc;
 
@@ -24,34 +26,53 @@ public sealed class InternalGrpcServerInterceptor : Interceptor
         ServerCallContext context,
         UnaryServerMethod<TRequest, TResponse> continuation)
     {
-        var stopwatch = Stopwatch.StartNew();
-        var status = StatusCode.OK;
+        var correlationId = GetHeaderValue(context.RequestHeaders, "x-correlation-id");
+        if (string.IsNullOrWhiteSpace(correlationId))
+        {
+            correlationId = Guid.NewGuid().ToString();
+        }
 
-        try
+        var previousCorrelationId = CorrelationIdContext.Current;
+        CorrelationIdContext.Current = correlationId;
+
+        using (LogContext.PushProperty("CorrelationId", correlationId))
         {
-            EnsureAuthorized(context);
-            var response = await continuation(request, context);
-            return response;
-        }
-        catch (RpcException exception)
-        {
-            status = exception.StatusCode;
-            throw;
-        }
-        catch
-        {
-            status = StatusCode.Internal;
-            throw;
-        }
-        finally
-        {
-            stopwatch.Stop();
             _logger.LogInformation(
-                "gRPC server call {Method} completed with {Status} in {ElapsedMilliseconds}ms. CorrelationId={CorrelationId}",
+                "gRPC server call received Method={Method} CorrelationId={CorrelationId}",
                 context.Method,
-                status,
-                stopwatch.ElapsedMilliseconds,
-                GetHeaderValue(context.RequestHeaders, "x-correlation-id") ?? "none");
+                correlationId);
+
+            var stopwatch = Stopwatch.StartNew();
+            var status = StatusCode.OK;
+
+            try
+            {
+                EnsureAuthorized(context);
+                var response = await continuation(request, context);
+                return response;
+            }
+            catch (RpcException exception)
+            {
+                status = exception.StatusCode;
+                throw;
+            }
+            catch
+            {
+                status = StatusCode.Internal;
+                throw;
+            }
+            finally
+            {
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "gRPC call completed Method={Method} Status={Status} ElapsedMs={ElapsedMs} CorrelationId={CorrelationId}",
+                    context.Method,
+                    status,
+                    stopwatch.ElapsedMilliseconds,
+                    correlationId);
+
+                CorrelationIdContext.Current = previousCorrelationId;
+            }
         }
     }
 

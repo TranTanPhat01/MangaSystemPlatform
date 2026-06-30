@@ -14,17 +14,41 @@ public sealed class EditorialReviewService : IEditorialReviewService
     private readonly IEditorialUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
     private readonly IEventBus _eventBus;
+    private readonly IMangaLookupClient _mangaLookupClient;
 
-    public EditorialReviewService(IEditorialRepository repository, IEditorialUnitOfWork unitOfWork, ICurrentUserService currentUser, IEventBus eventBus)
+    public EditorialReviewService(
+        IEditorialRepository repository,
+        IEditorialUnitOfWork unitOfWork,
+        ICurrentUserService currentUser,
+        IEventBus eventBus,
+        IMangaLookupClient mangaLookupClient)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
         _eventBus = eventBus;
+        _mangaLookupClient = mangaLookupClient;
     }
 
     public async Task<Result<EditorialReviewResponse>> CreateAsync(CreateEditorialReviewRequest request, CancellationToken cancellationToken = default)
     {
+        var chapter = await _mangaLookupClient.GetChapterByIdAsync(request.ChapterId, cancellationToken);
+        if (chapter is null)
+        {
+            return Result<EditorialReviewResponse>.Failure("Chapter not found.");
+        }
+
+        var series = await _mangaLookupClient.GetSeriesByIdAsync(request.SeriesId, cancellationToken);
+        if (series is null)
+        {
+            return Result<EditorialReviewResponse>.Failure("Series not found.");
+        }
+
+        if (chapter.SeriesId != request.SeriesId)
+        {
+            return Result<EditorialReviewResponse>.Failure("Chapter does not belong to series.");
+        }
+
         var review = new EditorialReview { ChapterId = request.ChapterId, SeriesId = request.SeriesId, RequestedByUserId = _currentUser.UserId, ReviewerUserId = request.ReviewerUserId, CreatedAt = DateTime.UtcNow };
         await _repository.AddAsync(review, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

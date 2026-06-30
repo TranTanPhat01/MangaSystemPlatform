@@ -1,0 +1,42 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "Manga.Contracts.Identity.V1";
+
+package manga.identity.v1;
+
+service IdentityGrpcService {
+  rpc CheckUserExists (CheckUserExistsRequest) returns (CheckUserExistsResponse);
+  rpc GetUserSummary (GetUserSummaryRequest) returns (GetUserSummaryResponse);
+  rpc CheckUserRole (CheckUserRoleRequest) returns (CheckUserRoleResponse);
+}
+
+message CheckUserExistsRequest {
+  string user_id = 1;
+}
+
+message CheckUserExistsResponse {
+  bool exists = 1;
+  bool is_active = 2;
+}
+
+message GetUserSummaryRequest {
+  string user_id = 1;
+}
+
+message GetUserSummaryResponse {
+  string user_id = 1;
+  string display_name = 2;
+  string email = 3;
+  repeated string roles = 4;
+  bool is_active = 5;
+}
+
+message CheckUserRoleRequest {
+  string user_id = 1;
+  string role = 2;
+}
+
+message CheckUserRoleResponse {
+  bool has_role = 1;
+  bool is_active = 2;
+}

@@ -75,6 +75,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manga.Notification.Domain",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Manga.Notification.Infrastructure", "services\notification-service\Manga.Notification.Infrastructure\Manga.Notification.Infrastructure.csproj", "{752C87C3-FB3A-4196-8F00-4929CF602CDA}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MangaSystemPlatform.GrpcIntegrationTests", "tests\MangaSystemPlatform.GrpcIntegrationTests\MangaSystemPlatform.GrpcIntegrationTests.csproj", "{473A394F-6657-455F-8816-EC886D851885}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -373,6 +377,18 @@ Global
 		{752C87C3-FB3A-4196-8F00-4929CF602CDA}.Release|x64.Build.0 = Release|Any CPU
 		{752C87C3-FB3A-4196-8F00-4929CF602CDA}.Release|x86.ActiveCfg = Release|Any CPU
 		{752C87C3-FB3A-4196-8F00-4929CF602CDA}.Release|x86.Build.0 = Release|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Debug|x64.Build.0 = Debug|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Debug|x86.Build.0 = Debug|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Release|Any CPU.Build.0 = Release|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Release|x64.ActiveCfg = Release|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Release|x64.Build.0 = Release|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Release|x86.ActiveCfg = Release|Any CPU
+		{473A394F-6657-455F-8816-EC886D851885}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -407,6 +423,7 @@ Global
 		{7CE50981-389C-401F-A096-6A4299673A83} = {C11069B0-78FC-CF9E-9D65-12F697A0DBA7}
 		{2655F25F-EDFC-4101-A94C-C6397E18D6ED} = {C11069B0-78FC-CF9E-9D65-12F697A0DBA7}
 		{752C87C3-FB3A-4196-8F00-4929CF602CDA} = {C11069B0-78FC-CF9E-9D65-12F697A0DBA7}
+		{473A394F-6657-455F-8816-EC886D851885} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D36A278E-4DC3-40AD-943C-2CBA4421B93D}

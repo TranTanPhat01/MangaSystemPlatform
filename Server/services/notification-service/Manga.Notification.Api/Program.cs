@@ -1,5 +1,6 @@
 using System.Text;
 using Manga.BuildingBlocks.DependencyInjection;
+using Manga.BuildingBlocks.Health;
 using Manga.Contracts.Events;
 using Manga.Notification.Api.Services;
 using Manga.Notification.Application.EventHandlers;
@@ -8,8 +9,14 @@ using Manga.Notification.Infrastructure.DependencyInjection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, configuration) =>
+{
+    configuration.ReadFrom.Configuration(context.Configuration);
+});
 
 var issuer = builder.Configuration["Jwt:Issuer"] ?? string.Empty;
 var audience = builder.Configuration["Jwt:Audience"] ?? string.Empty;
@@ -58,6 +65,9 @@ builder.Services.AddRabbitMqConsumer<ChapterApprovedEvent, ChapterApprovedEventH
 builder.Services.AddRabbitMqConsumer<RankingCalculatedEvent, RankingCalculatedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<CancellationWarningCreatedEvent, CancellationWarningCreatedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<FileUploadedEvent, FileUploadedEventHandler>("notification-service");
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("NotificationDb")!, name: "postgresql")
+    .AddRabbitMQ(BuildRabbitMqConnectionString(builder.Configuration), name: "rabbitmq");
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -86,8 +96,20 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCorrelationId();
+app.UseMangaRequestLogging();
 app.UseGlobalExceptionHandling();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health", HealthCheckResponseWriter.CreateOptions());
 app.Run();
+
+static string BuildRabbitMqConnectionString(IConfiguration configuration)
+{
+    var host = configuration["RabbitMQ:HostName"] ?? "localhost";
+    var port = configuration["RabbitMQ:Port"] ?? "5672";
+    var userName = Uri.EscapeDataString(configuration["RabbitMQ:UserName"] ?? "guest");
+    var password = Uri.EscapeDataString(configuration["RabbitMQ:Password"] ?? "guest");
+    return $"amqp://{userName}:{password}@{host}:{port}/";
+}

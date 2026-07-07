@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const publicPaths = ['/login', '/register'];
+const publicPaths = ['/login', '/register', '/'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,7 +17,10 @@ export function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get('auth_token')?.value;
-  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
+  const isPublicPath = publicPaths.some((path) => {
+    if (path === '/') return pathname === '/';
+    return pathname.startsWith(path);
+  });
 
   // If trying to access a protected page without a token, redirect to login
   if (!token && !isPublicPath) {
@@ -28,12 +31,7 @@ export function middleware(request: NextRequest) {
   }
 
   // If already logged in and trying to access login/register, redirect to dashboard
-  if (token && isPublicPath) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  // If access root '/', redirect to /dashboard
-  if (pathname === '/') {
+  if (token && isPublicPath && pathname !== '/') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

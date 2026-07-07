@@ -10,6 +10,34 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  --color-burgundy-50: #fdf2f4;
+  --color-burgundy-100: #fbe5e9;
+  --color-burgundy-200: #f7ced5;
+  --color-burgundy-300: #f0a9b6;
+  --color-burgundy-400: #e47c91;
+  --color-burgundy-500: #d1506e;
+  --color-burgundy-600: #bc3354;
+  --color-burgundy-700: #9e2441;
+  --color-burgundy-800: #832038;
+  --color-burgundy-850: #761a2f;
+  --color-burgundy-900: #6e1e32;
+  --color-burgundy-950: #3d0b17;
+  
+  --color-plum-50: #faf5ff;
+  --color-plum-100: #f3e8ff;
+  --color-plum-200: #e9d5ff;
+  --color-plum-300: #d8b4fe;
+  --color-plum-400: #c084fc;
+  --color-plum-500: #a855f7;
+  --color-plum-600: #9333ea;
+  --color-plum-700: #7e22ce;
+  --color-plum-750: #621d98;
+  --color-plum-800: #6b21a8;
+  --color-plum-900: #581c87;
+  --color-plum-950: #3b0764;
+
+  --color-emerald-55: #10b981;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -20,7 +48,99 @@
 }
 
 body {
-  background: var(--background);
+  background: transparent;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Screentone Dot Matrix Background */
+.manga-screentone-bg {
+  background-image: radial-gradient(rgba(107, 29, 47, 0.06) 1.5px, transparent 1.5px);
+  background-size: 14px 14px;
+}
+
+.dark .manga-screentone-bg {
+  background-image: radial-gradient(rgba(247, 206, 213, 0.04) 1.5px, transparent 1.5px);
+  background-size: 14px 14px;
+}
+
+/* Custom Angled Manga Comic Panels */
+.manga-panel-clip-1 {
+  clip-path: polygon(0.5% 1%, 99.5% 0.2%, 98.2% 99%, 1.2% 98%);
+}
+.manga-panel-clip-2 {
+  clip-path: polygon(1.5% 1.8%, 98.5% 0.5%, 99% 98.2%, 0.8% 99.5%);
+}
+.manga-panel-clip-3 {
+  clip-path: polygon(0.8% 0.5%, 99.2% 2.5%, 97.5% 98.5%, 2.2% 99.2%);
+}
+
+/* Rough Hand-Drawn Borders */
+.manga-border-sketch {
+  border: 2px solid currentColor;
+  border-radius: 255px 25px 225px 25px/25px 225px 25px 255px;
+}
+
+/* Crawling dash path (Marching Ants) for annotation lines */
+@keyframes marching-ants {
+  0% {
+    stroke-dashoffset: 20;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.manga-connector-line {
+  stroke-dasharray: 4, 3;
+  animation: marching-ants 1.2s linear infinite;
+}
+
+/* Floating animation cards at varying rates */
+@keyframes float-y {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.manga-annotation-float-1 {
+  animation: float-y 5s ease-in-out infinite;
+}
+
+.manga-annotation-float-2 {
+  animation: float-y 4.2s ease-in-out infinite 0.5s;
+}
+
+.manga-annotation-float-3 {
+  animation: float-y 4.6s ease-in-out infinite 1s;
+}
+
+/* ── Card Shuffle (Deck Flip) Animations ── */
+
+/* Active card: thrown out to top-right when leaving */
+@keyframes card-throw-out {
+  0%   { transform: translateX(0)    translateY(0)    rotate(0deg)   scale(1);   opacity: 1; }
+  60%  { transform: translateX(30%)  translateY(-18%) rotate(12deg)  scale(1.04); opacity: 0.6; }
+  100% { transform: translateX(60%)  translateY(-35%) rotate(22deg)  scale(0.9);  opacity: 0; }
+}
+
+/* New top card: rises from the back of the deck */
+@keyframes card-rise-in {
+  0%   { transform: translateX(-8%) translateY(8%)  rotate(-5deg) scale(0.88); opacity: 0; z-index: 0; }
+  100% { transform: translateX(0)   translateY(0)   rotate(0deg)  scale(1);    opacity: 1; z-index: 10; }
+}
+
+.card-throw-out {
+  animation: card-throw-out 0.55s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.card-rise-in {
+  animation: card-rise-in 0.55s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+
+
+

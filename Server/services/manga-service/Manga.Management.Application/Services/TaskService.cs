@@ -14,12 +14,21 @@ public sealed class TaskService : ITaskService
     private readonly IManagementRepository _repository;
     private readonly IManagementUnitOfWork _unitOfWork;
     private readonly IEventBus _eventBus;
+    private readonly IIdentityLookupClient _identityLookupClient;
+    private readonly IFileLookupClient _fileLookupClient;
 
-    public TaskService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IEventBus eventBus)
+    public TaskService(
+        IManagementRepository repository,
+        IManagementUnitOfWork unitOfWork,
+        IEventBus eventBus,
+        IIdentityLookupClient identityLookupClient,
+        IFileLookupClient fileLookupClient)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _eventBus = eventBus;
+        _identityLookupClient = identityLookupClient;
+        _fileLookupClient = fileLookupClient;
     }
 
     public async Task<Result<TaskResponse>> CreateAsync(CreateTaskRequest request, Guid currentUserId, CancellationToken cancellationToken = default)
@@ -32,6 +41,16 @@ public sealed class TaskService : ITaskService
         if (await _repository.GetByIdAsync<Annotation>(request.AnnotationId, cancellationToken) is null)
         {
             return Result<TaskResponse>.Failure("Annotation not found.");
+        }
+
+        if (!await _identityLookupClient.CheckUserExistsAsync(request.AssignedToUserId, cancellationToken))
+        {
+            return Result<TaskResponse>.Failure("Assigned user does not exist or is inactive.");
+        }
+
+        if (!await _identityLookupClient.CheckUserRoleAsync(request.AssignedToUserId, "Assistant", cancellationToken))
+        {
+            return Result<TaskResponse>.Failure("Assigned user must have Assistant role.");
         }
 
         var task = new MangaTask
@@ -80,6 +99,12 @@ public sealed class TaskService : ITaskService
         if (task is null)
         {
             return Result<SubmissionResponse>.Failure("Task not found.");
+        }
+
+        if (request.FileId.HasValue &&
+            !await _fileLookupClient.FileExistsAsync(request.FileId.Value, cancellationToken))
+        {
+            return Result<SubmissionResponse>.Failure("File does not exist or is not accessible.");
         }
 
         task.Status = DomainTaskStatus.Submitted;

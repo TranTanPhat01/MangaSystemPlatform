@@ -3,11 +3,20 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Manga.BuildingBlocks.DependencyInjection;
+using Manga.BuildingBlocks.Grpc;
+using Manga.BuildingBlocks.Health;
+using Manga.Identity.Api.GrpcServices;
 using Manga.Identity.Application.Options;
 using Manga.Identity.Application.Services;
 using Manga.Identity.Infrastructure.DependencyInjection;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, configuration) =>
+{
+    configuration.ReadFrom.Configuration(context.Configuration);
+});
 
 var jwtOptions = new JwtOptions
 {
@@ -24,6 +33,10 @@ if (string.IsNullOrWhiteSpace(jwtOptions.SecretKey))
 }
 
 builder.Services.AddControllers();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<InternalGrpcServerInterceptor>();
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -70,7 +83,11 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<InternalGrpcServerInterceptor>();
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
+builder.Services.AddHealthChecks()
+    .AddNpgSql(builder.Configuration.GetConnectionString("IdentityDb")!, name: "postgresql")
+    .AddCheck<InternalGrpcConfigurationHealthCheck>("internal-grpc-config");
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -103,6 +120,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCorrelationId();
+app.UseMangaRequestLogging();
 app.UseGlobalExceptionHandling();
 app.UseCors("Frontend");
 
@@ -110,6 +129,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGrpcService<IdentityGrpcServiceImpl>();
+app.MapHealthChecks("/health", HealthCheckResponseWriter.CreateOptions());
 
 app.Run();
 

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option csharp_namespace = "Manga.Contracts.File.V1";
+
+package manga.file.v1;
+
+service FileGrpcService {
+  rpc FileExists (FileExistsRequest) returns (FileExistsResponse);
+  rpc GetFileMetadata (GetFileMetadataRequest) returns (GetFileMetadataResponse);
+}
+
+message FileExistsRequest {
+  string file_id = 1;
+}
+
+message FileExistsResponse {
+  bool exists = 1;
+  string category = 2;
+  string content_type = 3;
+}
+
+message GetFileMetadataRequest {
+  string file_id = 1;
+}
+
+message GetFileMetadataResponse {
+  string file_id = 1;
+  string file_name = 2;
+  string content_type = 3;
+  int64 size = 4;
+  string category = 5;
+  string url = 6;
+}

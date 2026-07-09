@@ -16,6 +16,11 @@ internal sealed class UserRepository : IUserRepository
     public Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         _dbContext.Users.AnyAsync(user => user.Email == email, cancellationToken);
 
+    public async Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
+        await IncludeRoles(_dbContext.Users)
+            .OrderBy(user => user.Email)
+            .ToArrayAsync(cancellationToken);
+
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         IncludeRoles(_dbContext.Users)
             .FirstOrDefaultAsync(user => user.Email == email, cancellationToken);

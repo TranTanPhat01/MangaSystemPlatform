@@ -21,6 +21,7 @@ public sealed class FilesController : ControllerBase
         _fileAssetService = fileAssetService;
     }
 
+    [Authorize(Roles = "Mangaka,Assistant,Admin")]
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> Upload(
@@ -59,6 +60,7 @@ public sealed class FilesController : ControllerBase
     public async Task<IActionResult> GetUrl(Guid fileId, CancellationToken cancellationToken) =>
         ToActionResult(await _fileAssetService.GetUrlAsync(fileId, cancellationToken));
 
+    [Authorize(Roles = "Mangaka,Assistant,Admin")]
     [HttpPost("{fileId:guid}/versions")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> CreateVersion(
@@ -82,6 +84,7 @@ public sealed class FilesController : ControllerBase
     public async Task<IActionResult> GetVersions(Guid fileId, CancellationToken cancellationToken) =>
         ToActionResult(await _fileAssetService.GetVersionsAsync(fileId, cancellationToken));
 
+    [Authorize(Roles = "Mangaka,Admin")]
     [HttpDelete("{fileId:guid}")]
     public async Task<IActionResult> Delete(Guid fileId, CancellationToken cancellationToken)
     {

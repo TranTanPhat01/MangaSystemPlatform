@@ -2,7 +2,9 @@ using System.Text;
 using Manga.BuildingBlocks.DependencyInjection;
 using Manga.BuildingBlocks.Health;
 using Manga.Contracts.Events;
+using Manga.Notification.Api.Hubs;
 using Manga.Notification.Api.Services;
+using Manga.Notification.Application.Abstractions;
 using Manga.Notification.Application.EventHandlers;
 using Manga.Notification.Application.Services;
 using Manga.Notification.Infrastructure.DependencyInjection;
@@ -29,6 +31,7 @@ if (string.IsNullOrWhiteSpace(secret))
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -55,6 +58,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<INotificationRealtimePublisher, SignalRNotificationRealtimePublisher>();
 builder.Services.AddNotificationInfrastructure(builder.Configuration);
 builder.Services.AddRabbitMqEventBus(builder.Configuration);
 builder.Services.AddRabbitMqConsumer<TaskAssignedEvent, TaskAssignedEventHandler>("notification-service");
@@ -84,6 +88,20 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
             ClockSkew = TimeSpan.Zero
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrWhiteSpace(accessToken) && path.StartsWithSegments("/notifications/hub"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -102,6 +120,7 @@ app.UseGlobalExceptionHandling();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<NotificationHub>("/notifications/hub");
 app.MapHealthChecks("/health", HealthCheckResponseWriter.CreateOptions());
 app.Run();
 

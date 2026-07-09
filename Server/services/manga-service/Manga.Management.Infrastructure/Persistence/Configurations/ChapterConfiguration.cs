@@ -16,6 +16,7 @@ internal sealed class ChapterConfiguration : IEntityTypeConfiguration<Chapter>
         builder.Property(chapter => chapter.ChapterNumber).HasColumnName("chapter_number").IsRequired();
         builder.Property(chapter => chapter.Title).HasColumnName("title").HasMaxLength(300).IsRequired();
         builder.Property(chapter => chapter.Status).HasColumnName("status").HasConversion(status => status.ToString(), value => Enum.Parse<ChapterStatus>(value)).HasMaxLength(64).IsRequired();
+        builder.Property(chapter => chapter.ProgressPercentage).HasColumnName("progress_percentage").IsRequired().HasDefaultValue(0);
         builder.Property(chapter => chapter.Deadline).HasColumnName("deadline");
         builder.Property(chapter => chapter.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.Property(chapter => chapter.UpdatedAt).HasColumnName("updated_at");

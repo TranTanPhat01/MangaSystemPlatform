@@ -28,6 +28,7 @@ public sealed class AnnotationService : IAnnotationService
             PageId = pageId,
             Type = request.Type,
             CoordinatesJson = request.CoordinatesJson,
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             CreatedBy = currentUserId,
             CreatedAt = DateTime.UtcNow
         };
@@ -64,6 +65,7 @@ public sealed class AnnotationService : IAnnotationService
         PageId = annotation.PageId,
         Type = annotation.Type,
         CoordinatesJson = annotation.CoordinatesJson,
+        Description = annotation.Description,
         CreatedBy = annotation.CreatedBy,
         CreatedAt = annotation.CreatedAt
     };

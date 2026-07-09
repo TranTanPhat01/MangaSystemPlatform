@@ -7,8 +7,12 @@ namespace Manga.Notification.Application.EventHandlers;
 
 public sealed class ChapterApprovedEventHandler : NotificationEventHandlerBase<ChapterApprovedEvent>, IIntegrationEventHandler<ChapterApprovedEvent>
 {
-    public ChapterApprovedEventHandler(INotificationRepository repository, INotificationUnitOfWork unitOfWork, ILogger<ChapterApprovedEventHandler> logger)
-        : base(repository, unitOfWork, logger)
+    public ChapterApprovedEventHandler(
+        INotificationRepository repository,
+        INotificationUnitOfWork unitOfWork,
+        INotificationRealtimePublisher realtimePublisher,
+        ILogger<ChapterApprovedEventHandler> logger)
+        : base(repository, unitOfWork, realtimePublisher, logger)
     {
     }
 

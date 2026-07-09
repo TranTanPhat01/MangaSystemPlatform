@@ -15,6 +15,7 @@ internal sealed class AnnotationConfiguration : IEntityTypeConfiguration<Annotat
         builder.Property(annotation => annotation.PageId).HasColumnName("page_id").IsRequired();
         builder.Property(annotation => annotation.Type).HasColumnName("type").HasConversion(type => type.ToString(), value => Enum.Parse<AnnotationType>(value)).HasMaxLength(64).IsRequired();
         builder.Property(annotation => annotation.CoordinatesJson).HasColumnName("coordinates_json").HasColumnType("jsonb").IsRequired();
+        builder.Property(annotation => annotation.Description).HasColumnName("description").HasMaxLength(1000);
         builder.Property(annotation => annotation.CreatedBy).HasColumnName("created_by").IsRequired();
         builder.Property(annotation => annotation.CreatedAt).HasColumnName("created_at").IsRequired();
         builder.HasOne(annotation => annotation.Page).WithMany(page => page.Annotations).HasForeignKey(annotation => annotation.PageId).OnDelete(DeleteBehavior.Cascade);

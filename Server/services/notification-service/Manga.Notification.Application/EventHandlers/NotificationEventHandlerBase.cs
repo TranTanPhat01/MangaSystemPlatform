@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Manga.Notification.Application.Abstractions;
+using Manga.Notification.Application.DTOs;
 using Manga.Notification.Domain.Entities;
 using Manga.Notification.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -11,15 +12,18 @@ public abstract class NotificationEventHandlerBase<TEvent>
 {
     private readonly INotificationRepository _repository;
     private readonly INotificationUnitOfWork _unitOfWork;
+    private readonly INotificationRealtimePublisher _realtimePublisher;
     private readonly ILogger _logger;
 
     protected NotificationEventHandlerBase(
         INotificationRepository repository,
         INotificationUnitOfWork unitOfWork,
+        INotificationRealtimePublisher realtimePublisher,
         ILogger logger)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
+        _realtimePublisher = realtimePublisher;
         _logger = logger;
     }
 
@@ -73,7 +77,7 @@ public abstract class NotificationEventHandlerBase<TEvent>
             return;
         }
 
-        await _repository.AddNotificationAsync(new Domain.Entities.Notification
+        var notification = new Domain.Entities.Notification
         {
             UserId = userId,
             Title = title,
@@ -82,7 +86,11 @@ public abstract class NotificationEventHandlerBase<TEvent>
             SourceEventType = typeof(TEvent).Name,
             SourceEventId = sourceEventId,
             CreatedAt = DateTime.UtcNow
-        }, cancellationToken);
+        };
+
+        await _repository.AddNotificationAsync(notification, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _realtimePublisher.PublishAsync(ToResponse(notification), cancellationToken);
     }
 
     protected void LogOnly(string message, params object?[] args) => _logger.LogInformation(message, args);
@@ -107,4 +115,18 @@ public abstract class NotificationEventHandlerBase<TEvent>
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return inbox;
     }
+
+    private static NotificationResponse ToResponse(Domain.Entities.Notification notification) => new()
+    {
+        Id = notification.Id,
+        UserId = notification.UserId,
+        Title = notification.Title,
+        Message = notification.Message,
+        Type = notification.Type,
+        Status = notification.Status,
+        SourceEventType = notification.SourceEventType,
+        SourceEventId = notification.SourceEventId,
+        CreatedAt = notification.CreatedAt,
+        ReadAt = notification.ReadAt
+    };
 }

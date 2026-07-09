@@ -8,8 +8,12 @@ namespace Manga.Notification.Application.EventHandlers;
 
 public sealed class ChapterSubmittedForReviewEventHandler : NotificationEventHandlerBase<ChapterSubmittedForReviewEvent>, IIntegrationEventHandler<ChapterSubmittedForReviewEvent>
 {
-    public ChapterSubmittedForReviewEventHandler(INotificationRepository repository, INotificationUnitOfWork unitOfWork, ILogger<ChapterSubmittedForReviewEventHandler> logger)
-        : base(repository, unitOfWork, logger)
+    public ChapterSubmittedForReviewEventHandler(
+        INotificationRepository repository,
+        INotificationUnitOfWork unitOfWork,
+        INotificationRealtimePublisher realtimePublisher,
+        ILogger<ChapterSubmittedForReviewEventHandler> logger)
+        : base(repository, unitOfWork, realtimePublisher, logger)
     {
     }
 

@@ -10,6 +10,8 @@ public sealed class CreateAnnotationRequest
 
     [Required]
     public string CoordinatesJson { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
 }
 
 public sealed class AnnotationResponse
@@ -18,6 +20,7 @@ public sealed class AnnotationResponse
     public Guid PageId { get; set; }
     public AnnotationType Type { get; set; }
     public string CoordinatesJson { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; }
 }

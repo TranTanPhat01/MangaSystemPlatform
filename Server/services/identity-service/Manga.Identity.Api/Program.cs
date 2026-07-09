@@ -83,6 +83,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 builder.Services.AddSingleton<InternalGrpcServerInterceptor>();
 builder.Services.AddIdentityInfrastructure(builder.Configuration);
 builder.Services.AddHealthChecks()

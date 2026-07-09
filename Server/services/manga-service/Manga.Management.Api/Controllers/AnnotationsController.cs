@@ -16,6 +16,7 @@ public sealed class AnnotationsController : ApiControllerBase
         _annotationService = annotationService;
     }
 
+    [Authorize(Roles = "Mangaka,TantouEditor,Admin")]
     [HttpDelete("{annotationId:guid}")]
     public async Task<IActionResult> Delete(Guid annotationId, CancellationToken cancellationToken)
     {

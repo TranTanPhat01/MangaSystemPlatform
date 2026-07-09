@@ -15,10 +15,13 @@ public sealed class BoardVotesController : ApiControllerBase
     private readonly IPublicationService _publicationService;
     private readonly IRankingService _rankingService;
     public BoardVotesController(IBoardVoteService service, IPublicationService publicationService, IRankingService rankingService) { _service = service; _publicationService = publicationService; _rankingService = rankingService; }
+    [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("votes")] public async Task<IActionResult> Vote(Guid seriesId, BoardVoteRequest request, CancellationToken ct) => ToActionResult(await _service.VoteAsync(seriesId, request, ct));
     [HttpGet("votes")] public async Task<IActionResult> GetVotes(Guid seriesId, CancellationToken ct) => ToActionResult(await _service.GetVotesAsync(seriesId, ct));
     [HttpGet("vote-summary")] public async Task<IActionResult> Summary(Guid seriesId, CancellationToken ct) => ToActionResult(await _service.GetSummaryAsync(seriesId, ct));
+    [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("hiatus")] public async Task<IActionResult> Hiatus(Guid seriesId, CancellationToken ct) => ToActionResult(await _publicationService.SetSeriesPublicationStatusAsync(seriesId, PublicationStatus.Hiatus, ct));
+    [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("cancel")] public async Task<IActionResult> Cancel(Guid seriesId, CancellationToken ct) => ToActionResult(await _publicationService.SetSeriesPublicationStatusAsync(seriesId, PublicationStatus.Cancelled, ct));
     [HttpGet("ranking-history")] public async Task<IActionResult> RankingHistory(Guid seriesId, CancellationToken ct) => ToActionResult(await _rankingService.GetSeriesRankingHistoryAsync(seriesId, ct));
     [HttpGet("cancellation-warnings")] public async Task<IActionResult> Warnings(Guid seriesId, CancellationToken ct) => ToActionResult(await _rankingService.GetCancellationWarningsAsync(seriesId, ct));

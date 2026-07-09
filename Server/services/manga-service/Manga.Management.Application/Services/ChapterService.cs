@@ -35,6 +35,7 @@ public sealed class ChapterService : IChapterService
             ChapterNumber = request.ChapterNumber,
             Title = request.Title.Trim(),
             Deadline = request.Deadline,
+            ProgressPercentage = request.ProgressPercentage,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -67,6 +68,16 @@ public sealed class ChapterService : IChapterService
         }
 
         chapter.Status = request.Status;
+        if (request.ProgressPercentage.HasValue)
+        {
+            chapter.ProgressPercentage = request.ProgressPercentage.Value;
+        }
+
+        if (request.Status == ChapterStatus.Approved)
+        {
+            chapter.ProgressPercentage = 100;
+        }
+
         chapter.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         if (request.Status == ChapterStatus.SubmittedForReview)
@@ -91,6 +102,7 @@ public sealed class ChapterService : IChapterService
         }
 
         chapter.Status = ChapterStatus.SubmittedForReview;
+        chapter.ProgressPercentage = Math.Max(chapter.ProgressPercentage, 90);
         chapter.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -111,6 +123,7 @@ public sealed class ChapterService : IChapterService
         ChapterNumber = chapter.ChapterNumber,
         Title = chapter.Title,
         Status = chapter.Status,
+        ProgressPercentage = chapter.ProgressPercentage,
         Deadline = chapter.Deadline,
         CreatedAt = chapter.CreatedAt,
         UpdatedAt = chapter.UpdatedAt

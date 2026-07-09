@@ -8,8 +8,12 @@ namespace Manga.Notification.Application.EventHandlers;
 
 public sealed class TaskSubmittedEventHandler : NotificationEventHandlerBase<TaskSubmittedEvent>, IIntegrationEventHandler<TaskSubmittedEvent>
 {
-    public TaskSubmittedEventHandler(INotificationRepository repository, INotificationUnitOfWork unitOfWork, ILogger<TaskSubmittedEventHandler> logger)
-        : base(repository, unitOfWork, logger)
+    public TaskSubmittedEventHandler(
+        INotificationRepository repository,
+        INotificationUnitOfWork unitOfWork,
+        INotificationRealtimePublisher realtimePublisher,
+        ILogger<TaskSubmittedEventHandler> logger)
+        : base(repository, unitOfWork, realtimePublisher, logger)
     {
     }
 

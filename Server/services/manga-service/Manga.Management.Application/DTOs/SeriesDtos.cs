@@ -22,6 +22,11 @@ public sealed class UpdateSeriesRequest
     public SeriesStatus? Status { get; set; }
 }
 
+public sealed class SeriesDecisionRequest
+{
+    public string? DecisionNote { get; set; }
+}
+
 public sealed class SeriesResponse
 {
     public Guid Id { get; set; }

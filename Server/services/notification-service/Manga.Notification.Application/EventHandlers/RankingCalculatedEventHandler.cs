@@ -7,8 +7,12 @@ namespace Manga.Notification.Application.EventHandlers;
 
 public sealed class RankingCalculatedEventHandler : NotificationEventHandlerBase<RankingCalculatedEvent>, IIntegrationEventHandler<RankingCalculatedEvent>
 {
-    public RankingCalculatedEventHandler(INotificationRepository repository, INotificationUnitOfWork unitOfWork, ILogger<RankingCalculatedEventHandler> logger)
-        : base(repository, unitOfWork, logger)
+    public RankingCalculatedEventHandler(
+        INotificationRepository repository,
+        INotificationUnitOfWork unitOfWork,
+        INotificationRealtimePublisher realtimePublisher,
+        ILogger<RankingCalculatedEventHandler> logger)
+        : base(repository, unitOfWork, realtimePublisher, logger)
     {
     }
 

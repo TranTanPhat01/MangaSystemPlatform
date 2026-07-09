@@ -19,6 +19,9 @@ internal sealed class FakeUserRepository : IUserRepository
     public Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         Task.FromResult(_users.Values.Any(user => user.Email == email));
 
+    public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<User>>(_users.Values.ToArray());
+
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         Task.FromResult(_users.Values.FirstOrDefault(user => user.Email == email));
 

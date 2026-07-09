@@ -11,12 +11,18 @@ public sealed class CreateChapterRequest
     [Required]
     public string Title { get; set; } = string.Empty;
     public DateTime? Deadline { get; set; }
+
+    [Range(0, 100)]
+    public int ProgressPercentage { get; set; }
 }
 
 public sealed class UpdateChapterStatusRequest
 {
     [Required]
     public ChapterStatus Status { get; set; }
+
+    [Range(0, 100)]
+    public int? ProgressPercentage { get; set; }
 }
 
 public sealed class ChapterResponse
@@ -26,6 +32,7 @@ public sealed class ChapterResponse
     public int ChapterNumber { get; set; }
     public string Title { get; set; } = string.Empty;
     public ChapterStatus Status { get; set; }
+    public int ProgressPercentage { get; set; }
     public DateTime? Deadline { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

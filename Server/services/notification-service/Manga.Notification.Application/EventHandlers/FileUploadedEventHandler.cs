@@ -8,8 +8,12 @@ namespace Manga.Notification.Application.EventHandlers;
 
 public sealed class FileUploadedEventHandler : NotificationEventHandlerBase<FileUploadedEvent>, IIntegrationEventHandler<FileUploadedEvent>
 {
-    public FileUploadedEventHandler(INotificationRepository repository, INotificationUnitOfWork unitOfWork, ILogger<FileUploadedEventHandler> logger)
-        : base(repository, unitOfWork, logger)
+    public FileUploadedEventHandler(
+        INotificationRepository repository,
+        INotificationUnitOfWork unitOfWork,
+        INotificationRealtimePublisher realtimePublisher,
+        ILogger<FileUploadedEventHandler> logger)
+        : base(repository, unitOfWork, realtimePublisher, logger)
     {
     }
 

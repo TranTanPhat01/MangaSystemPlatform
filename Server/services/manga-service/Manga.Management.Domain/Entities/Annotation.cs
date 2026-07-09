@@ -9,6 +9,7 @@ public sealed class Annotation
     public Page? Page { get; set; }
     public AnnotationType Type { get; set; }
     public string CoordinatesJson { get; set; } = string.Empty;
+    public string? Description { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

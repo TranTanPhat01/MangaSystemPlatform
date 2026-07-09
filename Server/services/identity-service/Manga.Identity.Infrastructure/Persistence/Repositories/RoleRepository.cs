@@ -13,6 +13,9 @@ internal sealed class RoleRepository : IRoleRepository
         _dbContext = dbContext;
     }
 
+    public async Task<IReadOnlyList<Role>> ListAsync(CancellationToken cancellationToken = default) =>
+        await _dbContext.Roles.OrderBy(role => role.Name).ToArrayAsync(cancellationToken);
+
     public Task<Role?> GetByNameAsync(string name, CancellationToken cancellationToken = default) =>
         _dbContext.Roles.FirstOrDefaultAsync(role => role.Name == name, cancellationToken);
 }

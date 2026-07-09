@@ -36,6 +36,7 @@ public sealed class CorrelationIdInterceptorTests
         }
 
         public Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<User>>(Array.Empty<User>());
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
         public Task AddAsync(User user, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

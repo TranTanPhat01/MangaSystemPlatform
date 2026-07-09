@@ -12,8 +12,10 @@ public sealed class PublicationSchedulesController : ApiControllerBase
 {
     private readonly IPublicationService _service;
     public PublicationSchedulesController(IPublicationService service) { _service = service; }
+    [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost] public async Task<IActionResult> Create(CreatePublicationScheduleRequest request, CancellationToken ct) => ToActionResult(await _service.CreateScheduleAsync(request, ct));
     [HttpGet] public async Task<IActionResult> GetAll(CancellationToken ct) => ToActionResult(await _service.GetSchedulesAsync(ct));
     [HttpGet("{scheduleId:guid}")] public async Task<IActionResult> Get(Guid scheduleId, CancellationToken ct) => ToActionResult(await _service.GetScheduleAsync(scheduleId, ct));
+    [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("{scheduleId:guid}/publish")] public async Task<IActionResult> Publish(Guid scheduleId, CancellationToken ct) => ToActionResult(await _service.PublishAsync(scheduleId, ct));
 }

@@ -17,6 +17,7 @@ public sealed class StudiosController : ApiControllerBase
         _studioService = studioService;
     }
 
+    [Authorize(Roles = "Mangaka,Admin")]
     [HttpPost]
     public async Task<IActionResult> Create(CreateStudioRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _studioService.CreateAsync(request, CurrentUserId, cancellationToken));
@@ -29,6 +30,7 @@ public sealed class StudiosController : ApiControllerBase
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken) =>
         ToActionResult(await _studioService.GetByIdAsync(id, cancellationToken));
 
+    [Authorize(Roles = "Mangaka,Admin")]
     [HttpPost("{id:guid}/members")]
     public async Task<IActionResult> AddMember(Guid id, AddStudioMemberRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _studioService.AddMemberAsync(id, request, cancellationToken));

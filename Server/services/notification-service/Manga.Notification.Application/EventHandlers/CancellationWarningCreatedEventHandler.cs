@@ -7,8 +7,12 @@ namespace Manga.Notification.Application.EventHandlers;
 
 public sealed class CancellationWarningCreatedEventHandler : NotificationEventHandlerBase<CancellationWarningCreatedEvent>, IIntegrationEventHandler<CancellationWarningCreatedEvent>
 {
-    public CancellationWarningCreatedEventHandler(INotificationRepository repository, INotificationUnitOfWork unitOfWork, ILogger<CancellationWarningCreatedEventHandler> logger)
-        : base(repository, unitOfWork, logger)
+    public CancellationWarningCreatedEventHandler(
+        INotificationRepository repository,
+        INotificationUnitOfWork unitOfWork,
+        INotificationRealtimePublisher realtimePublisher,
+        ILogger<CancellationWarningCreatedEventHandler> logger)
+        : base(repository, unitOfWork, realtimePublisher, logger)
     {
     }
 

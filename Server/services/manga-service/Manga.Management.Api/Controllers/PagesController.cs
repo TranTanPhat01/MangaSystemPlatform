@@ -23,10 +23,12 @@ public sealed class PagesController : ApiControllerBase
     public async Task<IActionResult> GetById(Guid pageId, CancellationToken cancellationToken) =>
         ToActionResult(await _pageService.GetByIdAsync(pageId, cancellationToken));
 
+    [Authorize(Roles = "Mangaka,Assistant,Admin")]
     [HttpPatch("{pageId:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid pageId, UpdatePageStatusRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _pageService.UpdateStatusAsync(pageId, request, cancellationToken));
 
+    [Authorize(Roles = "Mangaka,TantouEditor,Admin")]
     [HttpPost("{pageId:guid}/annotations")]
     public async Task<IActionResult> CreateAnnotation(Guid pageId, CreateAnnotationRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _annotationService.CreateAsync(pageId, request, CurrentUserId, cancellationToken));

@@ -17,6 +17,7 @@ public sealed class TasksController : ApiControllerBase
         _taskService = taskService;
     }
 
+    [Authorize(Roles = "Mangaka,Admin")]
     [HttpPost]
     public async Task<IActionResult> Create(CreateTaskRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _taskService.CreateAsync(request, CurrentUserId, cancellationToken));
@@ -29,18 +30,22 @@ public sealed class TasksController : ApiControllerBase
     public async Task<IActionResult> GetById(Guid taskId, CancellationToken cancellationToken) =>
         ToActionResult(await _taskService.GetByIdAsync(taskId, cancellationToken));
 
+    [Authorize(Roles = "Assistant,Admin")]
     [HttpPost("{taskId:guid}/start")]
     public async Task<IActionResult> Start(Guid taskId, CancellationToken cancellationToken) =>
         ToActionResult(await _taskService.StartAsync(taskId, cancellationToken));
 
+    [Authorize(Roles = "Assistant,Admin")]
     [HttpPost("{taskId:guid}/submit")]
     public async Task<IActionResult> Submit(Guid taskId, SubmitTaskRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _taskService.SubmitAsync(taskId, request, CurrentUserId, cancellationToken));
 
+    [Authorize(Roles = "Mangaka,Admin")]
     [HttpPost("{taskId:guid}/approve")]
     public async Task<IActionResult> Approve(Guid taskId, CancellationToken cancellationToken) =>
         ToActionResult(await _taskService.ApproveAsync(taskId, cancellationToken));
 
+    [Authorize(Roles = "Mangaka,Admin")]
     [HttpPost("{taskId:guid}/request-revision")]
     public async Task<IActionResult> RequestRevision(Guid taskId, RequestRevisionRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _taskService.RequestRevisionAsync(taskId, request, CurrentUserId, cancellationToken));

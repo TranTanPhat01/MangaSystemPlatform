@@ -2,6 +2,7 @@ using Manga.Management.Application.Abstractions;
 using Manga.Management.Application.Common;
 using Manga.Management.Application.DTOs;
 using Manga.Management.Domain.Entities;
+using Manga.Management.Domain.Enums;
 
 namespace Manga.Management.Application.Services;
 
@@ -68,6 +69,57 @@ public sealed class SeriesService : ISeriesService
         series.UpdatedAt = DateTime.UtcNow;
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result<SeriesResponse>.Success(ToResponse(series));
+    }
+
+    public async Task<Result<SeriesResponse>> SubmitProposalAsync(Guid id, Guid currentUserId, CancellationToken cancellationToken = default)
+    {
+        var series = await _repository.GetByIdAsync<Series>(id, cancellationToken);
+        if (series is null)
+        {
+            return Result<SeriesResponse>.Failure("Series not found.");
+        }
+
+        if (series.CreatedBy != currentUserId)
+        {
+            return Result<SeriesResponse>.Failure("Only the series owner can submit this proposal.");
+        }
+
+        if (series.Status != SeriesStatus.Draft)
+        {
+            return Result<SeriesResponse>.Failure("Only draft series can be submitted as proposals.");
+        }
+
+        series.Status = SeriesStatus.Submitted;
+        series.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return Result<SeriesResponse>.Success(ToResponse(series));
+    }
+
+    public Task<Result<SeriesResponse>> ApproveProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) =>
+        DecideProposalAsync(id, SeriesStatus.Approved, cancellationToken);
+
+    public Task<Result<SeriesResponse>> RejectProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) =>
+        DecideProposalAsync(id, SeriesStatus.Draft, cancellationToken);
+
+    private async Task<Result<SeriesResponse>> DecideProposalAsync(Guid id, SeriesStatus targetStatus, CancellationToken cancellationToken)
+    {
+        var series = await _repository.GetByIdAsync<Series>(id, cancellationToken);
+        if (series is null)
+        {
+            return Result<SeriesResponse>.Failure("Series not found.");
+        }
+
+        if (series.Status != SeriesStatus.Submitted)
+        {
+            return Result<SeriesResponse>.Failure("Only submitted series proposals can be decided.");
+        }
+
+        series.Status = targetStatus;
+        series.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
         return Result<SeriesResponse>.Success(ToResponse(series));
     }
 

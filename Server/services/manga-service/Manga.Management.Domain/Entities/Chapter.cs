@@ -10,6 +10,7 @@ public sealed class Chapter
     public int ChapterNumber { get; set; }
     public string Title { get; set; } = string.Empty;
     public ChapterStatus Status { get; set; } = ChapterStatus.Draft;
+    public int ProgressPercentage { get; set; }
     public DateTime? Deadline { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

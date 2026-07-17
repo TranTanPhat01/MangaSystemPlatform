@@ -8,5 +8,6 @@ public enum ChapterStatus
     RevisionRequired = 4,
     Approved = 5,
     Scheduled = 6,
-    Published = 7
+    Published = 7,
+    Rejected = 8
 }

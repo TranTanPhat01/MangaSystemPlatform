@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Manga.Management.Application.Abstractions;
 using Manga.Management.Domain.Entities;
+using Manga.BuildingBlocks.Messaging;
 
 namespace Manga.Management.Infrastructure.Persistence;
 
@@ -21,6 +22,7 @@ public sealed class MangaManagementDbContext : DbContext, IManagementUnitOfWork
     public DbSet<Submission> Submissions => Set<Submission>();
     public DbSet<Revision> Revisions => Set<Revision>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

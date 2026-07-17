@@ -24,6 +24,7 @@ public sealed class CreateTaskRequest
 
 public sealed class SubmitTaskRequest
 {
+    [Required]
     public Guid? FileId { get; set; }
     public string? Note { get; set; }
 }
@@ -39,6 +40,8 @@ public sealed class TaskResponse
     public Guid Id { get; set; }
     public Guid AnnotationId { get; set; }
     public Guid PageId { get; set; }
+    public int PageNumber { get; set; }
+    public Guid? PageFileId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public Guid AssignedToUserId { get; set; }
@@ -48,6 +51,8 @@ public sealed class TaskResponse
     public DateTime? Deadline { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public SubmissionResponse? LatestSubmission { get; set; }
+    public IReadOnlyList<RevisionResponse> Revisions { get; set; } = Array.Empty<RevisionResponse>();
 }
 
 public sealed class SubmissionResponse
@@ -59,4 +64,13 @@ public sealed class SubmissionResponse
     public string? Note { get; set; }
     public SubmissionStatus Status { get; set; }
     public DateTime SubmittedAt { get; set; }
+}
+
+public sealed class RevisionResponse
+{
+    public Guid Id { get; set; }
+    public Guid TaskId { get; set; }
+    public Guid RequestedByUserId { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 }

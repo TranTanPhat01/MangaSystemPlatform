@@ -90,10 +90,30 @@ function LoginForm({ t }: LoginFormProps) {
 
       if (response.data && response.data.success) {
         // Store auth details (this will also write tokens to cookies for middleware)
-        setAuth(response.data.data);
-        
-        const redirect = searchParams.get('redirect') || '/dashboard';
-        router.replace(redirect);
+        const authData = response.data.data;
+        setAuth(authData);
+
+        // Role-based redirect: explicit redirect param takes precedence
+        const explicitRedirect = searchParams.get('redirect');
+        if (explicitRedirect) {
+          router.replace(explicitRedirect);
+        } else {
+          // Determine home page by role (case-insensitive)
+          const roles = (authData.user.roles || []).map((r: string) => r.toLowerCase());
+          let destination = '/dashboard'; // default
+          if (roles.includes('editorialboard')) {
+            destination = '/board';
+          } else if (roles.includes('tantoueditor')) {
+            destination = '/editorial';
+          } else if (roles.includes('assistant')) {
+            destination = '/assistant';
+          } else if (roles.includes('mangaka')) {
+            destination = '/dashboard';
+          } else if (roles.includes('admin')) {
+            destination = '/dashboard'; // no /admin page yet
+          }
+          router.replace(destination);
+        }
       } else {
         setError(response.data.error || t.invalidCredentials);
       }

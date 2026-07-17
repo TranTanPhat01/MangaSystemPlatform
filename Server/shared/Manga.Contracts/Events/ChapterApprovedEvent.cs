@@ -4,5 +4,6 @@ public sealed record ChapterApprovedEvent(
     Guid MessageId,
     Guid ChapterId,
     Guid SeriesId,
+    Guid RequestedByUserId,
     Guid ApprovedByUserId,
     DateTime OccurredAt);

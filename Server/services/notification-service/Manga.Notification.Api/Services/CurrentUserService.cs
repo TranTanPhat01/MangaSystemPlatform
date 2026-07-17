@@ -20,4 +20,6 @@ public sealed class CurrentUserService : ICurrentUserService
             return Guid.TryParse(value, out var userId) ? userId : Guid.Empty;
         }
     }
+
+    public bool IsInRole(string role) => _httpContextAccessor.HttpContext?.User.IsInRole(role) == true;
 }

@@ -23,7 +23,7 @@ public sealed class ChaptersController : ApiControllerBase
     public async Task<IActionResult> GetById(Guid chapterId, CancellationToken cancellationToken) =>
         ToActionResult(await _chapterService.GetByIdAsync(chapterId, cancellationToken));
 
-    [Authorize(Roles = "Mangaka,TantouEditor,Admin")]
+    [Authorize(Roles = "Mangaka,Admin")]
     [HttpPatch("{chapterId:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid chapterId, UpdateChapterStatusRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _chapterService.UpdateStatusAsync(chapterId, request, CurrentUserId, cancellationToken));
@@ -33,7 +33,7 @@ public sealed class ChaptersController : ApiControllerBase
     public async Task<IActionResult> SubmitReview(Guid chapterId, CancellationToken cancellationToken) =>
         ToActionResult(await _chapterService.SubmitChapterForReviewAsync(chapterId, CurrentUserId, cancellationToken));
 
-    [Authorize(Roles = "Mangaka,Assistant,Admin")]
+    [Authorize(Roles = "Mangaka,Admin")]
     [HttpPost("{chapterId:guid}/pages")]
     public async Task<IActionResult> CreatePage(Guid chapterId, CreatePageRequest request, CancellationToken cancellationToken) =>
         ToActionResult(await _pageService.CreateAsync(chapterId, request, cancellationToken));

@@ -50,7 +50,12 @@ public sealed class ChapterSubmittedForReviewEventHandler : IIntegrationEventHan
             }
             else
             {
-                _logger.LogInformation("ChapterSubmittedForReviewEvent skipped because review already exists for chapter {ChapterId}.", eventMessage.ChapterId);
+                existingReview.RequestedByUserId = eventMessage.SubmittedByUserId;
+                existingReview.ReviewerUserId = null;
+                existingReview.Status = EditorialReviewStatus.Pending;
+                existingReview.DecisionNote = null;
+                existingReview.UpdatedAt = DateTime.UtcNow;
+                _logger.LogInformation("EditorialReview reopened from ChapterSubmittedForReviewEvent for chapter {ChapterId}.", eventMessage.ChapterId);
             }
 
             inbox.Status = InboxMessageStatus.Processed;

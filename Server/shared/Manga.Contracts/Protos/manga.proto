@@ -7,6 +7,8 @@ package manga.management.v1;
 service MangaManagementGrpcService {
   rpc GetSeriesById (GetSeriesByIdRequest) returns (GetSeriesByIdResponse);
   rpc GetChapterById (GetChapterByIdRequest) returns (GetChapterByIdResponse);
+  rpc CanAccessFile (CanAccessFileRequest) returns (CanAccessFileResponse);
+  rpc ApplyProposalDecision (ApplyProposalDecisionRequest) returns (ApplyProposalDecisionResponse);
 }
 
 message GetSeriesByIdRequest {
@@ -30,4 +32,24 @@ message GetChapterByIdResponse {
   string title = 3;
   int32 number = 4;
   string status = 5;
+}
+
+message CanAccessFileRequest {
+  string user_id = 1;
+  string file_id = 2;
+  string access_type = 3;
+}
+
+message CanAccessFileResponse {
+  bool allowed = 1;
+}
+
+message ApplyProposalDecisionRequest {
+  string series_id = 1;
+  string decision = 2;
+  string reason = 3;
+}
+
+message ApplyProposalDecisionResponse {
+  bool applied = 1;
 }

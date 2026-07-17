@@ -6,6 +6,7 @@ using Manga.Identity.Application.Options;
 using Manga.Identity.Infrastructure.Persistence;
 using Manga.Identity.Infrastructure.Persistence.Repositories;
 using Manga.Identity.Infrastructure.Services;
+using Manga.Identity.Infrastructure.Seeding;
 
 namespace Manga.Identity.Infrastructure.DependencyInjection;
 
@@ -28,12 +29,16 @@ public static class IdentityInfrastructureServiceCollectionExtensions
             options.UseNpgsql(configuration.GetConnectionString("IdentityDb")));
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAdminUserRepository, AdminUserRepository>();
+        services.AddScoped<IAdminAuditRepository, AdminAuditRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IIdentityUnitOfWork>(provider => provider.GetRequiredService<IdentityDbContext>());
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IJwtOptionsProvider, JwtOptionsProvider>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
+        services.AddScoped<IDevelopmentAdminSeeder, DevelopmentAdminSeeder>();
 
         return services;
     }

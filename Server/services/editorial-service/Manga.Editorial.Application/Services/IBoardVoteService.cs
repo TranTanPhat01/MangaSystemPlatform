@@ -8,4 +8,5 @@ public interface IBoardVoteService
     Task<Result<BoardVoteResponse>> VoteAsync(Guid seriesId, BoardVoteRequest request, CancellationToken cancellationToken = default);
     Task<Result<IReadOnlyList<BoardVoteResponse>>> GetVotesAsync(Guid seriesId, CancellationToken cancellationToken = default);
     Task<Result<BoardVoteSummaryResponse>> GetSummaryAsync(Guid seriesId, CancellationToken cancellationToken = default);
+    Task<Result<BoardVoteSummaryResponse>> FinalizeProposalAsync(Guid seriesId, FinalizeProposalRequest request, CancellationToken cancellationToken = default);
 }

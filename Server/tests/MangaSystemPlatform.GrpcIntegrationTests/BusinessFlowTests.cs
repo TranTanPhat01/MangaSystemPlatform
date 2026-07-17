@@ -56,11 +56,12 @@ public sealed class BusinessFlowTests
         var repository = new FakeManagementRepository();
         repository.Seed(chapterId, new Chapter { Id = chapterId, SeriesId = Guid.NewGuid(), Title = "Chapter" });
         var unitOfWork = new FakeManagementUnitOfWork();
-        var service = new PageService(repository, unitOfWork, new FakeFileLookupClient { Exists = true });
+        var service = new PageService(repository, unitOfWork, new FakeFileLookupClient { Exists = true }, new FakeManagementAccessService());
 
         var result = await service.CreateAsync(chapterId, new CreatePageRequest { PageNumber = 1, FileId = Guid.NewGuid() });
 
         result.IsSuccess.Should().BeTrue();
+        result.Value!.FileId.Should().NotBeNull();
         unitOfWork.SaveChangesCalls.Should().Be(1);
     }
 
@@ -71,7 +72,7 @@ public sealed class BusinessFlowTests
         var repository = new FakeManagementRepository();
         repository.Seed(chapterId, new Chapter { Id = chapterId, SeriesId = Guid.NewGuid(), Title = "Chapter" });
         var unitOfWork = new FakeManagementUnitOfWork();
-        var service = new PageService(repository, unitOfWork, new FakeFileLookupClient { Exists = false });
+        var service = new PageService(repository, unitOfWork, new FakeFileLookupClient { Exists = false }, new FakeManagementAccessService());
 
         var result = await service.CreateAsync(chapterId, new CreatePageRequest { PageNumber = 1, FileId = Guid.NewGuid() });
 
@@ -92,7 +93,8 @@ public sealed class BusinessFlowTests
             AnnotationId = context.AnnotationId,
             AssignedToUserId = Guid.NewGuid(),
             CreatedByUserId = Guid.NewGuid(),
-            Title = "Task"
+            Title = "Task",
+            Status = Manga.Management.Domain.Enums.TaskStatus.InProgress
         });
 
         var result = await context.Service.SubmitAsync(taskId, new SubmitTaskRequest { FileId = Guid.NewGuid() }, Guid.NewGuid());
@@ -114,7 +116,8 @@ public sealed class BusinessFlowTests
             AnnotationId = context.AnnotationId,
             AssignedToUserId = Guid.NewGuid(),
             CreatedByUserId = Guid.NewGuid(),
-            Title = "Task"
+            Title = "Task",
+            Status = Manga.Management.Domain.Enums.TaskStatus.InProgress
         });
 
         var result = await context.Service.SubmitAsync(taskId, new SubmitTaskRequest { FileId = Guid.NewGuid() }, Guid.NewGuid());
@@ -131,14 +134,15 @@ public sealed class BusinessFlowTests
         var seriesId = Guid.NewGuid();
         var chapterId = Guid.NewGuid();
         var unitOfWork = new FakeEditorialUnitOfWork();
+        var currentUser = new FakeCurrentUserService();
         var service = new EditorialReviewService(
             new FakeEditorialRepository(),
             unitOfWork,
-            new FakeCurrentUserService(),
+            currentUser,
             new FakeEventBus(),
             new FakeMangaLookupClient
             {
-                Series = new SeriesSummaryDto { SeriesId = seriesId, Title = "Series", AuthorUserId = Guid.NewGuid() },
+                Series = new SeriesSummaryDto { SeriesId = seriesId, Title = "Series", AuthorUserId = currentUser.UserId },
                 Chapter = new ChapterSummaryDto { ChapterId = chapterId, SeriesId = seriesId, Title = "Chapter", Number = 1 }
             });
 
@@ -203,7 +207,8 @@ public sealed class BusinessFlowTests
             unitOfWork,
             eventBus,
             new FakeIdentityLookupClient { Exists = identityExists, HasRole = hasAssistantRole },
-            new FakeFileLookupClient { Exists = fileExists });
+            new FakeFileLookupClient { Exists = fileExists },
+            new FakeManagementAccessService());
 
         return new TaskContext(service, repository, unitOfWork, eventBus, pageId, annotationId);
     }

@@ -7,6 +7,7 @@ using Manga.File.Application.Services;
 using Manga.File.Infrastructure.Persistence;
 using Manga.File.Infrastructure.Persistence.Repositories;
 using Manga.File.Infrastructure.Services;
+using Manga.BuildingBlocks.Messaging;
 
 namespace Manga.File.Infrastructure.DependencyInjection;
 
@@ -20,7 +21,7 @@ public static class FileInfrastructureServiceCollectionExtensions
 
         services.Configure<FileStorageOptions>(options =>
         {
-            options.Provider = storageSection["Provider"] ?? fileStorageSection["Provider"] ?? "Local";
+            options.Provider = fileStorageSection["Provider"] ?? storageSection["Provider"] ?? "Local";
             options.MaxFileSizeInMb = int.TryParse(storageSection["MaxFileSizeInMb"] ?? fileStorageSection["MaxFileSizeInMb"], out var maxSize) ? maxSize : 20;
 
             var allowedExtensions = (storageSection.GetSection("AllowedExtensions").GetChildren().Any() 
@@ -39,12 +40,12 @@ public static class FileInfrastructureServiceCollectionExtensions
             options.Local.RootPath = storageSection["Local:RootPath"] ?? fileStorageSection["RootPath"] ?? "storage/files";
             options.RootPath = options.Local.RootPath; // Compatibility
 
-            options.Minio.Endpoint = storageSection["Minio:Endpoint"] ?? minioSection["Endpoint"] ?? "localhost:9000";
-            options.Minio.AccessKey = storageSection["Minio:AccessKey"] ?? minioSection["AccessKey"] ?? "minioadmin";
-            options.Minio.SecretKey = storageSection["Minio:SecretKey"] ?? minioSection["SecretKey"] ?? "minioadmin";
-            options.Minio.Bucket = storageSection["Minio:Bucket"] ?? minioSection["BucketName"] ?? "manga-files";
+            options.Minio.Endpoint = minioSection["Endpoint"] ?? fileStorageSection["Minio:Endpoint"] ?? storageSection["Minio:Endpoint"] ?? "localhost:9000";
+            options.Minio.AccessKey = minioSection["AccessKey"] ?? fileStorageSection["Minio:AccessKey"] ?? storageSection["Minio:AccessKey"] ?? "minioadmin";
+            options.Minio.SecretKey = minioSection["SecretKey"] ?? fileStorageSection["Minio:SecretKey"] ?? storageSection["Minio:SecretKey"] ?? "minioadmin";
+            options.Minio.Bucket = minioSection["BucketName"] ?? fileStorageSection["Minio:BucketName"] ?? storageSection["Minio:Bucket"] ?? "manga-files";
             
-            if (bool.TryParse(storageSection["Minio:UseSSL"] ?? minioSection["UseSSL"], out var useSsl))
+            if (bool.TryParse(minioSection["UseSSL"] ?? fileStorageSection["Minio:UseSSL"] ?? storageSection["Minio:UseSSL"], out var useSsl))
             {
                 options.Minio.UseSSL = useSsl;
             }
@@ -53,7 +54,7 @@ public static class FileInfrastructureServiceCollectionExtensions
                 options.Minio.UseSSL = false;
             }
 
-            options.Minio.PublicBaseUrl = storageSection["Minio:PublicBaseUrl"] ?? $"{(options.Minio.UseSSL ? "https" : "http")}://{options.Minio.Endpoint}";
+            options.Minio.PublicBaseUrl = minioSection["PublicBaseUrl"] ?? fileStorageSection["Minio:PublicBaseUrl"] ?? storageSection["Minio:PublicBaseUrl"] ?? $"{(options.Minio.UseSSL ? "https" : "http")}://{options.Minio.Endpoint}";
         });
 
         services.AddDbContext<FileDbContext>(options =>
@@ -61,8 +62,14 @@ public static class FileInfrastructureServiceCollectionExtensions
 
         services.AddScoped<IFileAssetRepository, FileAssetRepository>();
         services.AddScoped<IFileUnitOfWork>(provider => provider.GetRequiredService<FileDbContext>());
+        services.AddScoped<FileOutboxStore>();
+        services.AddScoped<IOutboxStore>(provider => provider.GetRequiredService<FileOutboxStore>());
+        services.AddScoped<IOutboxOperations>(provider => provider.GetRequiredService<FileOutboxStore>());
+        services.AddScoped<Manga.BuildingBlocks.Messaging.IEventBus, OutboxEventBus>();
+        services.Configure<OutboxOptions>(configuration.GetSection("Outbox"));
+        services.AddHostedService<OutboxProcessor>();
 
-        var providerType = storageSection["Provider"] ?? fileStorageSection["Provider"] ?? "Local";
+        var providerType = fileStorageSection["Provider"] ?? storageSection["Provider"] ?? "Local";
         if (providerType.Equals("Minio", StringComparison.OrdinalIgnoreCase))
         {
             services.AddScoped<IFileStorageService, MinioFileStorageService>();

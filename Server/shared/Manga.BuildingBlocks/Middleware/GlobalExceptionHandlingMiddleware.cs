@@ -116,7 +116,7 @@ public sealed class GlobalExceptionHandlingMiddleware
     {
         if (!_environment.IsDevelopment())
         {
-            return details;
+            return new { traceId };
         }
 
         return new

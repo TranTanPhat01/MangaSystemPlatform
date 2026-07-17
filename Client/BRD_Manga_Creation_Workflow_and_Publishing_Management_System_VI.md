@@ -152,7 +152,7 @@ Sau khi workflow cốt lõi ổn định, hệ thống có thể mở rộng AI 
 
 ## 6. Phạm vi hệ thống
 
-### 6.1 Trong phạm vi
+### 6.1 Trong phạm vi=
 
 Các chức năng sau nằm trong phạm vi của hệ thống:
 

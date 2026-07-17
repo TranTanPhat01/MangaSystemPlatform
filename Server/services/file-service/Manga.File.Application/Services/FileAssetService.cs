@@ -15,19 +15,22 @@ public sealed class FileAssetService : IFileAssetService
     private readonly IFileStorageService _storage;
     private readonly ICurrentUserService _currentUser;
     private readonly IEventBus _eventBus;
+    private readonly IMangaFileAccessChecker? _mangaFileAccessChecker;
 
     public FileAssetService(
         IFileAssetRepository fileAssets,
         IFileUnitOfWork unitOfWork,
         IFileStorageService storage,
         ICurrentUserService currentUser,
-        IEventBus eventBus)
+        IEventBus eventBus,
+        IMangaFileAccessChecker? mangaFileAccessChecker = null)
     {
         _fileAssets = fileAssets;
         _unitOfWork = unitOfWork;
         _storage = storage;
         _currentUser = currentUser;
         _eventBus = eventBus;
+        _mangaFileAccessChecker = mangaFileAccessChecker;
     }
 
     public async Task<Result<FileUploadResponse>> UploadAsync(
@@ -62,7 +65,6 @@ public sealed class FileAssetService : IFileAssetService
         };
 
         await _fileAssets.AddAsync(fileAsset, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
         await _eventBus.PublishAsync(new FileUploadedEvent(
             Guid.NewGuid(),
             fileAsset.Id,
@@ -70,6 +72,7 @@ public sealed class FileAssetService : IFileAssetService
             fileAsset.FileCategory.ToString(),
             fileAsset.OriginalFileName,
             fileAsset.CreatedAt), cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result<FileUploadResponse>.Success(ToUploadResponse(fileAsset));
     }
@@ -77,7 +80,7 @@ public sealed class FileAssetService : IFileAssetService
     public async Task<Result<FileAssetResponse>> GetByIdAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
         var fileAsset = await GetActiveFileAsync(fileId, cancellationToken);
-        return fileAsset is null
+        return fileAsset is null || !await CanReadAsync(fileAsset, cancellationToken)
             ? Result<FileAssetResponse>.Failure("File not found.")
             : Result<FileAssetResponse>.Success(ToResponse(fileAsset));
     }
@@ -85,7 +88,7 @@ public sealed class FileAssetService : IFileAssetService
     public async Task<Result<FileDownloadResponse>> DownloadAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
         var fileAsset = await GetActiveFileAsync(fileId, cancellationToken);
-        if (fileAsset is null)
+        if (fileAsset is null || !await CanReadAsync(fileAsset, cancellationToken))
         {
             return Result<FileDownloadResponse>.Failure("File not found.");
         }
@@ -107,7 +110,7 @@ public sealed class FileAssetService : IFileAssetService
     public async Task<Result<FileUrlResponse>> GetUrlAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
         var fileAsset = await GetActiveFileAsync(fileId, cancellationToken);
-        return fileAsset is null
+        return fileAsset is null || !await CanReadAsync(fileAsset, cancellationToken)
             ? Result<FileUrlResponse>.Failure("File not found.")
             : Result<FileUrlResponse>.Success(new FileUrlResponse
             {
@@ -126,7 +129,7 @@ public sealed class FileAssetService : IFileAssetService
         CancellationToken cancellationToken = default)
     {
         var fileAsset = await GetActiveFileAsync(fileId, cancellationToken);
-        if (fileAsset is null)
+        if (fileAsset is null || !CanManage(fileAsset))
         {
             return Result<FileVersionResponse>.Failure("File not found.");
         }
@@ -166,7 +169,8 @@ public sealed class FileAssetService : IFileAssetService
 
     public async Task<Result<IReadOnlyList<FileVersionResponse>>> GetVersionsAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
-        if (await GetActiveFileAsync(fileId, cancellationToken) is null)
+        var fileAsset = await GetActiveFileAsync(fileId, cancellationToken);
+        if (fileAsset is null || !await CanReadAsync(fileAsset, cancellationToken))
         {
             return Result<IReadOnlyList<FileVersionResponse>>.Failure("File not found.");
         }
@@ -178,7 +182,7 @@ public sealed class FileAssetService : IFileAssetService
     public async Task<Result<bool>> DeleteAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
         var fileAsset = await GetActiveFileAsync(fileId, cancellationToken);
-        if (fileAsset is null)
+        if (fileAsset is null || !CanManage(fileAsset))
         {
             return Result<bool>.Failure("File not found.");
         }
@@ -201,6 +205,11 @@ public sealed class FileAssetService : IFileAssetService
         var fileAsset = await _fileAssets.GetByIdAsync(fileId, cancellationToken);
         return fileAsset?.Status == FileStatus.Active ? fileAsset : null;
     }
+
+    private async Task<bool> CanReadAsync(FileAsset fileAsset, CancellationToken cancellationToken) =>
+        CanManage(fileAsset) || (_mangaFileAccessChecker is not null && await _mangaFileAccessChecker.CanReadAsync(_currentUser.UserId, fileAsset.Id, cancellationToken));
+
+    private bool CanManage(FileAsset fileAsset) => _currentUser.IsInRole("Admin") || fileAsset.UploadedByUserId == _currentUser.UserId;
 
     private static FileUploadResponse ToUploadResponse(FileAsset fileAsset) => new()
     {

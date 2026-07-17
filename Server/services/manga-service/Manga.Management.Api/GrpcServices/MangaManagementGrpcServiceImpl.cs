@@ -2,6 +2,7 @@ using Grpc.Core;
 using Manga.Contracts.Management.V1;
 using Manga.Management.Application.Abstractions;
 using Manga.Management.Domain.Entities;
+using Manga.Management.Domain.Enums;
 
 namespace Manga.Management.Api.GrpcServices;
 
@@ -9,13 +10,16 @@ public sealed class MangaManagementGrpcServiceImpl : MangaManagementGrpcService.
 {
     private readonly IManagementRepository _repository;
     private readonly ILogger<MangaManagementGrpcServiceImpl> _logger;
+    private readonly IManagementUnitOfWork _unitOfWork;
 
     public MangaManagementGrpcServiceImpl(
         IManagementRepository repository,
-        ILogger<MangaManagementGrpcServiceImpl> logger)
+        ILogger<MangaManagementGrpcServiceImpl> logger,
+        IManagementUnitOfWork unitOfWork)
     {
         _repository = repository;
         _logger = logger;
+        _unitOfWork = unitOfWork;
     }
 
     public override async Task<GetSeriesByIdResponse> GetSeriesById(
@@ -71,5 +75,85 @@ public sealed class MangaManagementGrpcServiceImpl : MangaManagementGrpcService.
             Number = chapter.ChapterNumber,
             Status = chapter.Status.ToString()
         };
+    }
+
+    public override async Task<CanAccessFileResponse> CanAccessFile(
+        CanAccessFileRequest request,
+        ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.UserId, out var userId) ||
+            !Guid.TryParse(request.FileId, out var fileId) ||
+            !string.Equals(request.AccessType, "Read", StringComparison.OrdinalIgnoreCase))
+        {
+            return new CanAccessFileResponse { Allowed = false };
+        }
+
+        if (await CanReadPageFileAsync(userId, fileId, context.CancellationToken) ||
+            await CanReadSubmissionFileAsync(userId, fileId, context.CancellationToken))
+        {
+            _logger.LogInformation("Manga gRPC file access granted for user {UserId} and file {FileId}.", userId, fileId);
+            return new CanAccessFileResponse { Allowed = true };
+        }
+
+        return new CanAccessFileResponse { Allowed = false };
+    }
+
+    public override async Task<ApplyProposalDecisionResponse> ApplyProposalDecision(ApplyProposalDecisionRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.SeriesId, out var seriesId)) return new ApplyProposalDecisionResponse { Applied = false };
+        var series = await _repository.GetByIdAsync<Series>(seriesId, context.CancellationToken);
+        if (series is null || series.Status != SeriesStatus.Submitted) return new ApplyProposalDecisionResponse { Applied = false };
+        series.Status = request.Decision switch
+        {
+            "Approve" => SeriesStatus.Approved,
+            "Reject" => SeriesStatus.Rejected,
+            "RequestRevision" => SeriesStatus.RevisionRequested,
+            _ => series.Status
+        };
+        if (series.Status == SeriesStatus.Submitted) return new ApplyProposalDecisionResponse { Applied = false };
+        series.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync(context.CancellationToken);
+        _logger.LogInformation("Series proposal {SeriesId} updated to {Status} by Editorial decision.", series.Id, series.Status);
+        return new ApplyProposalDecisionResponse { Applied = true };
+    }
+
+    private async Task<bool> CanReadPageFileAsync(Guid userId, Guid fileId, CancellationToken cancellationToken)
+    {
+        var pages = await _repository.ListAsync<Page>(page => page.FileId == fileId, cancellationToken);
+        foreach (var page in pages)
+        {
+            if (await IsSeriesOwnerAsync(userId, page.ChapterId, cancellationToken)) return true;
+            var assignedTasks = await _repository.ListAsync<MangaTask>(task => task.PageId == page.Id && task.AssignedToUserId == userId, cancellationToken);
+            if (assignedTasks.Count > 0) return true;
+        }
+
+        return false;
+    }
+
+    private async Task<bool> CanReadSubmissionFileAsync(Guid userId, Guid fileId, CancellationToken cancellationToken)
+    {
+        var submissions = await _repository.ListAsync<Submission>(submission => submission.FileId == fileId, cancellationToken);
+        foreach (var submission in submissions)
+        {
+            var task = await _repository.GetByIdAsync<MangaTask>(submission.TaskId, cancellationToken);
+            if (task is null) continue;
+            if (task.AssignedToUserId == userId && submission.SubmittedByUserId == userId) return true;
+            if (await IsSeriesOwnerAsync(userId, task.PageId, cancellationToken)) return true;
+        }
+
+        return false;
+    }
+
+    private async Task<bool> IsSeriesOwnerAsync(Guid userId, Guid pageOrChapterId, CancellationToken cancellationToken)
+    {
+        var page = await _repository.GetByIdAsync<Page>(pageOrChapterId, cancellationToken);
+        var chapterId = page?.ChapterId ?? pageOrChapterId;
+        var chapter = await _repository.GetByIdAsync<Chapter>(chapterId, cancellationToken);
+        if (chapter is null) return false;
+        var series = await _repository.GetByIdAsync<Series>(chapter.SeriesId, cancellationToken);
+        if (series is null) return false;
+        if (series.CreatedBy == userId) return true;
+        var studio = await _repository.GetByIdAsync<Studio>(series.StudioId, cancellationToken);
+        return studio?.OwnerId == userId;
     }
 }

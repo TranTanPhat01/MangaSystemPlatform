@@ -20,6 +20,8 @@ public sealed class BoardVotesController : ApiControllerBase
     [HttpGet("votes")] public async Task<IActionResult> GetVotes(Guid seriesId, CancellationToken ct) => ToActionResult(await _service.GetVotesAsync(seriesId, ct));
     [HttpGet("vote-summary")] public async Task<IActionResult> Summary(Guid seriesId, CancellationToken ct) => ToActionResult(await _service.GetSummaryAsync(seriesId, ct));
     [Authorize(Roles = "EditorialBoard,Admin")]
+    [HttpPost("finalize-proposal")] public async Task<IActionResult> Finalize(Guid seriesId, FinalizeProposalRequest request, CancellationToken ct) => ToActionResult(await _service.FinalizeProposalAsync(seriesId, request, ct));
+    [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("hiatus")] public async Task<IActionResult> Hiatus(Guid seriesId, CancellationToken ct) => ToActionResult(await _publicationService.SetSeriesPublicationStatusAsync(seriesId, PublicationStatus.Hiatus, ct));
     [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("cancel")] public async Task<IActionResult> Cancel(Guid seriesId, CancellationToken ct) => ToActionResult(await _publicationService.SetSeriesPublicationStatusAsync(seriesId, PublicationStatus.Cancelled, ct));

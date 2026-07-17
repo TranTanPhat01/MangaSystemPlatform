@@ -8,6 +8,7 @@ using Manga.Management.Application.Abstractions;
 using Manga.Management.Infrastructure.GrpcClients;
 using Manga.Management.Infrastructure.Persistence;
 using Manga.Management.Infrastructure.Persistence.Repositories;
+using Manga.BuildingBlocks.Messaging;
 
 namespace Manga.Management.Infrastructure.DependencyInjection;
 
@@ -22,6 +23,12 @@ public static class MangaManagementInfrastructureServiceCollectionExtensions
 
         services.AddScoped<IManagementRepository, ManagementRepository>();
         services.AddScoped<IManagementUnitOfWork>(provider => provider.GetRequiredService<MangaManagementDbContext>());
+        services.AddScoped<MangaOutboxStore>();
+        services.AddScoped<IOutboxStore>(provider => provider.GetRequiredService<MangaOutboxStore>());
+        services.AddScoped<IOutboxOperations>(provider => provider.GetRequiredService<MangaOutboxStore>());
+        services.AddScoped<Manga.BuildingBlocks.Messaging.IEventBus, OutboxEventBus>();
+        services.Configure<OutboxOptions>(configuration.GetSection("Outbox"));
+        services.AddHostedService<OutboxProcessor>();
         services.AddScoped<IIdentityLookupClient, IdentityGrpcClient>();
         services.AddScoped<IFileLookupClient, FileGrpcClient>();
         services.AddSingleton<InternalGrpcClientInterceptor>();

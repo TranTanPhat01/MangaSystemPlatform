@@ -28,4 +28,16 @@ internal sealed class RefreshTokenRepository : IRefreshTokenRepository
     {
         await _dbContext.RefreshTokens.AddAsync(refreshToken, cancellationToken);
     }
+
+    public async Task RevokeActiveByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var tokens = await _dbContext.RefreshTokens
+            .Where(token => token.UserId == userId && token.RevokedAt == null && token.ExpiresAt > DateTime.UtcNow)
+            .ToListAsync(cancellationToken);
+
+        foreach (var token in tokens)
+        {
+            token.RevokedAt = DateTime.UtcNow;
+        }
+    }
 }

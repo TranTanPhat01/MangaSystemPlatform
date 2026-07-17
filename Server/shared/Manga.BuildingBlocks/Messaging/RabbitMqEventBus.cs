@@ -11,7 +11,7 @@ using RabbitMQ.Client.Events;
 
 namespace Manga.BuildingBlocks.Messaging;
 
-public sealed class RabbitMqEventBus : IEventBus, IDisposable
+public sealed class RabbitMqEventBus : IRawEventPublisher, IDisposable
 {
     private readonly RabbitMqOptions _options;
     private readonly ILogger<RabbitMqEventBus> _logger;
@@ -136,6 +136,21 @@ public sealed class RabbitMqEventBus : IEventBus, IDisposable
                 correlationId);
         }
 
+        return Task.CompletedTask;
+    }
+
+    public Task PublishOrThrowAsync<TEvent>(TEvent eventMessage, CancellationToken cancellationToken = default)
+    {
+        var eventName = typeof(TEvent).Name;
+        var correlationId = CorrelationIdContext.Current;
+        var connection = GetConnection();
+        using var channel = connection.CreateModel();
+        channel.ExchangeDeclare(_options.ExchangeName, ExchangeType.Topic, durable: true, autoDelete: false);
+        var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(eventMessage));
+        var properties = channel.CreateBasicProperties();
+        properties.Persistent = true; properties.ContentType = "application/json"; properties.Type = eventName; properties.MessageId = ReadMessageId(eventMessage); properties.CorrelationId = correlationId;
+        channel.BasicPublish(_options.ExchangeName, eventName, properties, body);
+        _logger.LogInformation("Published outbox event {EventType} with MessageId {MessageId}.", eventName, properties.MessageId);
         return Task.CompletedTask;
     }
 

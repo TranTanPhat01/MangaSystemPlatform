@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Manga.BuildingBlocks.Messaging;
 
@@ -10,7 +11,9 @@ public static class MessagingDependencyInjection
     public static IServiceCollection AddRabbitMqEventBus(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMQ"));
-        services.AddSingleton<IEventBus, RabbitMqEventBus>();
+        services.TryAddSingleton<RabbitMqEventBus>();
+        services.TryAddSingleton<IRawEventPublisher>(provider => provider.GetRequiredService<RabbitMqEventBus>());
+        services.TryAddSingleton<IEventBus>(provider => provider.GetRequiredService<RabbitMqEventBus>());
         return services;
     }
 

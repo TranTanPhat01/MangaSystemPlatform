@@ -66,7 +66,7 @@ public sealed class NotificationService : INotificationService
     private async Task<Domain.Entities.Notification> GetOwnedNotificationAsync(Guid notificationId, CancellationToken cancellationToken)
     {
         var notification = await _repository.GetNotificationAsync(notificationId, cancellationToken);
-        if (notification is null || notification.UserId != _currentUser.UserId)
+        if (notification is null || (notification.UserId != _currentUser.UserId && !_currentUser.IsInRole("Admin")))
         {
             throw new NotFoundException("Notification not found.", "NOTIFICATION_NOT_FOUND");
         }

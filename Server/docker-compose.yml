@@ -6,8 +6,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
-    ports:
-      - "5432:5432"
+    ports: ["5433:5432"]
     volumes:
       - manga_postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
@@ -15,9 +14,9 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    networks:
-      - manga-network
+      retries: 10
+      start_period: 20s
+    networks: [manga-network]
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -26,35 +25,30 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - manga_rabbitmq_data:/var/lib/rabbitmq
+    ports: ["5672:5672", "15672:15672"]
+    volumes: [manga_rabbitmq_data:/var/lib/rabbitmq]
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    networks:
-      - manga-network
+      retries: 10
+      start_period: 20s
+    networks: [manga-network]
 
   redis:
     image: redis:7
     container_name: manga-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
-    ports:
-      - "6379:6379"
-    volumes:
-      - manga_redis_data:/data
+    ports: ["6379:6379"]
+    volumes: [manga_redis_data:/data]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    networks:
-      - manga-network
+      retries: 10
+      start_period: 10s
+    networks: [manga-network]
 
   minio:
     image: minio/minio
@@ -64,18 +58,15 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - manga_minio_data:/data
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [manga_minio_data:/data]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
-      retries: 5
-    networks:
-      - manga-network
+      retries: 10
+      start_period: 20s
+    networks: [manga-network]
 
   seq:
     image: datalust/seq:latest
@@ -83,15 +74,195 @@ services:
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
-    ports:
-      - "5341:80"
-    volumes:
-      - manga_seq_data:/data
-    networks:
-      - manga-network
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD:-admin123}
+    ports: ["5341:80"]
+    volumes: [manga_seq_data:/data]
+    networks: [manga-network]
+
+  identity-api: &api-common
+    build:
+      context: .
+      dockerfile: services/identity-service/Manga.Identity.Api/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      Kestrel__Endpoints__Rest__Url: http://+:8080
+      Kestrel__Endpoints__Grpc__Url: http://+:8081
+      ConnectionStrings__IdentityDb: Host=postgres;Port=5432;Database=IdentityDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      Redis__ConnectionString: redis:6379
+      MinIO__Endpoint: minio:9000
+      MinIO__AccessKey: ${MINIO_ROOT_USER:-admin}
+      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      Serilog__WriteTo__1__Args__serverUrl: http://seq
+      IdentityBootstrap__Enabled: ${IDENTITY_BOOTSTRAP_ENABLED:-false}
+      IdentityBootstrap__RecoveryEnabled: ${IDENTITY_BOOTSTRAP_RECOVERY_ENABLED:-false}
+      IdentityBootstrap__AdminEmail: ${SEED_ADMIN_EMAIL:-}
+      IdentityBootstrap__AdminPassword: ${SEED_ADMIN_PASSWORD:-}
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    expose: ["8080", "8081"]
+    healthcheck: &api-healthcheck
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/8080'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks: [manga-network]
+
+  manga-api:
+    <<: *api-common
+    build:
+      context: .
+      dockerfile: services/manga-service/Manga.Management.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      Kestrel__Endpoints__Rest__Url: http://+:8080
+      Kestrel__Endpoints__Grpc__Url: http://+:8081
+      ConnectionStrings__MangaDb: Host=postgres;Port=5432;Database=MangaManagementDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      Redis__ConnectionString: redis:6379
+      MinIO__Endpoint: minio:9000
+      MinIO__AccessKey: ${MINIO_ROOT_USER:-admin}
+      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      Grpc__Identity__Address: http://identity-api:8081
+      Grpc__File__Address: http://file-api:8081
+      Serilog__WriteTo__1__Args__serverUrl: http://seq
+
+  file-api:
+    <<: *api-common
+    build:
+      context: .
+      dockerfile: services/file-service/Manga.File.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      Kestrel__Endpoints__Rest__Url: http://+:8080
+      Kestrel__Endpoints__Grpc__Url: http://+:8081
+      ConnectionStrings__FileDb: Host=postgres;Port=5432;Database=FileServiceDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      Redis__ConnectionString: redis:6379
+      MinIO__Endpoint: minio:9000
+      MinIO__AccessKey: ${MINIO_ROOT_USER:-admin}
+      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      Storage__Provider: Minio
+      Storage__Minio__Endpoint: minio:9000
+      Storage__Minio__AccessKey: ${MINIO_ROOT_USER:-admin}
+      Storage__Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      Storage__Minio__PublicBaseUrl: http://localhost:9000
+      FileStorage__Provider: Minio
+      FileStorage__Minio__Endpoint: minio:9000
+      FileStorage__Minio__AccessKey: ${MINIO_ROOT_USER:-admin}
+      FileStorage__Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      FileStorage__Minio__BucketName: manga-files
+      FileStorage__Minio__PublicBaseUrl: http://localhost:9000
+      Grpc__Manga__Address: http://manga-api:8081
+      Serilog__WriteTo__1__Args__serverUrl: http://seq
+
+  editorial-api:
+    <<: *api-common
+    build:
+      context: .
+      dockerfile: services/editorial-service/Manga.Editorial.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__EditorialDb: Host=postgres;Port=5432;Database=EditorialDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      Redis__ConnectionString: redis:6379
+      Grpc__Manga__Address: http://manga-api:8081
+      Serilog__WriteTo__1__Args__serverUrl: http://seq
+
+  notification-api:
+    <<: *api-common
+    build:
+      context: .
+      dockerfile: services/notification-service/Manga.Notification.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__NotificationDb: Host=postgres;Port=5432;Database=NotificationDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      Redis__ConnectionString: redis:6379
+      Serilog__WriteTo__1__Args__serverUrl: http://seq
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Manga.Gateway/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      Gateway__Cors__AllowedOrigins__0: ${GATEWAY__CORS__ALLOWEDORIGINS__0:-http://localhost:3000}
+      Gateway__Cors__AllowedOrigins__1: ${GATEWAY__CORS__ALLOWEDORIGINS__1:-http://localhost:3001}
+      Gateway__HealthCheckTimeoutSeconds: ${GATEWAY__HEALTHCHECKTIMEOUTSECONDS:-3}
+      Gateway__RateLimiting__PermitLimit: ${GATEWAY__RATELIMITING__PERMITLIMIT:-300}
+      Gateway__RateLimiting__WindowSeconds: ${GATEWAY__RATELIMITING__WINDOWSECONDS:-60}
+      Gateway__DefaultProxyTimeoutSeconds: ${GATEWAY__DEFAULTPROXYTIMEOUTSECONDS:-120}
+      Gateway__FileProxyTimeoutSeconds: ${GATEWAY__FILEPROXYTIMEOUTSECONDS:-600}
+      Gateway__MaxFileUploadBytes: ${GATEWAY__MAXFILEUPLOADBYTES:-52428800}
+      Gateway__Health__ExposeServiceDetails: ${GATEWAY__HEALTH__EXPOSESERVICEDETAILS:-false}
+      Gateway__TransportSecurity__EnableHttpsRedirection: ${GATEWAY__TRANSPORTSECURITY__ENABLEHTTPSREDIRECTION:-false}
+      Gateway__TransportSecurity__EnableHsts: ${GATEWAY__TRANSPORTSECURITY__ENABLEHSTS:-false}
+      Gateway__TransportSecurity__HstsMaxAgeDays: ${GATEWAY__TRANSPORTSECURITY__HSTSMAXAGEDAYS:-365}
+      ForwardedHeaders__Enabled: ${FORWARDEDHEADERS__ENABLED:-false}
+      ForwardedHeaders__KnownProxies__0: ${FORWARDEDHEADERS__KNOWNPROXIES__0:-}
+      ForwardedHeaders__KnownNetworks__0: ${FORWARDEDHEADERS__KNOWNNETWORKS__0:-}
+      OpenTelemetry__OtlpEndpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      ASPNETCORE_URLS: http://+:8080
+      ReverseProxy__Clusters__identity-cluster__Destinations__identity-api__Address: http://identity-api:8080/
+      ReverseProxy__Clusters__manga-cluster__Destinations__manga-api__Address: http://manga-api:8080/
+      ReverseProxy__Clusters__files-cluster__Destinations__file-api__Address: http://file-api:8080/
+      ReverseProxy__Clusters__editorial-cluster__Destinations__editorial-api__Address: http://editorial-api:8080/
+      ReverseProxy__Clusters__notifications-cluster__Destinations__notification-api__Address: http://notification-api:8080/
+      Serilog__WriteTo__1__Args__serverUrl: http://seq
+    depends_on:
+      identity-api: { condition: service_healthy }
+      manga-api: { condition: service_healthy }
+      file-api: { condition: service_healthy }
+      editorial-api: { condition: service_healthy }
+      notification-api: { condition: service_healthy }
+    ports: ["5200:8080"]
+    healthcheck: *api-healthcheck
+    networks: [manga-network]
 
 networks:
   manga-network:
+    driver: bridge
 
 volumes:
   manga_postgres_data:

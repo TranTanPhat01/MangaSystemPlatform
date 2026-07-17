@@ -7,6 +7,7 @@ using Manga.Editorial.Application.Abstractions;
 using Manga.Editorial.Infrastructure.GrpcClients;
 using Manga.Editorial.Infrastructure.Persistence;
 using Manga.Editorial.Infrastructure.Persistence.Repositories;
+using Manga.BuildingBlocks.Messaging;
 
 namespace Manga.Editorial.Infrastructure.DependencyInjection;
 
@@ -17,6 +18,12 @@ public static class EditorialInfrastructureServiceCollectionExtensions
         services.AddDbContext<EditorialDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("EditorialDb")));
         services.AddScoped<IEditorialRepository, EditorialRepository>();
         services.AddScoped<IEditorialUnitOfWork>(provider => provider.GetRequiredService<EditorialDbContext>());
+        services.AddScoped<EditorialOutboxStore>();
+        services.AddScoped<IOutboxStore>(provider => provider.GetRequiredService<EditorialOutboxStore>());
+        services.AddScoped<IOutboxOperations>(provider => provider.GetRequiredService<EditorialOutboxStore>());
+        services.AddScoped<Manga.BuildingBlocks.Messaging.IEventBus, OutboxEventBus>();
+        services.Configure<OutboxOptions>(configuration.GetSection("Outbox"));
+        services.AddHostedService<OutboxProcessor>();
         services.AddScoped<IMangaLookupClient, MangaGrpcClient>();
         services.AddSingleton<InternalGrpcClientInterceptor>();
         services.AddGrpcClient<MangaManagementGrpcService.MangaManagementGrpcServiceClient>(options =>

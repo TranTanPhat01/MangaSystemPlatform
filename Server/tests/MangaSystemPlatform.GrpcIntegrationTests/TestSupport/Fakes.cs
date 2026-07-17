@@ -7,6 +7,7 @@ using Manga.File.Domain.Entities;
 using Manga.Identity.Application.Abstractions;
 using Manga.Identity.Domain.Entities;
 using Manga.Management.Application.Abstractions;
+using Manga.Management.Application.Services;
 
 namespace MangaSystemPlatform.GrpcIntegrationTests.TestSupport;
 
@@ -18,6 +19,14 @@ internal sealed class FakeUserRepository : IUserRepository
 
     public Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         Task.FromResult(_users.Values.Any(user => user.Email == email));
+
+    public Task<bool> ExistsByUsernameAsync(string username, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_users.Values.Any(user => user.Username == username));
+
+    public Task<bool> ExistsByNormalizedUsernameAsync(string normalizedUsername, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_users.Values.Any(user =>
+            user.NormalizedUsername == normalizedUsername ||
+            (user.NormalizedUsername is null && string.Equals(user.Username, normalizedUsername, StringComparison.OrdinalIgnoreCase))));
 
     public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<User>>(_users.Values.ToArray());
@@ -144,25 +153,65 @@ internal sealed class FakeManagementUnitOfWork : IManagementUnitOfWork
     }
 }
 
+internal sealed class FakeManagementAccessService : IManagementAccessService
+{
+    public bool Allowed { get; set; } = true;
+    public bool IsAdministrator => Allowed;
+    public bool CanViewBoardData => Allowed;
+    public Task<bool> CanAccessStudioAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanManageStudioAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanAccessSeriesAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanManageSeriesAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanAccessChapterAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanManageChapterAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanAccessPageAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanManagePageAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanAccessAnnotationAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanManageAnnotationAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanAccessTaskAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+    public Task<bool> CanWorkTaskAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
+}
+
 internal sealed class FakeEditorialRepository : IEditorialRepository
 {
+    private readonly Dictionary<Type, Dictionary<Guid, object>> _sets = new();
     public List<object> AddedEntities { get; } = new();
+
+    public void Seed<T>(Guid id, T entity)
+        where T : class => GetSet(typeof(T))[id] = entity;
 
     public Task<T?> GetByIdAsync<T>(Guid id, CancellationToken cancellationToken = default)
         where T : class =>
-        Task.FromResult<T?>(null);
+        Task.FromResult(GetSet(typeof(T)).GetValueOrDefault(id) as T);
 
     public Task<IReadOnlyList<T>> ListAsync<T>(
         Expression<Func<T, bool>>? predicate = null,
         CancellationToken cancellationToken = default)
-        where T : class =>
-        Task.FromResult<IReadOnlyList<T>>(Array.Empty<T>());
+        where T : class
+    {
+        var values = GetSet(typeof(T)).Values.Cast<T>();
+        if (predicate is not null) values = values.Where(predicate.Compile());
+        return Task.FromResult<IReadOnlyList<T>>(values.ToArray());
+    }
 
     public Task AddAsync<T>(T entity, CancellationToken cancellationToken = default)
         where T : class
     {
         AddedEntities.Add(entity);
+        var idProperty = typeof(T).GetProperty("Id");
+        if (idProperty?.GetValue(entity) is Guid id) GetSet(typeof(T))[id] = entity;
         return Task.CompletedTask;
+    }
+
+    private Dictionary<Guid, object> GetSet(Type type)
+    {
+        if (!_sets.TryGetValue(type, out var set))
+        {
+            set = new Dictionary<Guid, object>();
+            _sets[type] = set;
+        }
+
+        return set;
     }
 }
 
@@ -192,9 +241,11 @@ internal sealed class FakeEventBus : IEventBus
     }
 }
 
-internal sealed class FakeCurrentUserService : ICurrentUserService
+internal sealed class FakeCurrentUserService : Manga.Editorial.Application.Services.ICurrentUserService
 {
     public Guid UserId { get; set; } = Guid.NewGuid();
+    public ISet<string> Roles { get; } = new HashSet<string>(StringComparer.Ordinal);
+    public bool IsInRole(string role) => Roles.Contains(role);
 }
 
 internal sealed class FakeIdentityLookupClient : IIdentityLookupClient
@@ -233,4 +284,12 @@ internal sealed class FakeMangaLookupClient : IMangaLookupClient
 
     public Task<Manga.Editorial.Application.DTOs.ChapterSummaryDto?> GetChapterByIdAsync(Guid chapterId, CancellationToken cancellationToken = default) =>
         Task.FromResult(Chapter);
+
+    public bool ProposalDecisionApplied { get; set; } = true;
+    public string? ProposalDecision { get; private set; }
+    public Task<bool> ApplyProposalDecisionAsync(Guid seriesId, string decision, string reason, CancellationToken cancellationToken = default)
+    {
+        ProposalDecision = decision;
+        return Task.FromResult(ProposalDecisionApplied);
+    }
 }

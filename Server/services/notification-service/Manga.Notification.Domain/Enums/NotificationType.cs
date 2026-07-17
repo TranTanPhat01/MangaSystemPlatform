@@ -10,5 +10,7 @@ public enum NotificationType
     RankingCalculated = 6,
     CancellationWarning = 7,
     FileUploaded = 8,
-    System = 9
+    System = 9,
+    ChapterRevisionRequested = 10,
+    ChapterRejected = 11
 }

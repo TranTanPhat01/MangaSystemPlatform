@@ -1,6 +1,6 @@
 import * as signalR from '@microsoft/signalr';
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5200';
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5200';
 
 export function createSignalRConnection(token: string): signalR.HubConnection {
   // Use YARP route /notifications/hub or directly /hub

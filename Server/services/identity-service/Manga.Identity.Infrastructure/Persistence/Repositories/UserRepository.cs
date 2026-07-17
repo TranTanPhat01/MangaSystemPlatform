@@ -16,6 +16,15 @@ internal sealed class UserRepository : IUserRepository
     public Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         _dbContext.Users.AnyAsync(user => user.Email == email, cancellationToken);
 
+    public Task<bool> ExistsByUsernameAsync(string username, CancellationToken cancellationToken = default) =>
+        _dbContext.Users.AnyAsync(user => user.Username == username, cancellationToken);
+
+    public Task<bool> ExistsByNormalizedUsernameAsync(string normalizedUsername, CancellationToken cancellationToken = default) =>
+        _dbContext.Users.AnyAsync(
+            user => user.NormalizedUsername == normalizedUsername ||
+                    (user.NormalizedUsername == null && user.Username != null && user.Username.ToUpper() == normalizedUsername),
+            cancellationToken);
+
     public async Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
         await IncludeRoles(_dbContext.Users)
             .OrderBy(user => user.Email)

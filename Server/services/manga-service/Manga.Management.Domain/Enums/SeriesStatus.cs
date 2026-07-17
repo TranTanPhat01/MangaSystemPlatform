@@ -8,5 +8,7 @@ public enum SeriesStatus
     Ongoing = 4,
     Hiatus = 5,
     Cancelled = 6,
-    Completed = 7
+    Completed = 7,
+    RevisionRequested = 8,
+    Rejected = 9
 }

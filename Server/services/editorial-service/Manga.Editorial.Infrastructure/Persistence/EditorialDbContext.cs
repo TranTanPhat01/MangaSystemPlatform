@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Manga.Editorial.Application.Abstractions;
 using Manga.Editorial.Domain.Entities;
+using Manga.BuildingBlocks.Messaging;
 
 namespace Manga.Editorial.Infrastructure.Persistence;
 
@@ -17,6 +18,7 @@ public sealed class EditorialDbContext : DbContext, IEditorialUnitOfWork
     public DbSet<RankingItem> RankingItems => Set<RankingItem>();
     public DbSet<CancellationWarning> CancellationWarnings => Set<CancellationWarning>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -74,6 +74,22 @@ public sealed class MangaGrpcContractTests
     }
 
     [Fact]
+    public async Task ApplyProposalDecision_UpdatesSubmittedSeriesStatus()
+    {
+        var series = CreateSeries();
+        series.Status = SeriesStatus.Submitted;
+        using var host = CreateHost(series: series);
+        var client = host.CreateClient(channel => new MangaManagementGrpcService.MangaManagementGrpcServiceClient(channel));
+
+        var response = await client.ApplyProposalDecisionAsync(
+            new ApplyProposalDecisionRequest { SeriesId = series.Id.ToString(), Decision = "Approve", Reason = "Quorum reached" },
+            GrpcTestHost.ValidMetadata());
+
+        response.Applied.Should().BeTrue();
+        series.Status.Should().Be(SeriesStatus.Approved);
+    }
+
+    [Fact]
     public async Task Request_WithWrongApiKey_ReturnsUnauthenticated()
     {
         using var host = CreateHost();
@@ -100,7 +116,7 @@ public sealed class MangaGrpcContractTests
         }
 
         return new GrpcTestHost(
-            services => services.AddSingleton<IManagementRepository>(repository),
+            services => { services.AddSingleton<IManagementRepository>(repository); services.AddSingleton<IManagementUnitOfWork, FakeManagementUnitOfWork>(); },
             endpoints => endpoints.MapGrpcService<MangaManagementGrpcServiceImpl>());
     }
 

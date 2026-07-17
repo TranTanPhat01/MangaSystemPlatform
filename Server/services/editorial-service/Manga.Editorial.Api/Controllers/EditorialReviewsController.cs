@@ -17,6 +17,8 @@ public sealed class EditorialReviewsController : ApiControllerBase
     [HttpGet] public async Task<IActionResult> GetAll(CancellationToken ct) => ToActionResult(await _service.GetAllAsync(ct));
     [HttpGet("{reviewId:guid}")] public async Task<IActionResult> Get(Guid reviewId, CancellationToken ct) => ToActionResult(await _service.GetByIdAsync(reviewId, ct));
     [Authorize(Roles = "TantouEditor,Admin")]
+    [HttpPost("{reviewId:guid}/start")] public async Task<IActionResult> Start(Guid reviewId, CancellationToken ct) => ToActionResult(await _service.StartReviewAsync(reviewId, ct));
+    [Authorize(Roles = "TantouEditor,Admin")]
     [HttpPost("{reviewId:guid}/comments")] public async Task<IActionResult> AddComment(Guid reviewId, CreateEditorialCommentRequest request, CancellationToken ct) => ToActionResult(await _service.AddCommentAsync(reviewId, request, ct));
     [HttpGet("{reviewId:guid}/comments")] public async Task<IActionResult> GetComments(Guid reviewId, CancellationToken ct) => ToActionResult(await _service.GetCommentsAsync(reviewId, ct));
     [Authorize(Roles = "TantouEditor,Admin")]

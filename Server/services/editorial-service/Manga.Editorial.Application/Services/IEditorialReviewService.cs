@@ -8,6 +8,7 @@ public interface IEditorialReviewService
     Task<Result<EditorialReviewResponse>> CreateAsync(CreateEditorialReviewRequest request, CancellationToken cancellationToken = default);
     Task<Result<IReadOnlyList<EditorialReviewResponse>>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<Result<EditorialReviewResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<Result<EditorialReviewResponse>> StartReviewAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Result<EditorialCommentResponse>> AddCommentAsync(Guid reviewId, CreateEditorialCommentRequest request, CancellationToken cancellationToken = default);
     Task<Result<IReadOnlyList<EditorialCommentResponse>>> GetCommentsAsync(Guid reviewId, CancellationToken cancellationToken = default);
     Task<Result<EditorialReviewResponse>> ApproveAsync(Guid id, DecisionRequest request, CancellationToken cancellationToken = default);

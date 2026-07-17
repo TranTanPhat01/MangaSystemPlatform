@@ -1,6 +1,7 @@
 using System.Text;
 using Manga.BuildingBlocks.DependencyInjection;
 using Manga.BuildingBlocks.Health;
+using Manga.BuildingBlocks.Authorization;
 using Manga.Contracts.Events;
 using Manga.Notification.Api.Hubs;
 using Manga.Notification.Api.Services;
@@ -66,6 +67,8 @@ builder.Services.AddRabbitMqConsumer<TaskSubmittedEvent, TaskSubmittedEventHandl
 builder.Services.AddRabbitMqConsumer<TaskApprovedEvent, TaskApprovedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<ChapterSubmittedForReviewEvent, ChapterSubmittedForReviewEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<ChapterApprovedEvent, ChapterApprovedEventHandler>("notification-service");
+builder.Services.AddRabbitMqConsumer<ChapterReviewDecisionEvent, ChapterReviewDecisionEventHandler>("notification-service");
+builder.Services.AddRabbitMqConsumer<SeriesProposalDecidedEvent, SeriesProposalDecidedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<RankingCalculatedEvent, RankingCalculatedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<CancellationWarningCreatedEvent, CancellationWarningCreatedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<FileUploadedEvent, FileUploadedEventHandler>("notification-service");
@@ -105,6 +108,7 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddPermissionPolicies();
 
 var app = builder.Build();
 

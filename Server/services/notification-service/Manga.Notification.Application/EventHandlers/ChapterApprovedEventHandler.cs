@@ -1,6 +1,7 @@
 using Manga.BuildingBlocks.Messaging;
 using Manga.Contracts.Events;
 using Manga.Notification.Application.Abstractions;
+using Manga.Notification.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Manga.Notification.Application.EventHandlers;
@@ -19,7 +20,12 @@ public sealed class ChapterApprovedEventHandler : NotificationEventHandlerBase<C
     public Task HandleAsync(ChapterApprovedEvent eventMessage, CancellationToken cancellationToken = default) =>
         HandleWithInboxAsync(eventMessage.MessageId, eventMessage, ct =>
         {
-            LogOnly("ChapterApprovedEvent received for chapter {ChapterId}. No related notification target is available in this event.", eventMessage.ChapterId);
-            return Task.CompletedTask;
+            return CreateNotificationIfMissingAsync(
+                eventMessage.RequestedByUserId,
+                "Chapter approved",
+                $"Chapter {eventMessage.ChapterId} has been approved by editorial.",
+                NotificationType.ChapterApproved,
+                eventMessage.MessageId,
+                ct);
         }, cancellationToken);
 }

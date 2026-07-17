@@ -87,4 +87,20 @@ internal sealed class MangaGrpcClient : IMangaLookupClient
             return null;
         }
     }
+
+    public async Task<bool> ApplyProposalDecisionAsync(Guid seriesId, string decision, string reason, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _client.ApplyProposalDecisionAsync(
+                new ApplyProposalDecisionRequest { SeriesId = seriesId.ToString(), Decision = decision, Reason = reason },
+                deadline: DateTime.UtcNow.AddSeconds(_timeoutSeconds), cancellationToken: cancellationToken);
+            return response.Applied;
+        }
+        catch (RpcException exception)
+        {
+            _logger.LogWarning(exception, "Manga gRPC proposal decision failed for series {SeriesId}.", seriesId);
+            return false;
+        }
+    }
 }

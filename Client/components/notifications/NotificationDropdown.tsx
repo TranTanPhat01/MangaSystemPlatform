@@ -13,7 +13,10 @@ import {
   Mail, 
   CheckCheck,
   TrendingUp,
-  Server
+  Server,
+  Trash2,
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { NotificationResponse, NotificationType } from '@/types/notification';
 
@@ -21,11 +24,15 @@ export default function NotificationDropdown() {
   const { 
     notifications, 
     unreadCount, 
+    isLoading,
+    error,
     fetchNotifications, 
     fetchUnreadCount, 
     markAsRead, 
     markAllAsRead,
-    addNotification
+    deleteNotification,
+    addNotification,
+    clearError,
   } = useNotificationStore();
   const accessToken = useAuthStore((state) => state.accessToken);
   const [isOpen, setIsOpen] = useState(false);
@@ -37,15 +44,18 @@ export default function NotificationDropdown() {
     fetchUnreadCount();
   }, [fetchNotifications, fetchUnreadCount]);
 
-  // Set up SignalR
+  // Set up SignalR – handle both event names for compatibility
   useEffect(() => {
     if (!accessToken) return;
 
     const connection = createSignalRConnection(accessToken);
 
-    connection.on('ReceiveNotification', (notification: NotificationResponse) => {
+    // Backend may emit either name – register both to be safe
+    const handleNotification = (notification: NotificationResponse) => {
       addNotification(notification);
-    });
+    };
+    connection.on('NotificationReceived', handleNotification);
+    connection.on('ReceiveNotification', handleNotification);
 
     startSignalRConnection(connection);
 
@@ -124,71 +134,114 @@ export default function NotificationDropdown() {
           {/* Header */}
           <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
             <span className="font-semibold text-sm text-slate-200">Notifications</span>
-            {unreadCount > 0 && (
+            <div className="flex items-center gap-2">
+              {/* Refresh button */}
               <button
-                onClick={markAllAsRead}
-                className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                onClick={() => { clearError(); fetchNotifications(); }}
+                className="p-1 text-slate-500 hover:text-slate-300 rounded-md hover:bg-slate-800/60 transition-colors"
+                title="Refresh notifications"
               >
-                <CheckCheck size={14} className="inline mr-0.5" />
-                Mark all as read
+                <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
               </button>
-            )}
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                >
+                  <CheckCheck size={14} className="inline mr-0.5" />
+                  Mark all read
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Error State */}
+          {error && (
+            <div className="p-3 bg-rose-500/10 border-b border-rose-500/20 flex items-start gap-2">
+              <AlertTriangle size={14} className="text-rose-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-rose-300 flex-1">{error}</p>
+              <button
+                onClick={clearError}
+                className="text-rose-400 hover:text-rose-200 transition-colors"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="p-4 text-center text-slate-500 text-xs">
+              <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent mb-1" />
+              <p>Loading notifications…</p>
+            </div>
+          )}
 
           {/* List */}
-          <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-800/60 bg-slate-900/40">
-            {notifications.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 flex flex-col items-center gap-2">
-                <Bell size={24} className="opacity-30 mb-1" />
-                <span className="text-sm font-medium">No notifications yet</span>
-                <span className="text-xs text-slate-600">We will notify you here when updates occur.</span>
-              </div>
-            ) : (
-              notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-4 transition-colors flex gap-3 ${
-                    notification.status === 1 ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-slate-800/30'
-                  }`}
-                >
-                  {/* Icon */}
-                  <div className="h-8 w-8 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center justify-center shrink-0">
-                    {getIcon(notification.type)}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start mb-1 gap-2">
-                      <span className={`text-xs font-semibold truncate ${
-                        notification.status === 1 ? 'text-slate-200 font-bold' : 'text-slate-400 font-semibold'
-                      }`}>
-                        {notification.title}
-                      </span>
-                      <span className="text-[9px] text-slate-500 shrink-0 font-mono">
-                        {formatTime(notification.createdAt)}
-                      </span>
-                    </div>
-                    <p className={`text-xs leading-relaxed break-words ${
-                      notification.status === 1 ? 'text-slate-350 font-medium' : 'text-slate-400'
-                    }`}>
-                      {notification.message}
-                    </p>
-                  </div>
-
-                  {/* Actions */}
-                  {notification.status === 1 && (
-                    <button
-                      onClick={() => markAsRead(notification.id)}
-                      className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-md self-center transition-all duration-150"
-                      title="Mark as read"
-                    >
-                      <Check size={14} />
-                    </button>
-                  )}
+          {!isLoading && (
+            <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-800/60 bg-slate-900/40">
+              {notifications.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 flex flex-col items-center gap-2">
+                  <Bell size={24} className="opacity-30 mb-1" />
+                  <span className="text-sm font-medium">No notifications yet</span>
+                  <span className="text-xs text-slate-600">We will notify you here when updates occur.</span>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-4 transition-colors flex gap-3 ${
+                      notification.status === 1 ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-slate-800/30'
+                    }`}
+                  >
+                    {/* Icon */}
+                    <div className="h-8 w-8 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center justify-center shrink-0">
+                      {getIcon(notification.type)}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start mb-1 gap-2">
+                        <span className={`text-xs font-semibold truncate ${
+                          notification.status === 1 ? 'text-slate-200 font-bold' : 'text-slate-400 font-semibold'
+                        }`}>
+                          {notification.title}
+                        </span>
+                        <span className="text-[9px] text-slate-500 shrink-0 font-mono">
+                          {formatTime(notification.createdAt)}
+                        </span>
+                      </div>
+                      <p className={`text-xs leading-relaxed break-words ${
+                        notification.status === 1 ? 'text-slate-350 font-medium' : 'text-slate-400'
+                      }`}>
+                        {notification.message}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-1 self-center">
+                      {notification.status === 1 && (
+                        <button
+                          onClick={() => markAsRead(notification.id)}
+                          className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-md transition-all duration-150"
+                          title="Mark as read"
+                        >
+                          <Check size={13} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => deleteNotification(notification.id)}
+                        className="p-1 text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all duration-150"
+                        title="Delete notification"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

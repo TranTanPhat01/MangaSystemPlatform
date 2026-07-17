@@ -20,16 +20,23 @@ public sealed class PasswordHasher : IPasswordHasher
 
     public bool VerifyPassword(string password, string passwordHash)
     {
-        var parts = passwordHash.Split('.', 3);
-        if (parts.Length != 3 || !int.TryParse(parts[0], out var iterations))
+        try
+        {
+            var parts = passwordHash.Split('.', 3);
+            if (parts.Length != 3 || !int.TryParse(parts[0], out var iterations) || iterations <= 0)
+            {
+                return false;
+            }
+
+            var salt = Convert.FromBase64String(parts[1]);
+            var expectedHash = Convert.FromBase64String(parts[2]);
+            var actualHash = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, Algorithm, expectedHash.Length);
+
+            return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
+        }
+        catch (FormatException)
         {
             return false;
         }
-
-        var salt = Convert.FromBase64String(parts[1]);
-        var expectedHash = Convert.FromBase64String(parts[2]);
-        var actualHash = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, Algorithm, expectedHash.Length);
-
-        return CryptographicOperations.FixedTimeEquals(actualHash, expectedHash);
     }
 }

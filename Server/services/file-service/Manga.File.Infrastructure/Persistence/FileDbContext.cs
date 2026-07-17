@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Manga.File.Application.Abstractions;
 using Manga.File.Domain.Entities;
+using Manga.BuildingBlocks.Messaging;
 
 namespace Manga.File.Infrastructure.Persistence;
 
@@ -14,6 +15,7 @@ public sealed class FileDbContext : DbContext, IFileUnitOfWork
     public DbSet<FileAsset> FileAssets => Set<FileAsset>();
     public DbSet<FileVersion> FileVersions => Set<FileVersion>();
     public DbSet<Thumbnail> Thumbnails => Set<Thumbnail>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

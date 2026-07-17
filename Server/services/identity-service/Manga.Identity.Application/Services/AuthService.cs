@@ -3,6 +3,8 @@ using Manga.Identity.Application.Common;
 using Manga.Identity.Application.DTOs;
 using Manga.Identity.Application.Options;
 using Manga.Identity.Domain.Entities;
+using Manga.Identity.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace Manga.Identity.Application.Services;
 
@@ -17,6 +19,8 @@ public sealed class AuthService : IAuthService
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtOptionsProvider _jwtOptionsProvider;
+    private readonly IPermissionRepository _permissions;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IUserRepository users,
@@ -25,7 +29,9 @@ public sealed class AuthService : IAuthService
         IIdentityUnitOfWork unitOfWork,
         IJwtTokenService jwtTokenService,
         IPasswordHasher passwordHasher,
-        IJwtOptionsProvider jwtOptionsProvider)
+        IJwtOptionsProvider jwtOptionsProvider,
+        IPermissionRepository permissions,
+        ILogger<AuthService> logger)
     {
         _users = users;
         _roles = roles;
@@ -34,6 +40,8 @@ public sealed class AuthService : IAuthService
         _jwtTokenService = jwtTokenService;
         _passwordHasher = passwordHasher;
         _jwtOptionsProvider = jwtOptionsProvider;
+        _permissions = permissions;
+        _logger = logger;
     }
 
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -72,18 +80,39 @@ public sealed class AuthService : IAuthService
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _users.GetByEmailAsync(NormalizeEmail(request.Email), cancellationToken);
-        if (user is null || !_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        var now = DateTime.UtcNow;
+        if (user is null)
         {
+            _logger.LogInformation("Authentication failed. Category={Category}", "UserNotFound");
             return Result<AuthResponse>.Failure("Invalid email or password.");
         }
 
-        return await CreateAuthResponseAsync(user, cancellationToken);
+        var failureCategory = user.GetAuthenticationFailureCategory(now);
+        if (failureCategory is not null)
+        {
+            _logger.LogInformation("Authentication failed. Category={Category}; UserId={UserId}", failureCategory, user.Id);
+            return Result<AuthResponse>.Failure("Invalid email or password.");
+        }
+
+        user.ClearExpiredTemporaryLockout(now);
+        if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+        {
+            _logger.LogInformation("Authentication failed. Category={Category}; UserId={UserId}", "InvalidPassword", user.Id);
+            return Result<AuthResponse>.Failure("Invalid email or password.");
+        }
+
+        user.LastLoginAt = now;
+        user.UpdatedAt = user.LastLoginAt;
+        var result = await CreateAuthResponseAsync(user, cancellationToken);
+        if (result.IsSuccess)
+            _logger.LogInformation("Authentication succeeded. Category={Category}; UserId={UserId}", "AuthenticationSucceeded", user.Id);
+        return result;
     }
 
     public async Task<Result<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
     {
         var refreshToken = await _refreshTokens.GetActiveTokenAsync(request.RefreshToken, cancellationToken);
-        if (refreshToken?.User is null)
+        if (refreshToken?.User is null || !refreshToken.User.CanAuthenticate(DateTime.UtcNow))
         {
             return Result<AuthResponse>.Failure("Invalid refresh token.");
         }
@@ -117,7 +146,7 @@ public sealed class AuthService : IAuthService
     public async Task<Result<UserProfileResponse>> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var user = await _users.GetByIdAsync(userId, cancellationToken);
-        if (user is null)
+        if (user is null || user.DeletedAt is not null)
         {
             return Result<UserProfileResponse>.Failure("User not found.");
         }
@@ -128,6 +157,8 @@ public sealed class AuthService : IAuthService
     private async Task<Result<AuthResponse>> CreateAuthResponseAsync(User user, CancellationToken cancellationToken)
     {
         var roles = GetRoleNames(user);
+        var roleIds = user.UserRoles.Select(userRole => userRole.RoleId).Distinct().ToArray();
+        var permissions = await _permissions.GetKeysByRoleIdsAsync(roleIds, cancellationToken);
         var accessTokenExpiresAt = DateTime.UtcNow.AddMinutes(_jwtOptionsProvider.AccessTokenExpirationMinutes);
         var refreshToken = new RefreshToken
         {
@@ -142,7 +173,7 @@ public sealed class AuthService : IAuthService
 
         var response = new AuthResponse
         {
-            AccessToken = _jwtTokenService.GenerateAccessToken(user, roles, accessTokenExpiresAt),
+            AccessToken = _jwtTokenService.GenerateAccessToken(user, roles, permissions, accessTokenExpiresAt),
             RefreshToken = refreshToken.Token,
             ExpiresAt = accessTokenExpiresAt,
             User = ToProfileResponse(user)

@@ -15,7 +15,9 @@ public sealed class ChapterService : IChapterService
     private readonly IManagementUnitOfWork _unitOfWork;
     private readonly IEventBus _eventBus;
     private readonly IManagementAccessService _access;
-    public ChapterService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IEventBus eventBus, IManagementAccessService access) { _repository = repository; _unitOfWork = unitOfWork; _eventBus = eventBus; _access = access; }
+    private readonly IReaderRepository? _readerRepository;
+    public ChapterService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IEventBus eventBus, IManagementAccessService access) : this(repository, unitOfWork, eventBus, access, null) { }
+    public ChapterService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IEventBus eventBus, IManagementAccessService access, IReaderRepository? readerRepository) { _repository = repository; _unitOfWork = unitOfWork; _eventBus = eventBus; _access = access; _readerRepository = readerRepository; }
 
     public async Task<Result<ChapterResponse>> CreateAsync(Guid seriesId, CreateChapterRequest request, CancellationToken cancellationToken = default)
     {
@@ -44,11 +46,25 @@ public sealed class ChapterService : IChapterService
         var chapter = await _repository.GetByIdAsync<Chapter>(id, cancellationToken);
         if (chapter is null) return Result<ChapterResponse>.Failure("Chapter not found.");
         if (!await _access.CanManageChapterAsync(id, cancellationToken)) return Result<ChapterResponse>.Failure("You do not have permission to manage this chapter.");
+        var wasPublished = chapter.Status == ChapterStatus.Published;
         chapter.Status = request.Status;
         if (request.ProgressPercentage.HasValue) chapter.ProgressPercentage = request.ProgressPercentage.Value;
         if (request.Status == ChapterStatus.Approved) chapter.ProgressPercentage = 100;
         chapter.UpdatedAt = DateTime.UtcNow;
         if (request.Status == ChapterStatus.SubmittedForReview) await _eventBus.PublishAsync(new ChapterSubmittedForReviewEvent(Guid.NewGuid(), chapter.Id, chapter.SeriesId, currentUserId, chapter.UpdatedAt.Value), cancellationToken);
+        if (request.Status == ChapterStatus.Published && !wasPublished)
+        {
+            var publishedAt = DateTime.UtcNow;
+            var publicationEvent = new ChapterPublishedEvent(Guid.NewGuid(), chapter.Id, chapter.SeriesId, chapter.Title, publishedAt);
+            await _eventBus.PublishAsync(publicationEvent, cancellationToken);
+            var readerIds = _readerRepository is null
+                ? (await _repository.ListAsync<ReaderFavorite>(x => x.SeriesId == chapter.SeriesId, cancellationToken)).Select(x => x.UserId)
+                : await _readerRepository.GetFavoriteUserIdsAsync(chapter.SeriesId, cancellationToken);
+            foreach (var readerId in readerIds)
+            {
+                await _eventBus.PublishAsync(new ReaderChapterNotificationRequestedEvent(Guid.NewGuid(), publicationEvent.EventId, readerId, chapter.Id, chapter.SeriesId, chapter.Title, publishedAt), cancellationToken);
+            }
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<ChapterResponse>.Success(ToResponse(chapter));
     }

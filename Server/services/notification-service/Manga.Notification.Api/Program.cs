@@ -72,6 +72,7 @@ builder.Services.AddRabbitMqConsumer<SeriesProposalDecidedEvent, SeriesProposalD
 builder.Services.AddRabbitMqConsumer<RankingCalculatedEvent, RankingCalculatedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<CancellationWarningCreatedEvent, CancellationWarningCreatedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<FileUploadedEvent, FileUploadedEventHandler>("notification-service");
+builder.Services.AddRabbitMqConsumer<ReaderChapterNotificationRequestedEvent, ReaderChapterNotificationRequestedEventHandler>("notification-service");
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("NotificationDb")!, name: "postgresql")
     .AddRabbitMQ(BuildRabbitMqConnectionString(builder.Configuration), name: "rabbitmq");

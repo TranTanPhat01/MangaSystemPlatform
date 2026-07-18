@@ -1,9 +1,9 @@
 // ─── Manga Domain DTOs ────────────────────────────────────────────────────────
 // All types based on MangaSystemPlatform backend response structure
 
-export type SeriesStatus = 'Draft' | 'Active' | 'Hiatus' | 'Completed' | 'Cancelled';
+export type SeriesStatus = 'Draft' | 'Submitted' | 'Approved' | 'Ongoing' | 'Hiatus' | 'Completed' | 'Cancelled' | 'RevisionRequested' | 'Rejected' | 'Active';
 export type PublicationFrequency = 'Weekly' | 'Biweekly' | 'Monthly' | 'Irregular';
-export type ChapterStatus = 'Draft' | 'InProgress' | 'SubmittedForReview' | 'Approved' | 'Rejected' | 'Published';
+export type ChapterStatus = 'Draft' | 'InProduction' | 'SubmittedForReview' | 'RevisionRequired' | 'Approved' | 'Scheduled' | 'Published' | 'Rejected' | 'InProgress';
 export type TaskStatus = 'Pending' | 'InProgress' | 'Submitted' | 'Approved' | 'RevisionRequired' | 'Cancelled';
 export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
 export type AnnotationType = 'Background' | 'CharacterInk' | 'Screentone' | 'Effects' | 'Lettering' | 'Color' | 'Other';

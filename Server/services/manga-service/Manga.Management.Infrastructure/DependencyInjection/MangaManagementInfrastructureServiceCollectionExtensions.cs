@@ -22,6 +22,7 @@ public static class MangaManagementInfrastructureServiceCollectionExtensions
             options.UseNpgsql(configuration.GetConnectionString("MangaDb")));
 
         services.AddScoped<IManagementRepository, ManagementRepository>();
+        services.AddScoped<IReaderRepository, ReaderRepository>();
         services.AddScoped<IManagementUnitOfWork>(provider => provider.GetRequiredService<MangaManagementDbContext>());
         services.AddScoped<MangaOutboxStore>();
         services.AddScoped<IOutboxStore>(provider => provider.GetRequiredService<MangaOutboxStore>());

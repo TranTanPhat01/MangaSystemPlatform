@@ -23,6 +23,12 @@ public sealed class MangaManagementDbContext : DbContext, IManagementUnitOfWork
     public DbSet<Revision> Revisions => Set<Revision>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<ReaderFavorite> ReaderFavorites => Set<ReaderFavorite>();
+    public DbSet<ReaderBookmark> ReaderBookmarks => Set<ReaderBookmark>();
+    public DbSet<ReadingProgress> ReadingProgresses => Set<ReadingProgress>();
+    public DbSet<ReadingHistory> ReadingHistories => Set<ReadingHistory>();
+    public DbSet<SeriesRating> SeriesRatings => Set<SeriesRating>();
+    public DbSet<ReaderComment> ReaderComments => Set<ReaderComment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

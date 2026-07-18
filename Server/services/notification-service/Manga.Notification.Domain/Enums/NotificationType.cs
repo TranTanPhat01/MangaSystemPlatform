@@ -12,5 +12,6 @@ public enum NotificationType
     FileUploaded = 8,
     System = 9,
     ChapterRevisionRequested = 10,
-    ChapterRejected = 11
+    ChapterRejected = 11,
+    ReaderChapterPublished = 12
 }

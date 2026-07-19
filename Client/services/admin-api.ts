@@ -47,6 +47,13 @@ export interface AdminRoleCatalog {
   permissions: string[];
 }
 
+export interface AdminAuditLogItem {
+  id: string;
+  action: string;
+  details?: string | null;
+  createdAt: string;
+}
+
 export interface StudioResponse {
   id: string;
   name: string;
@@ -105,6 +112,9 @@ export const adminApi = {
 
   getPermissions: () =>
     api.get<ApiResponse<string[]>>('/identity/admin/permissions'),
+
+  getAuditLogs: (query?: { page?: number; pageSize?: number }) =>
+    api.get<ApiResponse<PagedResponse<AdminAuditLogItem>>>('/identity/admin/audit-logs', { params: query }),
 
   // --- Studio & Series Administration (/manga) ---
   

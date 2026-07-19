@@ -15,9 +15,23 @@ function statusStyle(status: TaskStatus) {
 
 interface AssistantTaskDetailPreviewProps {
   selectedTask: Task;
+  onUploadSubmission?: (file: File) => Promise<void> | void;
+  isSubmitting?: boolean;
+  submissionMessage?: string | null;
 }
 
-export default function AssistantTaskDetailPreview({ selectedTask }: AssistantTaskDetailPreviewProps) {
+export default function AssistantTaskDetailPreview({
+  selectedTask,
+  onUploadSubmission,
+  isSubmitting,
+  submissionMessage,
+}: AssistantTaskDetailPreviewProps) {
+  const handleFileSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !onUploadSubmission) return;
+    await onUploadSubmission(file);
+    event.target.value = '';
+  };
   return (
     <section className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -133,10 +147,15 @@ export default function AssistantTaskDetailPreview({ selectedTask }: AssistantTa
             <button className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
               <Download size={13} />Download Assets
             </button>
-            <button className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold bg-indigo-700 text-white hover:bg-indigo-800 shadow-[0_2px_8px_rgba(79,70,229,0.25)] transition-colors">
-              <Upload size={13} />Upload Submission
-            </button>
+            <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold bg-indigo-700 text-white hover:bg-indigo-800 shadow-[0_2px_8px_rgba(79,70,229,0.25)] transition-colors">
+              <Upload size={13} />
+              {isSubmitting ? 'Uploading…' : 'Upload Submission'}
+              <input type="file" className="hidden" accept="image/*,.psd,.zip,.pdf,.ai" onChange={handleFileSelection} />
+            </label>
           </div>
+          {submissionMessage && (
+            <p className="text-[10px] font-medium text-emerald-600">{submissionMessage}</p>
+          )}
         </div>
       </div>
     </section>

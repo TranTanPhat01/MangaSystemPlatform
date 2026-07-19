@@ -17,6 +17,7 @@ export function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get('auth_token')?.value;
+  const isAdminPath = pathname.startsWith('/admin');
   const isPublicPath = publicPaths.some((path) => {
     if (path === '/') return pathname === '/';
     return pathname.startsWith(path);
@@ -33,6 +34,19 @@ export function middleware(request: NextRequest) {
   // If already logged in and trying to access login/register, redirect to dashboard
   if (token && isPublicPath && pathname !== '/') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  if (isAdminPath && token) {
+    const rolesCookie = request.cookies.get('user_roles')?.value || '[]';
+    try {
+      const roles = JSON.parse(rolesCookie) as string[];
+      const hasAdminRole = roles.some((role) => role.toLowerCase() === 'admin');
+      if (!hasAdminRole) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    } catch {
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
   }
 
   return NextResponse.next();

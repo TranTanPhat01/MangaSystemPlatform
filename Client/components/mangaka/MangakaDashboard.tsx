@@ -52,7 +52,7 @@ export function MangakaDashboard() {
           />
         );
       case 'Chapters':
-        return <MangakaChaptersTab triggerModal={triggerModal} />;
+        return <MangakaChaptersTab series={series} triggerModal={triggerModal} />;
       case 'Page Editor':
         return (
           <MangakaPageEditorTab

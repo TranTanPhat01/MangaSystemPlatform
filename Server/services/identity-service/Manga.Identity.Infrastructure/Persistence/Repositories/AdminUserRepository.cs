@@ -29,7 +29,12 @@ internal sealed class AdminUserRepository : IAdminUserRepository
 
         if (Enum.TryParse<UserStatus>(query.Status, true, out var status))
         {
-            users = users.Where(user => user.Status == status);
+            var now = DateTime.UtcNow;
+            users = status == UserStatus.Locked
+                ? users.Where(user => user.Status == UserStatus.Locked || (user.LockoutUntil != null && user.LockoutUntil > now))
+                : status == UserStatus.Active
+                    ? users.Where(user => user.Status == UserStatus.Active && (user.LockoutUntil == null || user.LockoutUntil <= now))
+                    : users.Where(user => user.Status == status);
         }
 
         users = (query.SortBy?.ToLowerInvariant(), query.SortDirection?.ToLowerInvariant()) switch
@@ -54,6 +59,7 @@ internal sealed class AdminUserRepository : IAdminUserRepository
                 Username = user.Username,
                 Roles = user.UserRoles.Select(userRole => userRole.Role!.Name).OrderBy(name => name).ToArray(),
                 Status = user.Status,
+                LockoutUntil = user.LockoutUntil,
                 EmailVerified = user.EmailVerified,
                 CreatedAt = user.CreatedAt,
                 LastLoginAt = user.LastLoginAt
@@ -116,6 +122,7 @@ internal sealed class AdminUserRepository : IAdminUserRepository
 
     public async Task<IReadOnlyList<AdminRoleCatalogResponse>> GetRoleCatalogAsync(CancellationToken cancellationToken = default) =>
         await _dbContext.Roles.AsNoTracking()
+            .Where(role => !role.IsRetired)
             .OrderBy(role => role.Name)
             .Select(role => new AdminRoleCatalogResponse
             {

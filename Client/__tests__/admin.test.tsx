@@ -67,6 +67,8 @@ vi.mock('@/services/manga-api', () => ({
   mangaApi: {
     getSeries: vi.fn(),
     submitProposal: vi.fn(),
+    approveProposal: vi.fn(),
+    rejectProposal: vi.fn(),
   },
 }));
 

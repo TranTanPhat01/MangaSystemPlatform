@@ -349,7 +349,8 @@ export function UserManagement() {
               ) : (
                 users.map((u) => {
                   const isSuspended = u.status === 2;
-                  const isLocked = u.status === 3;
+                  const isLocked = u.status === 3 || (u.lockoutUntil ? new Date(u.lockoutUntil).getTime() > Date.now() : false);
+                  const statusLabel = isLocked ? 'Locked' : isSuspended ? 'Disabled' : 'Active';
                   return (
                     <tr key={u.id} className="hover:bg-slate-850/10 transition-colors">
                       <td className="p-4">
@@ -392,7 +393,7 @@ export function UserManagement() {
                               ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
                               : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         }`}>
-                          {u.status === 1 ? 'Active' : isSuspended ? 'Disabled' : 'Locked'}
+                          {statusLabel}
                         </span>
                       </td>
                       <td className="p-4 text-right">

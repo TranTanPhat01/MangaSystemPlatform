@@ -76,8 +76,8 @@ public sealed class SeriesService : ISeriesService
         return Result<SeriesResponse>.Success(ToResponse(series));
     }
 
-    public Task<Result<SeriesResponse>> ApproveProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) => Task.FromResult(Result<SeriesResponse>.Failure("Proposal decisions must be finalized through Editorial Board voting."));
-    public Task<Result<SeriesResponse>> RejectProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) => Task.FromResult(Result<SeriesResponse>.Failure("Proposal decisions must be finalized through Editorial Board voting."));
+    public Task<Result<SeriesResponse>> ApproveProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) => DecideProposalAsync(id, SeriesStatus.Approved, cancellationToken);
+    public Task<Result<SeriesResponse>> RejectProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) => DecideProposalAsync(id, SeriesStatus.Rejected, cancellationToken);
 
     private async Task<Result<SeriesResponse>> DecideProposalAsync(Guid id, SeriesStatus targetStatus, CancellationToken cancellationToken)
     {

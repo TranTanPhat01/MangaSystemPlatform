@@ -5,6 +5,7 @@ using Manga.Editorial.Application.Services;
 using Manga.File.Application.Abstractions;
 using Manga.File.Domain.Entities;
 using Manga.Identity.Application.Abstractions;
+using Manga.Identity.Application.DTOs;
 using Manga.Identity.Domain.Entities;
 using Manga.Management.Application.Abstractions;
 using Manga.Management.Application.Services;
@@ -30,6 +31,9 @@ internal sealed class FakeUserRepository : IUserRepository
 
     public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<User>>(_users.Values.ToArray());
+
+    public Task<IReadOnlyList<AssistantDirectoryItemResponse>> GetActiveAssistantsAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<AssistantDirectoryItemResponse>>(Array.Empty<AssistantDirectoryItemResponse>());
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>
         Task.FromResult(_users.Values.FirstOrDefault(user => user.Email == email));

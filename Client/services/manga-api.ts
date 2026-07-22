@@ -10,6 +10,7 @@ import {
   SeriesResponse,
   CreateSeriesRequest,
   UpdateSeriesRequest,
+  SeriesDecisionRequest,
   ChapterResponse,
   PageResponse,
   TaskResponse,
@@ -40,6 +41,12 @@ export const mangaApi = {
 
   submitProposal: (seriesId: string) =>
     api.post<ApiResponse<SubmissionResponse>>(`/manga/series/${seriesId}/submit-proposal`),
+
+  approveProposal: (seriesId: string, data: SeriesDecisionRequest) =>
+    api.post<ApiResponse<SeriesResponse>>(`/manga/series/${seriesId}/approve-proposal`, data),
+
+  rejectProposal: (seriesId: string, data: SeriesDecisionRequest) =>
+    api.post<ApiResponse<SeriesResponse>>(`/manga/series/${seriesId}/reject-proposal`, data),
 
   // ─── Chapters ──────────────────────────────────────────────────────────────
 

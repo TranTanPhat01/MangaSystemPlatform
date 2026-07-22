@@ -16,6 +16,7 @@ export interface AdminUserListItem {
   emailVerified: boolean;
   createdAt: string;
   lastLoginAt?: string;
+  lockoutUntil?: string;
 }
 
 export interface AdminSecurityEvent {
@@ -95,6 +96,15 @@ export const adminApi = {
   updateUserRoles: (userId: string, data: { roles: string[] }) =>
     api.patch<ApiResponse<any>>(`/identity/admin/users/${userId}/roles`, data),
 
+  createUser: (data: { email: string; username: string; fullName: string; password: string; roles: string[] }) =>
+    api.post<ApiResponse<any>>('/identity/admin/users', data),
+
+  updateUser: (userId: string, data: { username: string; fullName: string }) =>
+    api.patch<ApiResponse<any>>(`/identity/admin/users/${userId}`, data),
+
+  deleteUser: (userId: string) =>
+    api.delete<ApiResponse<boolean>>(`/identity/admin/users/${userId}`),
+
   lockUser: (userId: string, data: { lockoutUntil?: string | null; reason: string }) =>
     api.post<ApiResponse<any>>(`/identity/admin/users/${userId}/lock`, data),
 
@@ -109,6 +119,18 @@ export const adminApi = {
 
   getRoles: () =>
     api.get<ApiResponse<AdminRoleCatalog[]>>('/identity/admin/roles'),
+
+  createRole: (data: { name: string; description?: string }) =>
+    api.post<ApiResponse<AdminRoleCatalog>>('/identity/admin/roles', data),
+
+  updateRole: (roleId: string, data: { description?: string }) =>
+    api.patch<ApiResponse<AdminRoleCatalog>>(`/identity/admin/roles/${roleId}`, data),
+
+  retireRole: (roleId: string) =>
+    api.delete<ApiResponse<boolean>>(`/identity/admin/roles/${roleId}`),
+
+  replaceRolePermissions: (roleId: string, data: { permissionKeys: string[] }) =>
+    api.put<ApiResponse<AdminRoleCatalog>>(`/identity/admin/roles/${roleId}/permissions`, data),
 
   getPermissions: () =>
     api.get<ApiResponse<string[]>>('/identity/admin/permissions'),

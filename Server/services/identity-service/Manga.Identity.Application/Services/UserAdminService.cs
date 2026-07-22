@@ -172,6 +172,7 @@ public sealed class UserAdminService : IUserAdminService
         user.LockReason = null;
         user.LockedByUserId = null;
         user.UpdatedAt = DateTime.UtcNow;
+        await _refreshTokens.RevokeActiveByUserIdAsync(user.Id, cancellationToken);
         await AddAuditAsync(actorUserId, user.Id, "UserUnlocked", "User account unlocked by administrator.", cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<AdminUserResponse>.Success(ToResponse(user));
@@ -218,7 +219,7 @@ public sealed class UserAdminService : IUserAdminService
                 user.LockReason = null;
                 user.LockedByUserId = null;
                 user.UpdatedAt = DateTime.UtcNow;
-                if (request.Status == UserStatus.Disabled) await _refreshTokens.RevokeActiveByUserIdAsync(user.Id, ct);
+                await _refreshTokens.RevokeActiveByUserIdAsync(user.Id, ct);
                 await AddAuditAsync(actorUserId, user.Id, "UserStatusUpdated", $"Status={request.Status}", ct);
                 await _unitOfWork.SaveChangesAsync(ct);
                 return Result<AdminUserResponse>.Success(ToResponse(user));
@@ -248,6 +249,7 @@ public sealed class UserAdminService : IUserAdminService
                 user.UserRoles.Clear();
                 foreach (var role in selectedRoles) user.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id, Role = role });
                 user.UpdatedAt = DateTime.UtcNow;
+                await _refreshTokens.RevokeActiveByUserIdAsync(user.Id, ct);
                 await AddAuditAsync(actorUserId, user.Id, "UserRolesUpdated", $"Roles={string.Join(',', selectedRoles.Select(role => role.Name))}", ct);
                 await _unitOfWork.SaveChangesAsync(ct);
                 return Result<AdminUserResponse>.Success(ToResponse(user));
@@ -279,5 +281,5 @@ public sealed class UserAdminService : IUserAdminService
 
     private static bool IsAdmin(User user) => user.UserRoles.Any(userRole => userRole.Role?.Name.Equals(AdminRoleName, StringComparison.OrdinalIgnoreCase) == true);
     private static string NormalizeUsername(string username) => username.Trim().ToUpperInvariant();
-    private static AdminUserResponse ToResponse(User user) => new() { Id = user.Id, Email = user.Email, Username = user.Username, FullName = user.FullName, Status = user.Status, Roles = user.UserRoles.Select(userRole => userRole.Role?.Name).Where(role => !string.IsNullOrWhiteSpace(role)).Select(role => role!).ToArray(), CreatedAt = user.CreatedAt, UpdatedAt = user.UpdatedAt };
+    private static AdminUserResponse ToResponse(User user) => new() { Id = user.Id, Email = user.Email, Username = user.Username, FullName = user.FullName, Status = user.Status, LockoutUntil = user.LockoutUntil, Roles = user.UserRoles.Select(userRole => userRole.Role?.Name).Where(role => !string.IsNullOrWhiteSpace(role)).Select(role => role!).ToArray(), CreatedAt = user.CreatedAt, UpdatedAt = user.UpdatedAt };
 }

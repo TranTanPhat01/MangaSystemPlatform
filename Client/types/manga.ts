@@ -52,6 +52,10 @@ export interface UpdateSeriesRequest {
   status?: UpdateSeriesStatus;
 }
 
+export interface SeriesDecisionRequest {
+  decisionNote?: string;
+}
+
 export interface ChapterResponse {
   id: string;
   seriesId: string;

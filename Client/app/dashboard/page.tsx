@@ -40,7 +40,8 @@ export default function DashboardPage() {
   const roles = (user.roles || []).map(normalizeRole).filter((role): role is NonNullable<typeof role> => Boolean(role));
 
   if (roles.includes('admin')) {
-    return <AdminDashboard />;
+    router.replace('/admin/users');
+    return null;
   }
   
   if (roles.includes('mangaka')) {

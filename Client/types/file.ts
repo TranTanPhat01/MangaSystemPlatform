@@ -7,23 +7,27 @@ export interface FileAssetResponse {
   originalFileName: string;
   storedFileName: string;
   contentType: string;
-  sizeBytes: number;
-  category: FileCategory;
-  uploadedById: string;
-  uploadedByName?: string;
-  url?: string;
-  downloadUrl?: string;
+  extension: string;
+  sizeInBytes: number;
+  storageProvider: string;
+  storagePath: string;
+  publicUrl?: string;
+  uploadedByUserId: string;
+  fileCategory: FileCategory;
+  status: string;
   createdAt: string;
-  versionCount?: number;
+  updatedAt?: string;
 }
 
 export interface FileUploadResponse {
-  id: string;
+  fileId: string;
+  id?: string;
   originalFileName: string;
+  storedFileName: string;
   contentType: string;
-  sizeBytes: number;
-  category: FileCategory;
-  url: string;
+  sizeInBytes: number;
+  fileCategory: FileCategory;
+  publicUrl?: string;
   createdAt: string;
 }
 
@@ -32,12 +36,14 @@ export interface FileVersionResponse {
   fileAssetId: string;
   versionNumber: number;
   storedFileName: string;
-  sizeBytes: number;
-  uploadedAt: string;
-  uploadedById: string;
+  storagePath: string;
+  sizeInBytes: number;
+  createdAt: string;
+  createdByUserId: string;
 }
 
 export interface FileUrlResponse {
+  publicUrl?: string;
   url: string;
   expiresAt?: string;
 }

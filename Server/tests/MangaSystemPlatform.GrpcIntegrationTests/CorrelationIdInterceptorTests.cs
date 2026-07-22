@@ -7,6 +7,7 @@ using Manga.BuildingBlocks.Middleware;
 using Manga.Contracts.Identity.V1;
 using Manga.Identity.Api.GrpcServices;
 using Manga.Identity.Application.Abstractions;
+using Manga.Identity.Application.DTOs;
 using Manga.Identity.Domain.Entities;
 using Manga.Identity.Domain.Enums;
 using MangaSystemPlatform.GrpcIntegrationTests.TestSupport;
@@ -39,6 +40,7 @@ public sealed class CorrelationIdInterceptorTests
         public Task<bool> ExistsByUsernameAsync(string username, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task<bool> ExistsByNormalizedUsernameAsync(string normalizedUsername, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<User>>(Array.Empty<User>());
+        public Task<IReadOnlyList<AssistantDirectoryItemResponse>> GetActiveAssistantsAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<AssistantDirectoryItemResponse>>(Array.Empty<AssistantDirectoryItemResponse>());
         public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult<User?>(null);
         public Task AddAsync(User user, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

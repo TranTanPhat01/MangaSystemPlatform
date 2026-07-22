@@ -69,12 +69,12 @@ export function useAssistantDashboard() {
       }
 
       const uploadRes = await fileApi.uploadFile(file, 'Submission', { source: 'assistant-ui' });
-      if (!uploadRes.data?.success || !uploadRes.data.data?.id) {
+      if (!uploadRes.data?.success || !uploadRes.data.data?.fileId) {
         throw new Error(uploadRes.data?.message || 'The upload could not be completed.');
       }
 
       const submitRes = await mangaApi.submitTask(taskId, {
-        fileId: uploadRes.data.data.id,
+        fileId: uploadRes.data.data.fileId,
         ...(note?.trim() ? { note: note.trim() } : {}),
       });
 

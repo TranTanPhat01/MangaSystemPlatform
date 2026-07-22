@@ -99,7 +99,7 @@ export function useTasks() {
       const upload = await fileApi.uploadFile(file, 'Submission');
       if (!upload.data.success) throw new Error(upload.data.message || 'Unable to upload submission file.');
       const trimmedNote = note?.trim();
-      const response = await mangaApi.submitTask(id, trimmedNote ? { fileId: upload.data.data.id, note: trimmedNote } : { fileId: upload.data.data.id });
+      const response = await mangaApi.submitTask(id, trimmedNote ? { fileId: upload.data.data.fileId, note: trimmedNote } : { fileId: upload.data.data.fileId });
       if (!response.data.success) throw new Error(response.data.message || 'Unable to submit task.');
       await fetchTasks(); setSuccessMessage('Task submission sent.');
     } catch (error: unknown) { setError(toErrorMessage(error, 'submit')); }

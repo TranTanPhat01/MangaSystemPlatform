@@ -75,7 +75,7 @@ export default function FileListTable({ files, onDownload, onPreview, onDelete, 
           <tbody>
             {files.map((file) => (
               <tr key={file.id}>
-                <td>{file.originalFileName}</td><td>{file.sizeBytes} bytes</td><td>{file.category}</td>
+                <td>{file.originalFileName}</td><td>{file.sizeInBytes} bytes</td><td>{file.fileCategory}</td>
                 <td>
                   <button aria-label={`Download ${file.originalFileName}`} onClick={() => void onDownload(file.id, file.originalFileName)}><Download size={14} /></button>
                   <button aria-label={`Preview ${file.originalFileName}`} onClick={() => void onPreview(file.id)}><Eye size={14} /></button>
@@ -91,7 +91,7 @@ export default function FileListTable({ files, onDownload, onPreview, onDelete, 
       {selectedFile && (
         <aside aria-label="File version history">
           <h4>Version history: {selectedFile.originalFileName}</h4>
-          <p>{selectedFile.versionCount ? `${selectedFile.versionCount} versions reported by File Service.` : 'Current version information is supplied by File Service.'}</p>
+          <p>{versions.length ? `${versions.length} versions reported by File Service.` : 'Current version information is supplied by File Service.'}</p>
           {versionError && <div role="alert">{versionError}<button onClick={() => void loadVersions(selectedFile)}>Retry</button></div>}
           <label>
             <span>Upload new version</span>
@@ -103,9 +103,7 @@ export default function FileListTable({ files, onDownload, onPreview, onDelete, 
               {versions.map((version, index) => (
                 <li key={version.id}>
                   <strong>{index === 0 ? 'Current ' : ''}Version {version.versionNumber}</strong>
-                  <span> · {version.storedFileName} · {version.sizeBytes} bytes · {new Date(version.uploadedAt).toLocaleString()}</span>
-                  <button aria-label={`Download version ${version.versionNumber}`} onClick={() => void onDownload(version.fileAssetId, selectedFile.originalFileName)}><Download size={14} /></button>
-                  <button aria-label={`Preview version ${version.versionNumber}`} onClick={() => void onPreview(version.fileAssetId)}><Eye size={14} /></button>
+                  <span> · {version.storedFileName} · {version.sizeInBytes} bytes · {new Date(version.createdAt).toLocaleString()}</span>
                 </li>
               ))}
             </ul>

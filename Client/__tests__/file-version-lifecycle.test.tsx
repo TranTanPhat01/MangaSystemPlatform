@@ -13,11 +13,12 @@ vi.mock('@/services/file-api', () => ({
 
 const asset: FileAssetResponse = {
   id: 'file-1', originalFileName: 'page.png', storedFileName: 'page.png', contentType: 'image/png',
-  sizeBytes: 120, category: 'PageScan', uploadedById: 'user-1', createdAt: '2026-07-22T00:00:00Z', versionCount: 2,
+  extension: '.png', sizeInBytes: 120, storageProvider: 'Local', storagePath: 'files/page.png',
+  publicUrl: undefined, uploadedByUserId: 'user-1', fileCategory: 'PageScan', status: 'Active', createdAt: '2026-07-22T00:00:00Z',
 };
 const version: FileVersionResponse = {
   id: 'version-2', fileAssetId: 'file-1', versionNumber: 2, storedFileName: 'page-v2.png',
-  sizeBytes: 140, uploadedAt: '2026-07-22T01:00:00Z', uploadedById: 'user-1',
+  storagePath: 'files/page-v2.png', sizeInBytes: 140, createdAt: '2026-07-22T01:00:00Z', createdByUserId: 'user-1',
 };
 const response = <T,>(data: T): AxiosResponse<ApiResponse<T>> => ({
   data: { success: true, data, timestamp: '2026-07-22T00:00:00Z' },
@@ -33,16 +34,14 @@ describe('file version lifecycle UI', () => {
     vi.clearAllMocks();
   });
 
-  it('loads version history from the selected real file id and downloads through its file-service asset id', async () => {
+  it('loads version history from the selected real file id without inventing version download routes', async () => {
     vi.mocked(fileApi.getFileVersions).mockResolvedValue(response([version]));
     render(<FileListTable files={[asset]} isLoading={false} onDownload={onDownload} onPreview={onPreview} onDelete={onDelete} onRefresh={onRefresh} />);
     fireEvent.click(screen.getByRole('button', { name: 'View versions for page.png' }));
     expect(fileApi.getFileVersions).toHaveBeenCalledWith('file-1');
-    expect(await screen.findByRole('button', { name: 'Download version 2' })).not.toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Download version 2' }));
-    expect(onDownload).toHaveBeenCalledWith('file-1', 'page.png');
-    fireEvent.click(screen.getByRole('button', { name: 'Preview version 2' }));
-    expect(onPreview).toHaveBeenCalledWith('file-1');
+    expect(await screen.findByText(/Version 2/)).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Download version 2' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Preview version 2' })).toBeNull();
   });
 
   it('uploads a real file only to the selected asset then refreshes versions and file list', async () => {
@@ -50,7 +49,7 @@ describe('file version lifecycle UI', () => {
     vi.mocked(fileApi.createVersion).mockResolvedValue(response(version));
     render(<FileListTable files={[asset]} isLoading={false} onDownload={onDownload} onPreview={onPreview} onDelete={onDelete} onRefresh={onRefresh} />);
     fireEvent.click(screen.getByRole('button', { name: 'View versions for page.png' }));
-    await screen.findByRole('button', { name: 'Download version 2' });
+    await screen.findByText(/Version 2/);
     const input = screen.getByLabelText('Upload new version');
     const newFile = new File(['new content'], 'page-v3.png', { type: 'image/png' });
     fireEvent.change(input, { target: { files: [newFile] } });

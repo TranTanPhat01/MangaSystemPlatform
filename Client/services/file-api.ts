@@ -28,7 +28,13 @@ export const fileApi = {
     }
     return api.post<ApiResponse<FileUploadResponse>>('/files/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    }).then((response) => ({
+      ...response,
+      data: {
+        ...response.data,
+        data: { ...response.data.data, id: response.data.data.fileId },
+      },
+    }));
   },
 
   /**
@@ -50,7 +56,13 @@ export const fileApi = {
    * Returns a pre-signed or direct download URL for the file
    */
   getFileUrl: (id: string) =>
-    api.get<ApiResponse<FileUrlResponse>>(`/files/${id}/url`),
+    api.get<ApiResponse<FileUrlResponse>>(`/files/${id}/url`).then((response) => ({
+      ...response,
+      data: {
+        ...response.data,
+        data: { ...response.data.data, url: response.data.data.publicUrl ?? '' },
+      },
+    })),
 
   /**
    * GET /files/{id}/download

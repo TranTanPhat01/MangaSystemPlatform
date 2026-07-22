@@ -19,6 +19,13 @@ import { mangaApi } from '@/services/manga-api';
 import { SeriesResponse, UpdateSeriesRequest, UpdateSeriesStatus } from '@/types/manga';
 import ChapterManagement from './ChapterManagement';
 
+type ProposalDecisionHistoryEntry = {
+  seriesId: string;
+  decision: 'Approved' | 'Rejected';
+  decisionNote?: string;
+  decidedAt: string;
+};
+
 const seriesStatusByName: Readonly<Record<string, UpdateSeriesStatus>> = {
   Draft: 1,
   Submitted: 2,
@@ -100,6 +107,8 @@ export function SeriesManagement() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [decisionNote, setDecisionNote] = useState('');
+  const [decisionHistory, setDecisionHistory] = useState<ProposalDecisionHistoryEntry[]>([]);
 
   const fetchSeries = async () => {
     setLoading(true);
@@ -108,6 +117,7 @@ export function SeriesManagement() {
       const res = await mangaApi.getSeries();
       if (res.data.success) {
         setSeriesList(res.data.data);
+        setSelectedSeries((current) => current ? res.data.data.find((series) => series.id === current.id) ?? current : current);
       } else {
         setErrorMsg(res.data.message || 'Failed to fetch series list.');
       }
@@ -278,10 +288,13 @@ export function SeriesManagement() {
     if (!confirm('Are you sure you want to APPROVE this series proposal?')) return;
     setActionLoading(seriesId);
     try {
-      const res = await adminApi.updateSeries(seriesId, { status: 3 }); // 3 = Approved
+      const note = decisionNote.trim() || undefined;
+      const res = await mangaApi.approveProposal(seriesId, note ? { decisionNote: note } : {});
       if (res.data.success) {
+        setDecisionHistory((previous) => [{ seriesId, decision: 'Approved', decisionNote: note, decidedAt: new Date().toISOString() }, ...previous]);
+        setDecisionNote('');
         triggerSuccess('Series proposal approved successfully!');
-        fetchSeries();
+        await fetchSeries();
       } else {
         triggerError(res.data.message || 'Failed to approve proposal.');
       }
@@ -297,10 +310,13 @@ export function SeriesManagement() {
     if (!confirm('Are you sure you want to REJECT this series proposal?')) return;
     setActionLoading(seriesId);
     try {
-      const res = await adminApi.updateSeries(seriesId, { status: 9 }); // 9 = Rejected
+      const note = decisionNote.trim() || undefined;
+      const res = await mangaApi.rejectProposal(seriesId, note ? { decisionNote: note } : {});
       if (res.data.success) {
+        setDecisionHistory((previous) => [{ seriesId, decision: 'Rejected', decisionNote: note, decidedAt: new Date().toISOString() }, ...previous]);
+        setDecisionNote('');
         triggerSuccess('Series proposal rejected.');
-        fetchSeries();
+        await fetchSeries();
       } else {
         triggerError(res.data.message || 'Failed to reject proposal.');
       }
@@ -320,6 +336,10 @@ export function SeriesManagement() {
     setEditStatus(toUpdateSeriesStatus(series.status));
     setIsEditModalOpen(true);
   };
+
+  const selectedDecisionHistory = selectedSeries
+    ? decisionHistory.filter((entry) => entry.seriesId === selectedSeries.id)
+    : [];
 
   // Filter lists
   const filteredList = seriesList.filter(s => {
@@ -543,6 +563,37 @@ export function SeriesManagement() {
             </div>
           )}
         </div>
+
+        {(selectedSeries?.status === 2 || selectedDecisionHistory.length > 0) && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            {selectedSeries?.status === 2 && <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Proposal decision</h3>
+              <p className="text-[11px] text-slate-500 mt-1">Record the reason before approving or rejecting the selected proposal.</p>
+            </div>}
+            {selectedSeries?.status === 2 && <textarea
+                aria-label="Proposal decision note"
+                value={decisionNote}
+                onChange={(event) => setDecisionNote(event.target.value)}
+                placeholder="Decision note (optional)"
+                rows={3}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+              />}
+            {selectedDecisionHistory.length > 0 && (
+              <div className="border-t border-slate-800 pt-3 space-y-2">
+                <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Decision history</h4>
+                {selectedDecisionHistory.map((entry) => (
+                  <div key={`${entry.decidedAt}-${entry.decision}`} className="flex items-start justify-between gap-3 text-[11px]">
+                    <div>
+                      <span className={entry.decision === 'Approved' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{entry.decision}</span>
+                      {entry.decisionNote && <p className="text-slate-400 mt-0.5">{entry.decisionNote}</p>}
+                    </div>
+                    <time className="text-slate-600 shrink-0">{new Date(entry.decidedAt).toLocaleString()}</time>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Chapters Column (Right) */}

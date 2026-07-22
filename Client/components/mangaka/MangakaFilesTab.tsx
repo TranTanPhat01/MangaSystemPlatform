@@ -82,7 +82,7 @@ export default function MangakaFilesTab({ triggerModal }: MangakaFilesTabProps) 
                   {file.originalFileName}
                 </h4>
                 <p className="text-[10px] text-slate-455 font-semibold mt-0.5">
-                  {file.category} • {Math.round(file.sizeBytes / 1024)} KB
+                  {file.fileCategory} • {Math.round(file.sizeInBytes / 1024)} KB
                 </p>
               </div>
               <div className="mt-4 pt-2 border-t border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-500">

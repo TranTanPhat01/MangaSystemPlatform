@@ -10,6 +10,7 @@ public sealed class AdminUserResponse
     public string? Username { get; set; }
     public string FullName { get; set; } = string.Empty;
     public UserStatus Status { get; set; }
+    public DateTime? LockoutUntil { get; set; }
     public IReadOnlyCollection<string> Roles { get; set; } = Array.Empty<string>();
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -34,6 +35,7 @@ public class AdminUserListItemResponse
     public string? Username { get; set; }
     public IReadOnlyCollection<string> Roles { get; set; } = Array.Empty<string>();
     public UserStatus Status { get; set; }
+    public DateTime? LockoutUntil { get; set; }
     public bool EmailVerified { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? LastLoginAt { get; set; }
@@ -41,7 +43,6 @@ public class AdminUserListItemResponse
 
 public sealed class AdminUserDetailResponse : AdminUserListItemResponse
 {
-    public DateTime? LockoutUntil { get; set; }
     public IReadOnlyCollection<string> Permissions { get; set; } = Array.Empty<string>();
     public IReadOnlyCollection<AdminSecurityEventResponse> RecentSecurityEvents { get; set; } = Array.Empty<AdminSecurityEventResponse>();
 }

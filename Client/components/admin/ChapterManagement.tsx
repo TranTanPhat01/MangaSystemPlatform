@@ -195,7 +195,7 @@ export function ChapterManagement({ seriesId, seriesTitle, onChapterPublished }:
         const pageNumber = pages.length + 1;
         const pageRes = await adminApi.createPage(selectedChapter.id, {
           pageNumber,
-          fileId: fileAsset.id
+          fileId: fileAsset.fileId
         });
         
         if (pageRes.data.success) {

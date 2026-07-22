@@ -10,6 +10,11 @@ export const api = axios.create({
   },
 });
 
+const isAuthSessionEndpoint = (url?: string) => {
+  const path = url?.split('?')[0];
+  return path === '/identity/auth/logout' || path === '/identity/auth/refresh';
+};
+
 api.interceptors.request.use(
   (config) => {
     // Read directly from the Zustand store
@@ -29,9 +34,9 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response && error.response.status === 401) {
+    if (error.response?.status === 401 && !isAuthSessionEndpoint(error.config?.url)) {
       // If unauthorized, logout the user
-      useAuthStore.getState().logout();
+      useAuthStore.getState().clearAuthSession();
       if (typeof window !== 'undefined') {
         // Redirect to login page
         window.location.href = '/login';

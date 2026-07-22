@@ -5,6 +5,7 @@ namespace Manga.Identity.Application.Services;
 
 public interface IUserAdminService
 {
+    Task<IReadOnlyList<AssistantDirectoryItemResponse>> GetActiveAssistantsAsync(CancellationToken cancellationToken = default);
     Task<Result<PagedResponse<AdminUserListItemResponse>>> GetUsersAsync(AdminUserListQuery query, CancellationToken cancellationToken = default);
     Task<Result<AdminUserDetailResponse>> GetUserDetailAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<Result<IReadOnlyList<AdminRoleCatalogResponse>>> GetRoleCatalogAsync(CancellationToken cancellationToken = default);

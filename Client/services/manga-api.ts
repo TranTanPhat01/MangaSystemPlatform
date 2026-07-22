@@ -4,15 +4,19 @@
  * Route: /manga/**
  */
 import { api } from '@/lib/api';
+import { requireNonEmptyGuid } from '@/lib/guid';
 import { ApiResponse } from '@/types/api';
 import {
   SeriesResponse,
   CreateSeriesRequest,
+  UpdateSeriesRequest,
   ChapterResponse,
   PageResponse,
   TaskResponse,
+  CreateTaskRequest,
   SubmitTaskRequest,
-  RequestRevisionRequest,
+  TaskSubmissionResponse,
+  RequestTaskRevisionRequest,
   AnnotationResponse,
   AnnotationType,
   SubmissionResponse,
@@ -31,8 +35,8 @@ export const mangaApi = {
   createSeries: (data: CreateSeriesRequest) =>
     api.post<ApiResponse<SeriesResponse>>('/manga/series', data),
 
-  updateSeries: (id: string, data: Partial<CreateSeriesRequest>) =>
-    api.put<ApiResponse<SeriesResponse>>(`/manga/series/${id}`, data),
+  updateSeries: (id: string, data: UpdateSeriesRequest) =>
+    api.patch<ApiResponse<SeriesResponse>>(`/manga/series/${id}`, data),
 
   submitProposal: (seriesId: string) =>
     api.post<ApiResponse<SubmissionResponse>>(`/manga/series/${seriesId}/submit-proposal`),
@@ -76,18 +80,17 @@ export const mangaApi = {
   deleteAnnotation: (annotationId: string) =>
     api.delete<ApiResponse<null>>(`/manga/annotations/${annotationId}`),
 
+  getPageAnnotations: (pageId: string) =>
+    api.get<ApiResponse<AnnotationResponse[]>>(`/manga/pages/${pageId}/annotations`),
+
   // ─── Tasks ─────────────────────────────────────────────────────────────────
 
-  createTask: (data: {
-    annotationId: string;
-    pageId: string;
-    title: string;
-    description?: string;
-    assignedToUserId: string;
-    priority?: string;
-    deadline?: string;
-  }) =>
-    api.post<ApiResponse<TaskResponse>>('/manga/tasks', data),
+  createTask: (data: CreateTaskRequest) => {
+    requireNonEmptyGuid(data.annotationId, 'annotationId');
+    requireNonEmptyGuid(data.pageId, 'pageId');
+    requireNonEmptyGuid(data.assignedToUserId, 'assignedToUserId');
+    return api.post<ApiResponse<TaskResponse>>('/manga/tasks', data);
+  },
 
   /**
    * GET /manga/tasks/my
@@ -103,27 +106,36 @@ export const mangaApi = {
    * POST /manga/tasks/{id}/start
    * Marks task as InProgress
    */
-  startTask: (taskId: string) =>
-    api.post<ApiResponse<TaskResponse>>(`/manga/tasks/${taskId}/start`),
+  startTask: (taskId: string) => {
+    requireNonEmptyGuid(taskId, 'taskId');
+    return api.post<ApiResponse<TaskResponse>>(`/manga/tasks/${taskId}/start`);
+  },
 
   /**
    * POST /manga/tasks/{id}/submit
    * Submits completed task with a file asset
    */
-  submitTask: (taskId: string, data: SubmitTaskRequest) =>
-    api.post<ApiResponse<TaskResponse>>(`/manga/tasks/${taskId}/submit`, data),
+  submitTask: (taskId: string, data: SubmitTaskRequest) => {
+    requireNonEmptyGuid(taskId, 'taskId'); requireNonEmptyGuid(data.fileId, 'fileId');
+    return api.post<ApiResponse<TaskSubmissionResponse>>(`/manga/tasks/${taskId}/submit`, data);
+  },
 
   /**
    * POST /manga/tasks/{id}/approve
    * Mangaka approves submitted task
    */
-  approveTask: (taskId: string) =>
-    api.post<ApiResponse<TaskResponse>>(`/manga/tasks/${taskId}/approve`),
+  approveTask: (taskId: string) => {
+    requireNonEmptyGuid(taskId, 'taskId');
+    return api.post<ApiResponse<TaskResponse>>(`/manga/tasks/${taskId}/approve`);
+  },
 
   /**
    * POST /manga/tasks/{id}/request-revision
    * Mangaka requests revision on submitted task
    */
-  requestTaskRevision: (taskId: string, data: RequestRevisionRequest) =>
-    api.post<ApiResponse<TaskResponse>>(`/manga/tasks/${taskId}/request-revision`, data),
+  requestTaskRevision: (taskId: string, data: RequestTaskRevisionRequest) => {
+    requireNonEmptyGuid(taskId, 'taskId');
+    if (!data.reason.trim()) throw new Error('reason is required.');
+    return api.post<ApiResponse<TaskResponse>>(`/manga/tasks/${taskId}/request-revision`, data);
+  },
 };

@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
-import { mangaApi } from '@/services/manga-api';
+import { useEffect, useState } from 'react';
 import { fileApi } from '@/services/file-api';
-import { TaskResponse, TaskStatus, TaskPriority } from '@/types/manga';
-import { FileCategory } from '@/types/file';
+import { mangaApi } from '@/services/manga-api';
+import { TaskPriority, TaskResponse, TaskStatus } from '@/types/manga';
 
 export interface TaskItemUI {
   id: string;
@@ -19,7 +18,43 @@ export interface TaskItemUI {
   pageFileAssetId?: string;
   submittedFileAssetId?: string;
   notes?: string;
-  isMock: boolean;
+  isMock: false;
+}
+
+type ApiError = { message?: unknown; response?: { status?: number; data?: { message?: unknown; error?: unknown } } };
+const compactId = (id: string) => id.slice(0, 8);
+
+function toErrorMessage(error: unknown, action: string) {
+  const apiError = error as ApiError;
+  const value = apiError.response?.data?.message ?? apiError.response?.data?.error ?? apiError.message;
+  if (typeof value === 'string' && value.trim()) return value;
+  if (apiError.response?.status === 403) return 'You do not have permission to perform this task action.';
+  if (apiError.response?.status === 404) return 'The task or referenced file was not found.';
+  return `Unable to ${action} task.`;
+}
+
+function toTaskItem(task: TaskResponse): TaskItemUI {
+  const action = task.status === TaskStatus.Todo ? 'Start'
+    : task.status === TaskStatus.InProgress ? 'Continue'
+      : task.status === TaskStatus.RevisionRequired ? 'Fix Now'
+        : task.status === TaskStatus.Submitted ? 'View' : 'Review';
+  return {
+    id: task.id,
+    title: task.title,
+    series: `Assignee ${compactId(task.assignedToUserId)}`,
+    chapter: `Page ${task.pageNumber}`,
+    annotationType: `Annotation ${compactId(task.annotationId)}`,
+    priority: task.priority,
+    deadline: task.deadline ? new Date(task.deadline).toLocaleDateString() : '—',
+    deadlineOverdue: Boolean(task.deadline && new Date(task.deadline) < new Date() && task.status !== TaskStatus.Approved),
+    status: task.status,
+    action,
+    color: 'bg-indigo-500',
+    pageFileAssetId: task.pageFileId ?? undefined,
+    submittedFileAssetId: task.latestSubmission?.fileId ?? undefined,
+    notes: task.latestSubmission?.note ?? undefined,
+    isMock: false,
+  };
 }
 
 export function useTasks() {
@@ -30,256 +65,57 @@ export function useTasks() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [useMockFallback, setUseMockFallback] = useState(false);
-
-  const clearError = () => setError(null);
-  const clearSuccess = () => setSuccessMessage(null);
-
-  const mapApiStatus = (s: string): TaskStatus => {
-    if (s === 'InProgress') return 'InProgress';
-    if (s === 'RevisionRequired') return 'RevisionRequired';
-    return s as TaskStatus;
-  };
-
-  const getActionForStatus = (status: TaskStatus): TaskItemUI['action'] => {
-    if (status === 'Pending') return 'Start';
-    if (status === 'InProgress') return 'Continue';
-    if (status === 'RevisionRequired') return 'Fix Now';
-    if (status === 'Submitted') return 'View';
-    return 'Review';
-  };
 
   const fetchTasks = async () => {
-    setIsLoading(true);
-    setError(null);
-    setUseMockFallback(false);
+    setIsLoading(true); setError(null);
     try {
-      const res = await mangaApi.getMyTasks();
-      if (res.data && res.data.success) {
-        const apiData = res.data.data;
-        if (apiData && apiData.length > 0) {
-          const uiTasks: TaskItemUI[] = apiData.map((t) => ({
-            id: t.id,
-            title: t.title || t.description || t.annotationType || 'Untitled task',
-            series: t.seriesTitle || 'Unknown Series',
-            chapter: t.chapterTitle ? `${t.chapterTitle} P${String(t.pageNumber ?? '?').padStart(2, '0')}` : '—',
-            annotationType: t.annotationType || t.description || 'Production task',
-            priority: String(t.priority) as TaskPriority,
-            deadline: t.deadline ? new Date(t.deadline).toLocaleDateString() : '—',
-            deadlineOverdue: t.deadline ? new Date(t.deadline) < new Date() && t.status !== 'Approved' : false,
-            status: mapApiStatus(String(t.status)),
-            action: getActionForStatus(mapApiStatus(String(t.status))),
-            color: 'bg-indigo-500',
-            pageFileAssetId: t.fileAssetId || undefined,
-            isMock: false,
-          }));
-          setTasks(uiTasks);
-          // Set first task as selected by default if nothing selected
-          if (uiTasks.length > 0) {
-            setSelectedTask(uiTasks[0]);
-          }
-        } else {
-          setTasks([]);
-          setSelectedTask(null);
-        }
-      } else {
-        setError(res.data?.message || 'Failed to fetch tasks.');
-        loadMockFallback();
-      }
-    } catch (err: any) {
-      handleApiError(err, 'fetch list of');
-      loadMockFallback();
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadMockFallback = () => {
-    setUseMockFallback(true);
-    // Standard mock tasks mapped to UI types
-    const mockTasksList: TaskItemUI[] = [
-      {
-        id: 'mock-t1',
-        title: 'Background Drawing',
-        series: 'Blue Moon',
-        chapter: 'Ch.12 Page 05',
-        annotationType: 'Background',
-        priority: 'High',
-        deadline: 'Today',
-        status: 'InProgress',
-        action: 'Continue',
-        color: 'bg-indigo-500',
-        isMock: true,
-      },
-      {
-        id: 'mock-t2',
-        title: 'Character Shading',
-        series: 'Blue Moon',
-        chapter: 'Ch.12 Page 08',
-        annotationType: 'Shading',
-        priority: 'Medium',
-        deadline: 'Tomorrow',
-        status: 'Submitted',
-        action: 'View',
-        color: 'bg-emerald-500',
-        isMock: true,
-      },
-      {
-        id: 'mock-t3',
-        title: 'Speed Effect',
-        series: 'Re:Birth',
-        chapter: 'Ch.03 Page 10',
-        annotationType: 'Effects',
-        priority: 'Urgent',
-        deadline: 'Overdue',
-        deadlineOverdue: true,
-        status: 'RevisionRequired',
-        action: 'Fix Now',
-        color: 'bg-rose-500',
-        isMock: true,
-      }
-    ];
-    setTasks(mockTasksList);
-    setSelectedTask(mockTasksList[0]);
-  };
-
-  const selectTask = (task: TaskItemUI) => {
-    setSelectedTask(task);
+      const response = await mangaApi.getMyTasks();
+      if (!response.data.success) throw new Error(response.data.message || 'Failed to fetch tasks.');
+      const mapped = response.data.data.map(toTaskItem);
+      setTasks(mapped);
+      setSelectedTask((current) => mapped.find((task) => task.id === current?.id) ?? mapped[0] ?? null);
+    } catch (error: unknown) {
+      setTasks([]); setSelectedTask(null); setError(toErrorMessage(error, 'load'));
+    } finally { setIsLoading(false); }
   };
 
   const startTask = async (id: string) => {
-    setIsStarting(true);
-    setError(null);
-    setSuccessMessage(null);
+    setIsStarting(true); setError(null); setSuccessMessage(null);
     try {
-      const res = await mangaApi.startTask(id);
-      if (res.data && res.data.success) {
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === id ? { ...t, status: 'InProgress', action: 'Continue' } : t
-          )
-        );
-        // Sync selected task
-        if (selectedTask && selectedTask.id === id) {
-          setSelectedTask((prev) => prev ? { ...prev, status: 'InProgress', action: 'Continue' } : null);
-        }
-        setSuccessMessage('Nhiệm vụ đã được bắt đầu thực hiện.');
-      } else {
-        setError(res.data?.message || 'Không thể bắt đầu thực hiện tác vụ.');
-      }
-    } catch (err: any) {
-      handleApiError(err, 'start');
-    } finally {
-      setIsStarting(false);
-    }
+      const response = await mangaApi.startTask(id);
+      if (!response.data.success) throw new Error(response.data.message || 'Unable to start task.');
+      await fetchTasks(); setSuccessMessage('Task started.');
+    } catch (error: unknown) { setError(toErrorMessage(error, 'start')); }
+    finally { setIsStarting(false); }
   };
 
   const submitTask = async (id: string, file: File, note?: string) => {
-    setIsSubmitting(true);
-    setError(null);
-    setSuccessMessage(null);
+    setIsSubmitting(true); setError(null); setSuccessMessage(null);
     try {
-      // 1. Upload file first
-      const uploadRes = await fileApi.uploadFile(file, 'Submission');
-      if (!uploadRes.data || !uploadRes.data.success) {
-        throw new Error(uploadRes.data?.message || 'Failed to upload source file for submission.');
-      }
-
-      const fileAssetId = uploadRes.data.data.id;
-
-      // 2. Submit task with fileId
-      const submitRes = await mangaApi.submitTask(id, {
-        fileId: fileAssetId,
-        note: note,
-      });
-
-
-      if (submitRes.data && submitRes.data.success) {
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === id ? { ...t, status: 'Submitted', action: 'View', submittedFileAssetId: fileAssetId } : t
-          )
-        );
-        // Sync selected task
-        if (selectedTask && selectedTask.id === id) {
-          setSelectedTask((prev) =>
-            prev ? { ...prev, status: 'Submitted', action: 'View', submittedFileAssetId: fileAssetId } : null
-          );
-        }
-        setSuccessMessage('Nhiệm vụ đã được nộp bản vẽ thành công.');
-      } else {
-        setError(submitRes.data?.message || 'Không thể gửi bản vẽ hoàn tất.');
-      }
-    } catch (err: any) {
-      handleApiError(err, 'submit');
-    } finally {
-      setIsSubmitting(false);
-    }
+      const upload = await fileApi.uploadFile(file, 'Submission');
+      if (!upload.data.success) throw new Error(upload.data.message || 'Unable to upload submission file.');
+      const trimmedNote = note?.trim();
+      const response = await mangaApi.submitTask(id, trimmedNote ? { fileId: upload.data.data.id, note: trimmedNote } : { fileId: upload.data.data.id });
+      if (!response.data.success) throw new Error(response.data.message || 'Unable to submit task.');
+      await fetchTasks(); setSuccessMessage('Task submission sent.');
+    } catch (error: unknown) { setError(toErrorMessage(error, 'submit')); }
+    finally { setIsSubmitting(false); }
   };
 
-  const downloadPageAsset = async (fileAssetId: string, fileName: string) => {
+  const downloadPageAsset = async (fileId: string, fileName: string) => {
     setError(null);
-    setSuccessMessage(null);
     try {
-      const res = await fileApi.downloadFile(fileAssetId);
-      const blob = res.data;
-      if (!(blob instanceof Blob)) {
-        throw new Error('Tệp không đúng định dạng nhị phân.');
-      }
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      setSuccessMessage(`Đã tải xuống tệp nguồn: "${fileName}"`);
-    } catch (err: any) {
-      handleApiError(err, 'download reference resource for');
-    }
-  };
-
-  const handleApiError = (err: any, action: string) => {
-    const status = err.response?.status;
-    let msg = `Có lỗi xảy ra khi thực hiện ${action} nhiệm vụ.`;
-
-    if (status === 401) {
-      msg = 'Phiên làm việc hết hạn. Vui lòng đăng nhập lại.';
-    } else if (status === 403) {
-      msg = 'Bạn không có quyền thao tác task này.';
-    } else if (status === 404) {
-      msg = 'Tác vụ hoặc file không tồn tại.';
-    } else if (status === 409 || status === 400) {
-      msg = err.response?.data?.message || err.response?.data?.error || msg;
-    } else if (status >= 500) {
-      msg = 'Dịch vụ tạm thời không khả dụng. Vui lòng thử lại sau.';
-    } else {
-      msg = err.response?.data?.message || err.message || msg;
-    }
-
-    setError(msg);
+      const response = await fileApi.downloadFile(fileId);
+      if (!(response.data instanceof Blob)) throw new Error('The downloaded file is invalid.');
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement('a'); link.href = url; link.download = fileName; link.click(); window.URL.revokeObjectURL(url);
+    } catch (error: unknown) { setError(toErrorMessage(error, 'download task reference')); }
   };
 
   useEffect(() => {
-    fetchTasks();
+    const timer = window.setTimeout(() => { void fetchTasks(); }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
-  return {
-    tasks,
-    selectedTask,
-    isLoading,
-    isStarting,
-    isSubmitting,
-    error,
-    successMessage,
-    useMockFallback,
-    fetchTasks,
-    selectTask,
-    startTask,
-    submitTask,
-    downloadPageAsset,
-    clearError,
-    clearSuccess,
-  };
+  return { tasks, selectedTask, isLoading, isStarting, isSubmitting, error, successMessage, fetchTasks, selectTask: setSelectedTask, startTask, submitTask, downloadPageAsset, clearError: () => setError(null), clearSuccess: () => setSuccessMessage(null) };
 }

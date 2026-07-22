@@ -41,21 +41,21 @@ export default function SeriesGrid({
             <div className="grid grid-cols-2 gap-4 border-t border-b border-slate-800/60 py-3 mb-4">
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <BookOpen size={14} className="text-slate-500" />
-                <span>{series.chapterCount} Chapters</span>
+                <span>Chapter count: —</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <Calendar size={14} className="text-slate-500" />
-                <span className="capitalize">{series.frequency || 'Weekly'}</span>
+                <span>Studio: {series.studioId}</span>
               </div>
             </div>
           </div>
           
           <div className="flex justify-between items-center text-xs mt-2">
             <span className="text-slate-500">
-              Updated: {new Date(series.updatedAt).toLocaleDateString()}
+              Updated: {series.updatedAt ? new Date(series.updatedAt).toLocaleDateString() : '—'}
             </span>
             <div className="flex items-center gap-3">
-              {series.status === 'Draft' && (
+              {series.status === 1 && (
                 <button
                   onClick={() => onSubmitProposal(series.id)}
                   disabled={submittingId === series.id}

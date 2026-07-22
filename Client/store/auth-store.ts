@@ -3,18 +3,21 @@ import { persist } from 'zustand/middleware';
 import { UserProfile, AuthResponse } from '@/types/auth';
 import { setAuthCookies, removeAuthCookies } from '@/lib/auth';
 
+export const AUTH_STORAGE_KEY = 'manga-auth-storage';
+
 interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   user: UserProfile | null;
   isAuthenticated: boolean;
   setAuth: (auth: AuthResponse) => void;
+  clearAuthSession: () => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       accessToken: null,
       refreshToken: null,
       user: null,
@@ -29,19 +32,23 @@ export const useAuthStore = create<AuthState>()(
         // Sync token and roles to cookies for Next.js middleware protection
         setAuthCookies(auth.accessToken, auth.user.roles, auth.expiresAt);
       },
-      logout: () => {
+      clearAuthSession: () => {
         set({
           accessToken: null,
           refreshToken: null,
           user: null,
           isAuthenticated: false,
         });
-        // Clear all cookies
         removeAuthCookies();
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem(AUTH_STORAGE_KEY);
+          window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+        }
       },
+      logout: () => get().clearAuthSession(),
     }),
     {
-      name: 'manga-auth-storage',
+      name: AUTH_STORAGE_KEY,
     }
   )
 );

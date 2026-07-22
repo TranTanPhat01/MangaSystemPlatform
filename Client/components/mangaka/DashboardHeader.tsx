@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Search, Bell, Menu, User, LogOut, Settings, HelpCircle, Plus, Upload, ChevronDown, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useLogoutAction } from '@/lib/logout';
 
 interface DashboardHeaderProps {
   user: {
@@ -22,6 +23,7 @@ export default function DashboardHeader({
 }: DashboardHeaderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const { logout, isLoggingOut } = useLogoutAction();
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -137,11 +139,12 @@ export default function DashboardHeader({
                 ))}
                 <div className="border-t border-slate-50 pt-1.5 mt-1 px-2">
                   <button
-                    onClick={() => setDropdownOpen(false)}
-                    className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-semibold transition-colors"
+                    onClick={logout}
+                    disabled={isLoggingOut}
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-semibold transition-colors disabled:opacity-50"
                   >
                     <LogOut size={13} />
-                    Sign Out
+                    {isLoggingOut ? 'Signing Out…' : 'Sign Out'}
                   </button>
                 </div>
               </div>

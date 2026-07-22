@@ -7,20 +7,19 @@ import { api } from '@/lib/api';
 import { ApiResponse } from '@/types/api';
 import {
   EditorialReviewResponse,
-  ReviewCommentResponse,
-  AddCommentRequest,
-  RequestRevisionRequest,
-  RejectReviewRequest,
-  SeriesProposalResponse,
+  EditorialCommentResponse,
+  CreateEditorialCommentRequest,
+  DecisionRequest,
   BoardVoteSummaryResponse,
   VoteProposalRequest,
-  RankingResponse,
+  RankingSnapshotResponse,
   PublicationScheduleResponse,
   CreatePublicationScheduleRequest,
   ReaderVoteInputRequest,
+  FinalizeProposalRequest,
+  IssueResponse,
 } from '@/types/editorial';
 
-import { mangaApi } from '@/services/manga-api';
 
 export const editorialApi = {
   // ─── Reviews ─────────────────────────────────────────────────────────────
@@ -35,7 +34,7 @@ export const editorialApi = {
   /**
    * GET /editorial/reviews/{id}
    */
-  getReviewById: (id: string) =>
+  getReview: (id: string) =>
     api.get<ApiResponse<EditorialReviewResponse>>(`/editorial/reviews/${id}`),
 
   /**
@@ -48,57 +47,31 @@ export const editorialApi = {
   /**
    * POST /editorial/reviews/{id}/comments
    */
-  addComment: (id: string, data: AddCommentRequest) =>
-    api.post<ApiResponse<ReviewCommentResponse>>(`/editorial/reviews/${id}/comments`, data),
+  getReviewComments: (id: string) =>
+    api.get<ApiResponse<EditorialCommentResponse[]>>(`/editorial/reviews/${id}/comments`),
+
+  addReviewComment: (id: string, data: CreateEditorialCommentRequest) =>
+    api.post<ApiResponse<EditorialCommentResponse>>(`/editorial/reviews/${id}/comments`, data),
 
   /**
    * POST /editorial/reviews/{id}/approve
    */
-  approveReview: (id: string) =>
-    api.post<ApiResponse<EditorialReviewResponse>>(`/editorial/reviews/${id}/approve`),
+  approveReview: (id: string, data: DecisionRequest) =>
+    api.post<ApiResponse<EditorialReviewResponse>>(`/editorial/reviews/${id}/approve`, data),
 
   /**
    * POST /editorial/reviews/{id}/request-revision
    */
-  requestRevision: (id: string, data: RequestRevisionRequest) =>
+  requestReviewRevision: (id: string, data: DecisionRequest) =>
     api.post<ApiResponse<EditorialReviewResponse>>(`/editorial/reviews/${id}/request-revision`, data),
 
   /**
    * POST /editorial/reviews/{id}/reject
    */
-  rejectReview: (id: string, data: RejectReviewRequest) =>
+  rejectReview: (id: string, data: DecisionRequest) =>
     api.post<ApiResponse<EditorialReviewResponse>>(`/editorial/reviews/${id}/reject`, data),
 
   // ─── Proposals (Editorial Board) ──────────────────────────────────────────
-
-  /**
-   * GET /editorial/proposals
-   * Fallback implementation filtering series from mangaApi since backend /editorial/proposals might not exist
-   */
-  getProposals: async () => {
-    const res = await mangaApi.getSeries();
-    if (res.data && res.data.success) {
-      const proposals: SeriesProposalResponse[] = res.data.data.map((s) => ({
-        id: s.id,
-        seriesId: s.id,
-        seriesTitle: s.title,
-        mangakaId: s.mangakaId,
-        mangakaName: s.mangakaName,
-        genre: s.genre,
-        synopsis: s.description,
-        status: (s.status === 'Draft' ? 'Voting' : s.status === 'Active' ? 'Approved' : 'Pending') as any,
-        submittedAt: s.createdAt,
-      }));
-      return {
-        ...res,
-        data: {
-          ...res.data,
-          data: proposals,
-        },
-      };
-    }
-    return res as any;
-  },
 
   /**
    * POST /editorial/series/{seriesId}/votes
@@ -115,8 +88,8 @@ export const editorialApi = {
   /**
    * POST /editorial/series/{seriesId}/finalize-proposal
    */
-  finalizeProposal: (seriesId: string) =>
-    api.post<ApiResponse<SeriesProposalResponse>>(`/editorial/series/${seriesId}/finalize-proposal`),
+  finalizeProposal: (seriesId: string, data: FinalizeProposalRequest) =>
+    api.post<ApiResponse<BoardVoteSummaryResponse>>(`/editorial/series/${seriesId}/finalize-proposal`, data),
 
 
   // ─── Publication Schedule ─────────────────────────────────────────────────
@@ -139,19 +112,20 @@ export const editorialApi = {
    * POST /editorial/reader-votes
    * Input reader vote counts for a series in a given period
    */
-  inputReaderVote: (data: ReaderVoteInputRequest) =>
-    api.post<ApiResponse<null>>('/editorial/reader-votes', data),
+  getIssues: () => api.get<ApiResponse<IssueResponse[]>>('/editorial/issues'),
+  inputReaderVote: (issueId: string, data: ReaderVoteInputRequest) =>
+    api.post<ApiResponse<unknown>>(`/editorial/issues/${issueId}/reader-votes`, data),
 
   /**
    * POST /editorial/rankings/calculate
    * Triggers ranking recalculation
    */
-  calculateRanking: () =>
-    api.post<ApiResponse<RankingResponse[]>>('/editorial/rankings/calculate'),
+  calculateRanking: (issueId: string) =>
+    api.post<ApiResponse<RankingSnapshotResponse>>(`/editorial/issues/${issueId}/calculate-ranking`),
 
   /**
    * GET /editorial/rankings
    */
-  getRankings: () =>
-    api.get<ApiResponse<RankingResponse[]>>('/editorial/rankings'),
+  getRankings: (issueId: string) =>
+    api.get<ApiResponse<RankingSnapshotResponse>>(`/editorial/issues/${issueId}/rankings`),
 };

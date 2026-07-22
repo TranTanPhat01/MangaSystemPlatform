@@ -1,120 +1,93 @@
 // ─── Editorial Domain DTOs ────────────────────────────────────────────────────
 
-export type ReviewStatus =
-  | 'Pending'
-  | 'InProgress'
-  | 'Approved'
-  | 'RevisionRequested'
-  | 'Rejected';
+// The Editorial API has no JsonStringEnumConverter configuration, so ASP.NET
+// serializes EditorialReviewStatus as the numeric values below.
+export enum ReviewStatus {
+  Pending = 1,
+  InReview = 2,
+  RevisionRequested = 3,
+  Approved = 4,
+  Rejected = 5,
+}
 
+export enum BoardVoteValue { Approve = 1, Reject = 2, Revision = 3, Abstain = 4 }
 export type VoteDecision = 'Approve' | 'Revise' | 'Reject';
-export type ProposalStatus = 'Pending' | 'Voting' | 'Approved' | 'Rejected' | 'Finalized';
-export type PublicationType = 'Weekly' | 'Monthly' | 'Special';
+export enum PublicationType { Weekly = 1, Monthly = 2, Special = 3 }
 
 export interface EditorialReviewResponse {
   id: string;
   chapterId: string;
-  chapterTitle?: string;
-  seriesId?: string;
-  seriesTitle?: string;
-  mangakaId?: string;
-  mangakaName?: string;
-  reviewerId?: string;
-  reviewerName?: string;
+  seriesId: string;
+  requestedByUserId: string;
+  reviewerUserId?: string | null;
   status: ReviewStatus;
-  submittedAt: string;
-  startedAt?: string;
-  resolvedAt?: string;
-  comments?: ReviewCommentResponse[];
+  decisionNote?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  latestComment?: EditorialCommentResponse | null;
 }
 
-export interface ReviewCommentResponse {
+export interface EditorialCommentResponse {
   id: string;
   reviewId: string;
-  authorId: string;
-  authorName?: string;
-  content: string;
+  pageId?: string | null;
+  annotationId?: string | null;
+  commentText: string;
+  createdByUserId: string;
+  isResolved: boolean;
   createdAt: string;
+  resolvedAt?: string | null;
 }
 
-export interface AddCommentRequest {
-  content: string;
+export interface CreateEditorialCommentRequest {
+  commentText: string;
+  pageId?: string;
+  annotationId?: string;
 }
 
-export interface RequestRevisionRequest {
-  notes: string;
+export interface DecisionRequest {
+  decisionNote?: string;
 }
 
-export interface RejectReviewRequest {
-  reason: string;
-}
+export interface BoardVoteSummaryResponse { seriesId: string; approve: number; reject: number; revision: number; abstain: number; total: number; quorumReached: boolean; finalRecommendation: string; }
 
-export interface SeriesProposalResponse {
-  id: string;
+export interface VoteProposalRequest { proposalId?: string; voteValue: BoardVoteValue; note?: string; }
+export interface FinalizeProposalRequest { adminOverride: boolean; reason?: string; }
+
+export interface RankingItemResponse {
   seriesId: string;
-  seriesTitle?: string;
-  mangakaId: string;
-  mangakaName?: string;
-  genre?: string;
-  synopsis?: string;
-  status: ProposalStatus;
-  editorRecommendation?: 'Recommended' | 'NeedsDiscussion' | 'NotRecommended';
-  submittedAt: string;
-  voteSummary?: BoardVoteSummaryResponse;
+  voteCount: number;
+  rankPosition: number;
+  previousRank?: number | null;
+  positiveRate: number;
+  trend: string;
+  riskLevel: string;
+  score: number;
 }
-
-export interface BoardVoteSummaryResponse {
-  proposalId: string;
-  totalVotes: number;
-  approveCount: number;
-  reviseCount: number;
-  rejectCount: number;
-  approvePercent: number;
-  revisePercent: number;
-  rejectPercent: number;
-  quorumMet: boolean;
-  currentUserVote?: VoteDecision | null;
-}
-
-export interface VoteProposalRequest {
-  decision: VoteDecision;
-  comment?: string;
-}
-
-export interface RankingResponse {
-  id: string;
-  seriesId: string;
-  seriesTitle?: string;
-  mangakaName?: string;
-  rank: number;
-  previousRank?: number;
-  readerVotes: number;
-  weeklyVotes?: number;
-  trend: 'Up' | 'Down' | 'Same' | 'New';
-  calculatedAt: string;
-}
+export interface RankingSnapshotResponse { id: string; issueId: string; generatedAt: string; generatedByUserId: string; items: RankingItemResponse[]; }
 
 export interface PublicationScheduleResponse {
   id: string;
   seriesId: string;
-  seriesTitle?: string;
+  chapterId: string;
+  issueId?: string | null;
   publicationType: PublicationType;
   scheduledDate: string;
-  isPublished: boolean;
-  publishedAt?: string;
-  notes?: string;
+  status: number;
+  publishedAt?: string | null;
   createdAt: string;
 }
 
 export interface CreatePublicationScheduleRequest {
   seriesId: string;
+  chapterId: string;
+  issueId?: string;
   publicationType: PublicationType;
   scheduledDate: string;
-  notes?: string;
 }
 
 export interface ReaderVoteInputRequest {
   seriesId: string;
   voteCount: number;
-  weekLabel?: string;
 }
+export interface IssueResponse { id: string; issueNumber: string; title: string; releaseDate: string; status: number; createdAt: string; }

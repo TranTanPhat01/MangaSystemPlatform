@@ -1,62 +1,21 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
-import TaskTable, { TaskItem } from './TaskTable';
+import { useEffect, useState } from 'react';
+import { Plus, RefreshCw } from 'lucide-react';
+import { authApi, AssistantDirectoryItem } from '@/services/auth-api';
 import { mangaApi } from '@/services/manga-api';
-
-interface MangakaTasksTabProps {
-  tasks: TaskItem[];
-  handleTaskAction: (taskId: string, actionType: string) => void;
-  triggerModal: (title: string, content: string) => void;
-}
-
-export default function MangakaTasksTab({
-  tasks,
-  handleTaskAction,
-  triggerModal,
-}: MangakaTasksTabProps) {
-  const [submitting, setSubmitting] = useState(false);
-
-  const handleCreateTask = async () => {
-    setSubmitting(true);
-    try {
-      const res = await mangaApi.createTask({
-        annotationId: '00000000-0000-0000-0000-000000000000',
-        pageId: '00000000-0000-0000-0000-000000000000',
-        title: 'New production task',
-        description: 'Create a new task from the mangaka workspace.',
-        assignedToUserId: '00000000-0000-0000-0000-000000000000',
-        priority: 'Medium',
-      });
-      if (res.data?.success) {
-        triggerModal('Task Created', 'The task was created and is now available to the assigned assistant.');
-      } else {
-        triggerModal('Task Creation Failed', res.data?.message || 'The task could not be created.');
-      }
-    } catch (err: any) {
-      triggerModal('Task Creation Failed', err.response?.data?.message || 'The task could not be created.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="space-y-6 animate-in fade-in duration-350">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Studio Task Allocation Board</h1>
-          <p className="text-sm text-slate-500 font-semibold mt-1">Allocate work (sketching, backgrounds, screentones, effects) to assistants and inspect submissions.</p>
-        </div>
-        <button
-          onClick={handleCreateTask}
-          disabled={submitting}
-          className="inline-flex items-center gap-1 px-3 py-2 text-xs font-bold text-white bg-burgundy-850 hover:bg-burgundy-900 rounded-lg transition-colors disabled:opacity-60"
-        >
-          <Plus size={14} />
-          <span>{submitting ? 'Creating…' : 'Create Task'}</span>
-        </button>
-      </div>
-
-      <TaskTable tasks={tasks} onAction={handleTaskAction} />
-    </div>
-  );
+import { AnnotationResponse, ChapterResponse, CreateTaskRequest, PageResponse, SeriesResponse, TaskPriority, TaskResponse } from '@/types/manga';
+import { isValidNonEmptyGuid } from '@/lib/guid';
+interface Props { triggerModal: (title: string, content: string) => void; }
+const errorMessage = (error: unknown) => { const data = (error as { response?: { data?: { message?: string } }; message?: string }); return data.response?.data?.message || data.message || 'Không thể tải dữ liệu.'; };
+export default function MangakaTasksTab({ triggerModal }: Props) {
+ const [series, setSeries] = useState<SeriesResponse[]>([]); const [chapters, setChapters] = useState<ChapterResponse[]>([]); const [pages, setPages] = useState<PageResponse[]>([]); const [annotations, setAnnotations] = useState<AnnotationResponse[]>([]); const [assistants, setAssistants] = useState<AssistantDirectoryItem[]>([]); const [tasks, setTasks] = useState<TaskResponse[]>([]);
+ const [seriesId, setSeriesId] = useState(''); const [chapterId, setChapterId] = useState(''); const [pageId, setPageId] = useState(''); const [annotationId, setAnnotationId] = useState(''); const [assignedToUserId, setAssignedToUserId] = useState(''); const [title, setTitle] = useState(''); const [error, setError] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [creating, setCreating] = useState(false);
+ const refreshTasks = async () => { const response = await mangaApi.getMyTasks(); if (response.data.success) setTasks(response.data.data); };
+ const load = async () => { setLoading(true); setError(null); try { const [seriesResponse, assistantsResponse] = await Promise.all([mangaApi.getSeries(), authApi.getAssistants()]); if (!seriesResponse.data.success || !assistantsResponse.data.success) throw new Error(seriesResponse.data.message || assistantsResponse.data.message); setSeries(seriesResponse.data.data); setAssistants(assistantsResponse.data.data); await refreshTasks(); } catch (error) { setError(errorMessage(error)); } finally { setLoading(false); } };
+ useEffect(() => { void load(); }, []);
+ const selectSeries = async (id: string) => { setSeriesId(id); setChapterId(''); setPageId(''); setAnnotationId(''); setChapters([]); setPages([]); setAnnotations([]); if (!isValidNonEmptyGuid(id)) return; try { const response = await mangaApi.getChapters(id); if (response.data.success) setChapters(response.data.data); } catch (error) { setError(errorMessage(error)); } };
+ const selectChapter = async (id: string) => { setChapterId(id); setPageId(''); setAnnotationId(''); setPages([]); setAnnotations([]); if (!isValidNonEmptyGuid(id)) return; try { const response = await mangaApi.getPages(id); if (response.data.success) setPages(response.data.data); } catch (error) { setError(errorMessage(error)); } };
+ const selectPage = async (id: string) => { setPageId(id); setAnnotationId(''); setAnnotations([]); if (!isValidNonEmptyGuid(id)) return; try { const response = await mangaApi.getPageAnnotations(id); if (response.data.success) setAnnotations(response.data.data); } catch (error) { setError(errorMessage(error)); } };
+ const canCreate = isValidNonEmptyGuid(pageId) && isValidNonEmptyGuid(annotationId) && isValidNonEmptyGuid(assignedToUserId) && title.trim().length > 0;
+ const createTask = async () => { if (!canCreate) return; setCreating(true); setError(null); try { const request: CreateTaskRequest = { pageId, annotationId, assignedToUserId, title: title.trim(), priority: TaskPriority.Medium }; const response = await mangaApi.createTask(request); if (!response.data.success) throw new Error(response.data.message); setTitle(''); setAnnotationId(''); setAssignedToUserId(''); await refreshTasks(); triggerModal('Task created', 'Task assigned to the selected Assistant.'); } catch (error) { setError(errorMessage(error)); } finally { setCreating(false); } };
+ return <div className="space-y-5"><div className="flex justify-between"><h1 className="text-2xl font-bold">Studio Task Allocation Board</h1><button onClick={() => void load()} disabled={loading}><RefreshCw size={14}/> Retry</button></div>{error && <div role="alert">{error} <button onClick={() => void load()}>Retry</button></div>}<section className="bg-white border rounded p-5 space-y-3"><h2>Create task</h2>{loading ? <p>Loading assistants…</p> : <><select aria-label="Series" value={seriesId} onChange={e => void selectSeries(e.target.value)}><option value="">Select series</option>{series.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select><select aria-label="Chapter" disabled={!seriesId} value={chapterId} onChange={e => void selectChapter(e.target.value)}><option value="">Select chapter</option>{chapters.map(item => <option key={item.id} value={item.id}>Chapter {item.chapterNumber}</option>)}</select><select aria-label="Page" disabled={!chapterId} value={pageId} onChange={e => void selectPage(e.target.value)}><option value="">Select page</option>{pages.map(item => <option key={item.id} value={item.id}>Page {item.pageNumber}</option>)}</select><select aria-label="Annotation" disabled={!pageId} value={annotationId} onChange={e => setAnnotationId(e.target.value)}><option value="">Select annotation</option>{annotations.map(item => <option key={item.id} value={item.id}>{item.type}</option>)}</select><select aria-label="Assistant" disabled={assistants.length === 0} value={assignedToUserId} onChange={e => setAssignedToUserId(e.target.value)}><option value="">{assistants.length ? 'Select assistant' : 'No assistants available'}</option>{assistants.map(item => <option key={item.id} value={item.id}>{item.fullName} ({item.email})</option>)}</select><input aria-label="Task title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title"/><button disabled={creating || !canCreate} onClick={() => void createTask()}><Plus size={14}/>{creating ? 'Creating…' : 'Create Task'}</button></>}</section><section><h2>My task review queue</h2>{tasks.map(task => <p key={task.id}>{task.title}</p>)}</section></div>;
 }

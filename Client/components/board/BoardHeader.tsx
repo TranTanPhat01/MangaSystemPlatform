@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
+import { useLogoutAction } from '@/lib/logout';
 import { 
   Menu, 
   Search, 
@@ -21,6 +22,7 @@ interface BoardHeaderProps {
 
 export default function BoardHeader({ onToggleSidebar }: BoardHeaderProps) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const { logout, isLoggingOut } = useLogoutAction();
 
   return (
     <header className="h-16 bg-white/95 backdrop-blur-md border-b border-slate-100 px-5 flex items-center gap-4 shrink-0 sticky top-0 z-20 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
@@ -114,8 +116,12 @@ export default function BoardHeader({ onToggleSidebar }: BoardHeaderProps) {
                   </button>
                 ))}
                 <div className="border-t border-slate-50 pt-1.5 mt-1 px-2">
-                  <button className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-semibold transition-colors">
-                    <LogOut size={13} />Sign Out
+                  <button
+                    onClick={logout}
+                    disabled={isLoggingOut}
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-semibold transition-colors disabled:opacity-50"
+                  >
+                    <LogOut size={13} />{isLoggingOut ? 'Signing Out…' : 'Sign Out'}
                   </button>
                 </div>
               </div>

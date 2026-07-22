@@ -58,7 +58,7 @@ export function useSeries() {
       if (res.data && res.data.success) {
         setSeries((prev) =>
           prev.map((s) =>
-            s.id === id ? { ...s, status: 'Draft' } : s
+            s.id === id ? { ...s, status: 2 } : s
           )
         );
         setSuccessMessage('Series proposal submitted successfully.');

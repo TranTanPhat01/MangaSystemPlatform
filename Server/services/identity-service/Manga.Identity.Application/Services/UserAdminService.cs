@@ -30,6 +30,9 @@ public sealed class UserAdminService : IUserAdminService
         _passwordHasher = passwordHasher;
     }
 
+    public Task<IReadOnlyList<AssistantDirectoryItemResponse>> GetActiveAssistantsAsync(CancellationToken cancellationToken = default) =>
+        _users.GetActiveAssistantsAsync(cancellationToken);
+
     public async Task<Result<PagedResponse<AdminUserListItemResponse>>> GetUsersAsync(AdminUserListQuery query, CancellationToken cancellationToken = default)
     {
         if (query.Page < 1 || query.PageSize is < 1 or > 100)

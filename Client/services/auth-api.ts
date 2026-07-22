@@ -7,6 +7,8 @@ import { api } from '@/lib/api';
 import { ApiResponse } from '@/types/api';
 import { AuthResponse, LoginRequest, RegisterRequest, RefreshTokenRequest } from '@/types/auth';
 
+export interface AssistantDirectoryItem { id: string; fullName: string; email: string; }
+
 export const authApi = {
   /**
    * POST /identity/auth/login
@@ -29,8 +31,8 @@ export const authApi = {
   /**
    * POST /identity/auth/logout
    */
-  logout: () =>
-    api.post<ApiResponse<null>>('/identity/auth/logout'),
+  logout: (data: RefreshTokenRequest) =>
+    api.post<ApiResponse<string>>('/identity/auth/logout', data),
 
   /**
    * GET /identity/users/me
@@ -38,4 +40,7 @@ export const authApi = {
    */
   getMe: () =>
     api.get<ApiResponse<{ id: string; email: string; fullName: string; roles: string[] }>>('/identity/users/me'),
+
+  getAssistants: () =>
+    api.get<ApiResponse<AssistantDirectoryItem[]>>('/identity/users/assistants'),
 };

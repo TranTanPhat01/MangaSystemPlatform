@@ -41,6 +41,14 @@ public sealed class UsersController : ControllerBase
         return Ok(ApiResponse<UserProfileResponse>.Ok(result.Value!));
     }
 
+    [Authorize(Policy = "MangakaOrAdmin")]
+    [HttpGet("assistants")]
+    public async Task<IActionResult> GetActiveAssistants(CancellationToken cancellationToken)
+    {
+        var assistants = await _userAdminService.GetActiveAssistantsAsync(cancellationToken);
+        return Ok(ApiResponse<IReadOnlyList<AssistantDirectoryItemResponse>>.Ok(assistants));
+    }
+
     [Authorize(Policy = PermissionPolicies.RequireAdminUserRead)]
     [HttpGet]
     public async Task<IActionResult> GetUsers([FromQuery] AdminUserListQuery query, CancellationToken cancellationToken)

@@ -1,8 +1,9 @@
 import React from 'react';
 import { clsx } from 'clsx';
-import { FileImage, Paperclip, Download, Upload, Play, Wrench } from 'lucide-react';
+import { FileImage, Paperclip, Download, Upload, Play } from 'lucide-react';
 import { TaskItemUI } from '@/hooks/useTasks';
 import TaskStatusBadge from './TaskStatusBadge';
+import { TaskStatus } from '@/types/manga';
 
 interface TaskDetailPanelProps {
   task: TaskItemUI;
@@ -93,7 +94,7 @@ export default function TaskDetailPanel({
               )}
               {!['Background', 'Shading', 'Effects'].includes(task.annotationType) && (
                 <p className="text-[10px] text-slate-400 leading-relaxed">
-                  Follow the annotation guide provided in the reference files. Complete the highlighted region according to the Mangaka's instructions.
+                  Follow the annotation guide provided in the reference files. Complete the highlighted region according to the Mangaka&apos;s instructions.
                 </p>
               )}
             </div>
@@ -130,7 +131,7 @@ export default function TaskDetailPanel({
                 <Download size={13} />Download Reference
               </button>
             )}
-            {task.status === 'Pending' && (
+            {task.status === TaskStatus.Todo && (
               <button
                 onClick={() => onStart(task.id)}
                 disabled={isStarting}
@@ -140,7 +141,7 @@ export default function TaskDetailPanel({
                 {isStarting ? 'Starting...' : 'Start Task'}
               </button>
             )}
-            {(task.status === 'InProgress' || task.status === 'RevisionRequired') && (
+            {(task.status === TaskStatus.InProgress || task.status === TaskStatus.RevisionRequired) && (
               <button
                 onClick={() => onSubmitClick(task)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition-colors"

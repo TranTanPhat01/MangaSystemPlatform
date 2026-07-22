@@ -8,17 +8,17 @@ interface TaskStatusBadgeProps {
 export default function TaskStatusBadge({ status }: TaskStatusBadgeProps) {
   const getStyle = () => {
     switch (status) {
-      case 'Pending':
+      case TaskStatus.Todo:
         return 'bg-slate-800 text-slate-400 border border-slate-700/60';
-      case 'InProgress':
+      case TaskStatus.InProgress:
         return 'bg-indigo-650/10 text-indigo-400 border border-indigo-500/20';
-      case 'Submitted':
+      case TaskStatus.Submitted:
         return 'bg-teal-500/10 text-teal-400 border border-teal-500/20';
-      case 'Approved':
+      case TaskStatus.Approved:
         return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-      case 'RevisionRequired':
+      case TaskStatus.RevisionRequired:
         return 'bg-rose-500/10 text-rose-455 border border-rose-500/20';
-      case 'Cancelled':
+      case TaskStatus.Cancelled:
         return 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
       default:
         return 'bg-slate-500/10 text-slate-400 border border-slate-500/20';
@@ -26,9 +26,10 @@ export default function TaskStatusBadge({ status }: TaskStatusBadgeProps) {
   };
 
   const getLabel = () => {
-    if (status === 'InProgress') return 'In Progress';
-    if (status === 'RevisionRequired') return 'Revision Required';
-    return status;
+    if (status === TaskStatus.Todo) return 'To do';
+    if (status === TaskStatus.InProgress) return 'In Progress';
+    if (status === TaskStatus.RevisionRequired) return 'Revision Required';
+    return TaskStatus[status];
   };
 
   return (

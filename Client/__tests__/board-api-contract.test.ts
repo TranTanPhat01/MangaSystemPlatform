@@ -1,0 +1,10 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+const { get, post } = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
+vi.mock('@/lib/api', () => ({ api: { get, post } }));
+import { editorialApi } from '@/services/editorial-api';
+describe('board API contracts', () => {
+  beforeEach(() => { vi.clearAllMocks(); post.mockResolvedValue({ data: { success: true } }); get.mockResolvedValue({ data: { success: true } }); });
+  it('uses the series vote contract and finalize body', async () => { await editorialApi.voteProposal('series-1', { voteValue: 1, note: 'ok' }); await editorialApi.finalizeProposal('series-1', { adminOverride: false, reason: 'quorum' }); expect(post).toHaveBeenNthCalledWith(1, '/editorial/series/series-1/votes', { voteValue: 1, note: 'ok' }); expect(post).toHaveBeenNthCalledWith(2, '/editorial/series/series-1/finalize-proposal', { adminOverride: false, reason: 'quorum' }); });
+  it('uses only issue-scoped ranking routes', async () => { await editorialApi.inputReaderVote('issue-1', { seriesId: 'series-1', voteCount: 8 }); await editorialApi.calculateRanking('issue-1'); await editorialApi.getRankings('issue-1'); expect(post).toHaveBeenNthCalledWith(1, '/editorial/issues/issue-1/reader-votes', { seriesId: 'series-1', voteCount: 8 }); expect(post).toHaveBeenNthCalledWith(2, '/editorial/issues/issue-1/calculate-ranking'); expect(get).toHaveBeenCalledWith('/editorial/issues/issue-1/rankings'); });
+  it('posts schedule with numeric publication type and no unsupported fields', async () => { await editorialApi.createPublicationSchedule({ seriesId: 'series-1', chapterId: 'chapter-1', publicationType: 1, scheduledDate: '2026-07-22T00:00:00.000Z' }); const body = post.mock.calls[0][1]; expect(post).toHaveBeenCalledWith('/editorial/publication-schedules', body); expect(body).toEqual(expect.objectContaining({ chapterId: 'chapter-1', publicationType: 1 })); expect(body).not.toHaveProperty('notes'); expect(body).not.toHaveProperty('isPublished'); });
+});

@@ -9,15 +9,15 @@ import { EditorialReviewResponse, ReviewStatus } from '@/types/editorial';
 // Status Badge Helper
 function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
   const map: Record<ReviewStatus, string> = {
-    Pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    InProgress: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    Approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    RevisionRequested: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    Rejected: 'bg-rose-500/10 text-rose-450 border-rose-500/20',
+    [ReviewStatus.Pending]: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    [ReviewStatus.InReview]: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+    [ReviewStatus.Approved]: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    [ReviewStatus.RevisionRequested]: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+    [ReviewStatus.Rejected]: 'bg-rose-500/10 text-rose-450 border-rose-500/20',
   };
   return (
     <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${map[status] || 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
-      {status}
+      {ReviewStatus[status]}
     </span>
   );
 }
@@ -37,20 +37,23 @@ export function TantouEditorDashboard() {
       } else {
         setError(res.data.message || 'Failed to load reviews.');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Could not fetch review queue.');
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: unknown; error?: unknown } }; message?: unknown };
+      const message = apiError.response?.data?.message ?? apiError.response?.data?.error ?? apiError.message;
+      setError(typeof message === 'string' && message.trim() ? message : 'Could not fetch review queue.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchReviews();
+    const timer = window.setTimeout(() => { void fetchReviews(); }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
-  const pendingCount = reviews.filter(r => r.status === 'Pending').length;
-  const inProgressCount = reviews.filter(r => r.status === 'InProgress').length;
-  const completedCount = reviews.filter(r => ['Approved', 'Rejected', 'RevisionRequested'].includes(r.status)).length;
+  const pendingCount = reviews.filter(r => r.status === ReviewStatus.Pending).length;
+  const inProgressCount = reviews.filter(r => r.status === ReviewStatus.InReview).length;
+  const completedCount = reviews.filter(r => [ReviewStatus.Approved, ReviewStatus.Rejected, ReviewStatus.RevisionRequested].includes(r.status)).length;
 
   return (
     <DashboardLayoutWrapper>
@@ -141,10 +144,10 @@ export function TantouEditorDashboard() {
                 <div key={review.id} className="p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3 hover:bg-slate-850/20 transition-colors">
                   <div>
                     <h4 className="text-xs font-bold text-slate-200">
-                      {review.seriesTitle} · {review.chapterTitle || 'Untitled Chapter'}
+                      Series {review.seriesId.slice(0, 8)} · Chapter {review.chapterId.slice(0, 8)}
                     </h4>
                     <p className="text-[10px] text-slate-500 mt-1 font-semibold">
-                      Submitted: {new Date(review.submittedAt).toLocaleDateString()}
+                      Created: {new Date(review.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">

@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { mangaApi } from '@/services/manga-api';
 import { fileApi } from '@/services/file-api';
-import { TaskResponse } from '@/types/manga';
+import { TaskResponse, TaskStatus as ApiTaskStatus, TaskPriority as ApiTaskPriority } from '@/types/manga';
 import { Task, TaskStatus, TaskPriority, TaskAction } from '@/types/assistant';
-import { TASKS } from '@/data/mock/assistant.mock';
 
 export function useAssistantDashboard() {
-  const [selectedTask, setSelectedTask] = useState<Task>(TASKS[0]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [apiTasks, setApiTasks] = useState<TaskResponse[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tasksError, setTasksError] = useState<string | null>(null);
@@ -34,10 +33,11 @@ export function useAssistantDashboard() {
     fetchMyTasks();
   }, []);
 
-  const mapApiStatus = (s: string): TaskStatus => {
-    if (s === 'InProgress') return 'In Progress';
-    if (s === 'RevisionRequired') return 'Revision Required';
-    return s as TaskStatus;
+  const mapApiStatus = (status: ApiTaskStatus): TaskStatus => {
+    if (status === ApiTaskStatus.Todo) return 'Pending';
+    if (status === ApiTaskStatus.InProgress) return 'In Progress';
+    if (status === ApiTaskStatus.RevisionRequired) return 'Revision Required';
+    return status === ApiTaskStatus.Submitted ? 'Submitted' : status === ApiTaskStatus.Approved ? 'Approved' : 'Pending';
   };
 
   const startTask = async (taskId: string) => {
@@ -64,7 +64,7 @@ export function useAssistantDashboard() {
     setSubmissionMessage(null);
     try {
       const currentTask = apiTasks.find((task) => task.id === taskId);
-      if (currentTask && ['Pending', 'RevisionRequired'].includes(String(currentTask.status))) {
+      if (currentTask && (currentTask.status === ApiTaskStatus.Todo || currentTask.status === ApiTaskStatus.RevisionRequired)) {
         await mangaApi.startTask(taskId);
       }
 
@@ -75,7 +75,7 @@ export function useAssistantDashboard() {
 
       const submitRes = await mangaApi.submitTask(taskId, {
         fileId: uploadRes.data.data.id,
-        note,
+        ...(note?.trim() ? { note: note.trim() } : {}),
       });
 
       if (submitRes.data?.success) {
@@ -95,30 +95,30 @@ export function useAssistantDashboard() {
     }
   };
 
-  const mapApiPriority = (p: string): TaskPriority => (p as TaskPriority) || 'Medium';
+  const mapApiPriority = (priority: ApiTaskPriority): TaskPriority => ApiTaskPriority[priority] as TaskPriority;
 
-  const useMockFallback = tasksError !== null || (apiTasks.length === 0 && !tasksLoading && !tasksError);
+  const useMockFallback = false;
   const displayTasks: Task[] = apiTasks.length > 0
     ? apiTasks.map((t) => ({
         id: t.id,
-        title: t.title || t.description || 'Untitled task',
-        series: t.seriesTitle || 'Studio workspace',
-        chapter: t.chapterTitle ? `${t.chapterTitle} P${String(t.pageNumber ?? '?').padStart(2, '0')}` : `Page ${t.pageNumber ?? '?'}`,
-        annotationType: t.description || 'Production task',
-        priority: mapApiPriority(String(t.priority)),
+        title: t.title,
+        series: `Assignee ${t.assignedToUserId.slice(0, 8)}`,
+        chapter: `Page ${t.pageNumber}`,
+        annotationType: `Annotation ${t.annotationId.slice(0, 8)}`,
+        priority: mapApiPriority(t.priority),
         deadline: t.deadline ? new Date(t.deadline).toLocaleDateString() : '—',
-        deadlineOverdue: t.deadline ? new Date(t.deadline) < new Date() && t.status !== 'Approved' : false,
-        status: mapApiStatus(String(t.status)),
-        action: (String(t.status) === 'InProgress' ? 'Continue' : String(t.status) === 'RevisionRequired' ? 'Fix Now' : String(t.status) === 'Submitted' ? 'View' : 'Review') as TaskAction,
+        deadlineOverdue: t.deadline ? new Date(t.deadline) < new Date() && t.status !== ApiTaskStatus.Approved : false,
+        status: mapApiStatus(t.status),
+        action: (t.status === ApiTaskStatus.InProgress ? 'Continue' : t.status === ApiTaskStatus.RevisionRequired ? 'Fix Now' : t.status === ApiTaskStatus.Submitted ? 'View' : 'Review') as TaskAction,
         color: 'bg-indigo-500',
       }))
-    : TASKS;
+    : [];
 
   // Make sure selectedTask points to a valid task when displayTasks update
   useEffect(() => {
     if (displayTasks.length > 0) {
       // Find matching task or default to first
-      const found = displayTasks.find(t => t.id === selectedTask.id);
+      const found = displayTasks.find(t => t.id === selectedTask?.id);
       if (found) {
         setSelectedTask(found);
       } else {

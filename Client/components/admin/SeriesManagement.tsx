@@ -16,8 +16,51 @@ import {
 } from 'lucide-react';
 import { adminApi, StudioResponse } from '@/services/admin-api';
 import { mangaApi } from '@/services/manga-api';
-import { SeriesResponse, SeriesStatus } from '@/types/manga';
+import { SeriesResponse, UpdateSeriesRequest, UpdateSeriesStatus } from '@/types/manga';
 import ChapterManagement from './ChapterManagement';
+
+const seriesStatusByName: Readonly<Record<string, UpdateSeriesStatus>> = {
+  Draft: 1,
+  Submitted: 2,
+  Approved: 3,
+  Ongoing: 4,
+  Hiatus: 5,
+  Cancelled: 6,
+  Completed: 7,
+  RevisionRequested: 8,
+  Rejected: 9,
+};
+
+const isUpdateSeriesStatus = (value: number): value is UpdateSeriesStatus =>
+  value >= 1 && value <= 9 && Number.isInteger(value);
+
+const toUpdateSeriesStatus = (status: unknown): UpdateSeriesStatus => {
+  if (typeof status === 'number' && isUpdateSeriesStatus(status)) {
+    return status;
+  }
+
+  return typeof status === 'string' ? seriesStatusByName[status] ?? 1 : 1;
+};
+
+const getRequestErrorMessage = (error: unknown, fallback: string): string => {
+  if (typeof error !== 'object' || error === null) {
+    return fallback;
+  }
+
+  const requestError = error as {
+    message?: unknown;
+    response?: { data?: { message?: unknown; error?: unknown } };
+  };
+  const apiMessage = requestError.response?.data?.message ?? requestError.response?.data?.error;
+
+  if (typeof apiMessage === 'string' && apiMessage.trim()) {
+    return apiMessage;
+  }
+
+  return typeof requestError.message === 'string' && requestError.message.trim()
+    ? requestError.message
+    : fallback;
+};
 
 export function SeriesManagement() {
   // Data list states
@@ -51,7 +94,7 @@ export function SeriesManagement() {
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editGenre, setEditGenre] = useState('');
-  const [editStatus, setEditStatus] = useState<number>(1); // enum status
+  const [editStatus, setEditStatus] = useState<UpdateSeriesStatus>(1);
 
   // Feedback states
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -165,25 +208,48 @@ export function SeriesManagement() {
   const handleEditSeriesSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSeries) return;
+
+    const nextTitle = editTitle.trim();
+    const nextDescription = editDesc.trim();
+    const nextGenre = editGenre.trim();
+    const payload: UpdateSeriesRequest = {};
+
+    if (!nextTitle) {
+      triggerError('Series title is required.');
+      return;
+    }
+
+    if (nextTitle !== selectedSeries.title) {
+      payload.title = nextTitle;
+    }
+    if (nextDescription !== (selectedSeries.description ?? '')) {
+      payload.description = nextDescription;
+    }
+    if (nextGenre !== (selectedSeries.genre ?? '')) {
+      payload.genre = nextGenre;
+    }
+    if (editStatus !== toUpdateSeriesStatus(selectedSeries.status)) {
+      payload.status = editStatus;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setIsEditModalOpen(false);
+      triggerSuccess('No series changes to save.');
+      return;
+    }
+
     setActionLoading('edit-series');
     try {
-      const res = await adminApi.updateSeries(selectedSeries.id, {
-        title: editTitle.trim(),
-        description: editDesc.trim() || undefined,
-        genre: editGenre.trim() || undefined,
-        status: editStatus
-      });
+      const res = await mangaApi.updateSeries(selectedSeries.id, payload);
       if (res.data.success) {
         triggerSuccess('Series details updated successfully.');
         setIsEditModalOpen(false);
-        fetchSeries();
-        // Update selected view
-        setSelectedSeries(prev => prev ? { ...prev, title: editTitle, description: editDesc, genre: editGenre } : null);
+        await fetchSeries();
       } else {
         triggerError(res.data.message || 'Failed to update series.');
       }
-    } catch (err: any) {
-      triggerError(err.response?.data?.message || err.message || 'Failed to update series.');
+    } catch (err: unknown) {
+      triggerError(getRequestErrorMessage(err, 'Failed to update series.'));
     } finally {
       setActionLoading(null);
     }
@@ -251,19 +317,7 @@ export function SeriesManagement() {
     setEditTitle(series.title);
     setEditDesc(series.description || '');
     setEditGenre(series.genre || '');
-    // Map status string back to enum code for simplicity
-    const statusMap: Record<string, number> = {
-      'Draft': 1,
-      'Submitted': 2,
-      'Approved': 3,
-      'Ongoing': 4,
-      'Hiatus': 5,
-      'Cancelled': 6,
-      'Completed': 7,
-      'RevisionRequested': 8,
-      'Rejected': 9
-    };
-    setEditStatus(statusMap[series.status] || 1);
+    setEditStatus(toUpdateSeriesStatus(series.status));
     setIsEditModalOpen(true);
   };
 
@@ -271,7 +325,7 @@ export function SeriesManagement() {
   const filteredList = seriesList.filter(s => {
     const matchesSearch = s.title.toLowerCase().includes(search.toLowerCase()) || 
                           (s.genre && s.genre.toLowerCase().includes(search.toLowerCase()));
-    const matchesStatus = statusFilter === '' || s.status === statusFilter;
+    const matchesStatus = statusFilter === '' || s.status === Number(statusFilter);
     return matchesSearch && matchesStatus;
   });
 
@@ -329,13 +383,7 @@ export function SeriesManagement() {
               className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-350 focus:outline-none focus:border-indigo-500 font-semibold"
             >
               <option value="">All Statuses</option>
-              <option value="Draft">Draft</option>
-              <option value="Submitted">Submitted</option>
-              <option value="Approved">Approved</option>
-              <option value="Ongoing">Ongoing</option>
-              <option value="Hiatus">Hiatus</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
+              <option value="1">Draft</option><option value="2">Submitted</option><option value="3">Approved</option><option value="4">Ongoing</option><option value="5">Hiatus</option><option value="6">Cancelled</option><option value="7">Completed</option>
             </select>
           </div>
 
@@ -387,8 +435,8 @@ export function SeriesManagement() {
                 ) : (
                   paginatedList.map((s) => {
                     const isSelected = selectedSeries?.id === s.id;
-                    const isDraft = s.status === 'Draft';
-                    const isSubmitted = s.status === 'Submitted';
+                    const isDraft = s.status === 1;
+                    const isSubmitted = s.status === 2;
                     
                     return (
                       <tr 
@@ -405,10 +453,10 @@ export function SeriesManagement() {
                           )}
                         </td>
                         <td className="p-4 text-slate-300 font-semibold">{s.genre || 'N/A'}</td>
-                        <td className="p-4 text-slate-400 font-mono font-bold">{s.chapterCount || 0}</td>
+                        <td className="p-4 text-slate-400 font-mono font-bold">—</td>
                         <td className="p-4">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            s.status === 'Ongoing' 
+                            s.status === 4 
                               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                               : isSubmitted 
                                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
@@ -723,7 +771,7 @@ export function SeriesManagement() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</label>
                 <select
                   value={editStatus}
-                  onChange={(e) => setEditStatus(Number(e.target.value))}
+                  onChange={(e) => setEditStatus(toUpdateSeriesStatus(Number(e.target.value)))}
                   className="w-full bg-slate-955 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-350 focus:outline-none focus:border-indigo-500 font-semibold"
                 >
                   <option value={1}>Draft</option>

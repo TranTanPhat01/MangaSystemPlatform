@@ -1,33 +1,55 @@
 // ─── Manga Domain DTOs ────────────────────────────────────────────────────────
 // All types based on MangaSystemPlatform backend response structure
 
-export type SeriesStatus = 'Draft' | 'Submitted' | 'Approved' | 'Ongoing' | 'Hiatus' | 'Completed' | 'Cancelled' | 'RevisionRequested' | 'Rejected' | 'Active';
-export type PublicationFrequency = 'Weekly' | 'Biweekly' | 'Monthly' | 'Irregular';
+export type SeriesStatus = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type ChapterStatus = 'Draft' | 'InProduction' | 'SubmittedForReview' | 'RevisionRequired' | 'Approved' | 'Scheduled' | 'Published' | 'Rejected' | 'InProgress';
-export type TaskStatus = 'Pending' | 'InProgress' | 'Submitted' | 'Approved' | 'RevisionRequired' | 'Cancelled';
-export type TaskPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+export enum TaskStatus {
+  Todo = 1,
+  InProgress = 2,
+  Submitted = 3,
+  RevisionRequired = 4,
+  Approved = 5,
+  Cancelled = 6,
+}
+export enum TaskPriority {
+  Low = 1,
+  Medium = 2,
+  High = 3,
+  Urgent = 4,
+}
 export type AnnotationType = 'Background' | 'CharacterInk' | 'Screentone' | 'Effects' | 'Lettering' | 'Color' | 'Other';
 
 export interface SeriesResponse {
   id: string;
+  studioId: string;
   title: string;
-  description?: string;
-  mangakaId: string;
-  mangakaName?: string;
-  genre?: string;
+  description?: string | null;
+  genre?: string | null;
   status: SeriesStatus;
-  frequency?: PublicationFrequency;
-  coverImageUrl?: string;
-  chapterCount: number;
+  createdBy: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
 }
 
 export interface CreateSeriesRequest {
+  studioId: string;
   title: string;
   description?: string;
   genre?: string;
-  frequency?: PublicationFrequency;
+}
+
+/**
+ * Matches the numeric JSON representation of the backend SeriesStatus enum.
+ * The Manga Management API does not configure JsonStringEnumConverter.
+ */
+export type UpdateSeriesStatus = SeriesStatus;
+
+/** Matches Manga.Management.Application.DTOs.UpdateSeriesRequest. */
+export interface UpdateSeriesRequest {
+  title?: string;
+  description?: string;
+  genre?: string;
+  status?: UpdateSeriesStatus;
 }
 
 export interface ChapterResponse {
@@ -69,33 +91,31 @@ export interface AnnotationResponse {
 
 export interface TaskResponse {
   id: string;
-  title?: string;
+  annotationId: string;
   pageId: string;
-  chapterId?: string;
-  seriesId?: string;
-  seriesTitle?: string;
-  chapterTitle?: string;
-  pageNumber?: number;
-  assignedToId: string;
-  assignedToName?: string;
-  assignedById?: string;
-  annotationType?: AnnotationType;
+  pageNumber: number;
+  pageFileId?: string | null;
+  title: string;
   description?: string;
+  assignedToUserId: string;
+  createdByUserId: string;
   priority: TaskPriority;
   status: TaskStatus;
-  deadline?: string;
-  fileAssetId?: string;
-  submittedFileUrl?: string;
-  revisionNote?: string;
-  startedAt?: string;
-  submittedAt?: string;
-  approvedAt?: string;
+  deadline?: string | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string | null;
+  latestSubmission?: TaskSubmissionResponse | null;
+  revisions: TaskRevisionResponse[];
 }
 
-export interface StartTaskRequest {
-  taskId: string;
+export interface CreateTaskRequest {
+  annotationId: string;
+  pageId: string;
+  title: string;
+  description?: string;
+  assignedToUserId: string;
+  priority: TaskPriority;
+  deadline?: string;
 }
 
 export interface SubmitTaskRequest {
@@ -103,9 +123,26 @@ export interface SubmitTaskRequest {
   note?: string;
 }
 
+export interface RequestTaskRevisionRequest {
+  reason: string;
+}
 
-export interface RequestRevisionRequest {
-  revisionNote: string;
+export interface TaskSubmissionResponse {
+  id: string;
+  taskId: string;
+  submittedByUserId: string;
+  fileId?: string | null;
+  note?: string | null;
+  status: 1 | 2 | 3;
+  submittedAt: string;
+}
+
+export interface TaskRevisionResponse {
+  id: string;
+  taskId: string;
+  requestedByUserId: string;
+  reason: string;
+  createdAt: string;
 }
 
 export interface SubmissionResponse {

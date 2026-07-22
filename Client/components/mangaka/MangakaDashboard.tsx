@@ -22,7 +22,6 @@ export function MangakaDashboard() {
     modalInfo,
     setModalInfo,
     triggerModal,
-    tasks,
     handleTaskAction,
     filteredTasks,
     series,
@@ -63,8 +62,6 @@ export function MangakaDashboard() {
       case 'Tasks':
         return (
           <MangakaTasksTab
-            tasks={tasks}
-            handleTaskAction={handleTaskAction}
             triggerModal={triggerModal}
           />
         );

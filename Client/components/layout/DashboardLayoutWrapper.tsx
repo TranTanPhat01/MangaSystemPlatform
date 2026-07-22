@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth-store';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useLogoutAction } from '@/lib/logout';
 import Link from 'next/link';
 import { clsx } from 'clsx';
 import { 
@@ -26,9 +27,9 @@ interface DashboardLayoutWrapperProps {
 }
 
 export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrapperProps) {
-  const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
+  const { logout, isLoggingOut } = useLogoutAction();
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -87,11 +88,6 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
   };
 
   const navLinks = getNavLinks();
-
-  const handleLogout = () => {
-    logout();
-    router.replace('/login');
-  };
 
   const getPageTitle = () => {
     if (pathname === '/dashboard') return 'Overview';
@@ -204,11 +200,12 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
             {/* Profile Dropdown & Logout */}
             <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
               <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-200"
+                onClick={logout}
+                disabled={isLoggingOut}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-200 disabled:opacity-50"
               >
                 <LogOut size={13} />
-                <span>Sign Out</span>
+                <span>{isLoggingOut ? 'Signing Out…' : 'Sign Out'}</span>
               </button>
             </div>
           </div>

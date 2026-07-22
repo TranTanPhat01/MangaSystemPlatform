@@ -3,7 +3,6 @@ import { useAuthStore } from '@/store/auth-store';
 import { mangaApi } from '@/services/manga-api';
 import { SeriesResponse, TaskResponse } from '@/types/manga';
 import { TaskItem } from '@/components/mangaka/TaskTable';
-import { INITIAL_TASKS } from '@/data/mock/mangaka.mock';
 
 export function useMangakaDashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -15,7 +14,7 @@ export function useMangakaDashboard() {
   const [seriesLoading, setSeriesLoading] = useState(false);
   const [seriesError, setSeriesError] = useState<string | null>(null);
 
-  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [tasksError, setTasksError] = useState<string | null>(null);
 
@@ -47,15 +46,13 @@ export function useMangakaDashboard() {
           id: task.id,
           taskName: task.title || task.description || 'Studio task',
           page: `P${task.pageNumber ?? '?'}`,
-          assistant: user?.fullName || 'Assistant',
-          status: task.status === 'Submitted' ? 'Submitted' : task.status === 'RevisionRequired' ? 'Revision Required' : 'In Progress',
-          priority: task.priority || 'Medium',
+          assistant: task.assignedToUserId.slice(0, 8),
+          status: task.status === 3 ? 'Submitted' : task.status === 4 ? 'Revision Required' : task.status === 1 ? 'Pending' : 'In Progress',
+          priority: String(task.priority),
           deadline: task.deadline ? new Date(task.deadline).toLocaleDateString() : 'TBD',
-          actionText: task.status === 'Submitted' ? 'Review' : 'Open',
+          actionText: task.status === 3 ? 'Review' : 'Open',
         }));
-        if (mapped.length > 0) {
-          setTasks(mapped);
-        }
+        setTasks(mapped);
       } else {
         setTasksError(res.data?.message || 'No task stream available yet.');
       }

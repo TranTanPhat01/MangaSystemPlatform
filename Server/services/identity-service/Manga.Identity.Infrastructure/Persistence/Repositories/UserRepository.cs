@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Manga.Identity.Application.Abstractions;
 using Manga.Identity.Domain.Entities;
+using Manga.Identity.Domain.Enums;
+using Manga.Identity.Application.DTOs;
 
 namespace Manga.Identity.Infrastructure.Persistence.Repositories;
 
@@ -28,6 +30,15 @@ internal sealed class UserRepository : IUserRepository
     public async Task<IReadOnlyList<User>> ListAsync(CancellationToken cancellationToken = default) =>
         await IncludeRoles(_dbContext.Users)
             .OrderBy(user => user.Email)
+            .ToArrayAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<AssistantDirectoryItemResponse>> GetActiveAssistantsAsync(CancellationToken cancellationToken = default) =>
+        await _dbContext.Users.AsNoTracking()
+            .Where(user => user.Status == UserStatus.Active && user.DeletedAt == null &&
+                user.UserRoles.Any(userRole => userRole.Role != null && userRole.Role.Name == "Assistant"))
+            .OrderBy(user => user.FullName)
+            .ThenBy(user => user.Email)
+            .Select(user => new AssistantDirectoryItemResponse(user.Id, user.FullName ?? string.Empty, user.Email))
             .ToArrayAsync(cancellationToken);
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default) =>

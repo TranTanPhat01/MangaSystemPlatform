@@ -18,7 +18,6 @@ export default function TasksPage() {
     isSubmitting,
     error,
     successMessage,
-    useMockFallback,
     fetchTasks,
     selectTask,
     startTask,

@@ -4,6 +4,7 @@ import { AlertTriangle, Calendar, Play, Send, Eye, Download, ShieldAlert } from 
 import { TaskItemUI } from '@/hooks/useTasks';
 import TaskStatusBadge from './TaskStatusBadge';
 import TaskPriorityBadge from './TaskPriorityBadge';
+import { TaskStatus } from '@/types/manga';
 
 interface TaskListTableProps {
   tasks: TaskItemUI[];
@@ -28,11 +29,11 @@ export default function TaskListTable({
 }: TaskListTableProps) {
   const handleActionButton = (e: React.MouseEvent, task: TaskItemUI) => {
     e.stopPropagation();
-    if (task.status === 'Pending') {
+    if (task.status === TaskStatus.Todo) {
       onStart(task.id);
-    } else if (task.status === 'InProgress' || task.status === 'RevisionRequired') {
+    } else if (task.status === TaskStatus.InProgress || task.status === TaskStatus.RevisionRequired) {
       onSubmitClick(task);
-    } else if (task.status === 'Submitted') {
+    } else if (task.status === TaskStatus.Submitted) {
       alert('Tác vụ đã nộp, vui lòng chờ Mangaka phê duyệt.');
     }
   };
@@ -109,17 +110,17 @@ export default function TaskListTable({
                       <Download size={14} />
                     </button>
                   )}
-                  {task.status !== 'Approved' && task.status !== 'Cancelled' && (
+                  {task.status !== TaskStatus.Approved && task.status !== TaskStatus.Cancelled && (
                     <button
                       onClick={(e) => handleActionButton(e, task)}
                       disabled={isStarting || isSubmitting}
                       className={clsx(
                         'px-2.5 py-1 text-[10px] font-bold rounded-lg border uppercase transition-all shadow-sm',
-                        task.status === 'Pending' && 'bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border-indigo-500/20 hover:border-indigo-600',
-                        (task.status === 'InProgress' || task.status === 'RevisionRequired') && 'bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border-emerald-500/20 hover:border-emerald-600'
+                        task.status === TaskStatus.Todo && 'bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border-indigo-500/20 hover:border-indigo-600',
+                        (task.status === TaskStatus.InProgress || task.status === TaskStatus.RevisionRequired) && 'bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border-emerald-500/20 hover:border-emerald-600'
                       )}
                     >
-                      {task.status === 'Pending' ? 'Start' : 'Submit'}
+                      {task.status === TaskStatus.Todo ? 'Start' : 'Submit'}
                     </button>
                   )}
                 </td>

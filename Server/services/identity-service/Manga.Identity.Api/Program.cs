@@ -118,6 +118,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
     options.AddPolicy("EditorialOnly", policy => policy.RequireRole("TantouEditor", "EditorialBoard"));
+    options.AddPolicy("MangakaOrAdmin", policy => policy.RequireRole("Mangaka", "Admin"));
 });
 builder.Services.AddPermissionPolicies();
 

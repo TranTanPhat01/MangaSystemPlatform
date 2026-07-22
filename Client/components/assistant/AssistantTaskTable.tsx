@@ -42,7 +42,7 @@ function actionIcon(action: TaskAction) {
 
 interface AssistantTaskTableProps {
   tasks: Task[];
-  selectedTaskId: string;
+  selectedTaskId?: string;
   onSelectTask: (t: Task) => void;
   tasksLoading: boolean;
   tasksError: string | null;

@@ -52,6 +52,7 @@ public sealed class TaskResponse
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public SubmissionResponse? LatestSubmission { get; set; }
+    public IReadOnlyList<SubmissionResponse> SubmissionHistory { get; set; } = Array.Empty<SubmissionResponse>();
     public IReadOnlyList<RevisionResponse> Revisions { get; set; } = Array.Empty<RevisionResponse>();
 }
 

@@ -83,7 +83,7 @@ export interface AnnotationResponse {
   id: string;
   pageId: string;
   type: AnnotationType;
-  coordinatesJson?: string;
+  coordinatesJson: string;
   description?: string;
   notes?: string;
   createdAt: string;
@@ -105,6 +105,7 @@ export interface TaskResponse {
   createdAt: string;
   updatedAt?: string | null;
   latestSubmission?: TaskSubmissionResponse | null;
+  submissionHistory?: TaskSubmissionResponse[];
   revisions: TaskRevisionResponse[];
 }
 

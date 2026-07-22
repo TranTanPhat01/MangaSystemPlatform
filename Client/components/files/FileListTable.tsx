@@ -1,97 +1,117 @@
-import React, { useState } from 'react';
-import { FileCode, Download, Trash2, ShieldAlert } from 'lucide-react';
-import { MockFileItem } from '@/data/mock/files.mock';
+'use client';
+
+import { ChangeEvent, useCallback, useState } from 'react';
+import { Download, Eye, History, Trash2 } from 'lucide-react';
+import { fileApi } from '@/services/file-api';
+import { FileAssetResponse, FileVersionResponse } from '@/types/file';
 
 interface FileListTableProps {
-  files: MockFileItem[];
+  files: FileAssetResponse[];
   onDownload: (id: string, name: string) => Promise<void>;
-  onDelete: (id: string) => void;
+  onPreview: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onRefresh: () => Promise<void>;
   isLoading: boolean;
 }
 
-export default function FileListTable({ files, onDownload, onDelete, isLoading }: FileListTableProps) {
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+interface ApiFailure {
+  response?: { status?: number; data?: { message?: string } };
+  message?: string;
+}
 
-  const handleDownloadClick = async (file: MockFileItem) => {
-    if (isLoading) return;
-    setDownloadingId(file.id);
+function errorMessage(error: unknown): string {
+  const failure = error as ApiFailure;
+  if (failure.response?.status === 403) return 'Forbidden: you do not have permission to view file versions.';
+  return failure.response?.data?.message ?? failure.message ?? 'Unable to load file versions.';
+}
+
+export default function FileListTable({ files, onDownload, onPreview, onDelete, onRefresh, isLoading }: FileListTableProps) {
+  const [selectedFile, setSelectedFile] = useState<FileAssetResponse | null>(null);
+  const [versions, setVersions] = useState<FileVersionResponse[]>([]);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+  const [isUploadingVersion, setIsUploadingVersion] = useState(false);
+  const [versionError, setVersionError] = useState<string | null>(null);
+
+  const loadVersions = useCallback(async (file: FileAssetResponse) => {
+    setSelectedFile(file);
+    setIsLoadingVersions(true);
+    setVersionError(null);
     try {
-      await onDownload(file.id, file.name);
+      const response = await fileApi.getFileVersions(file.id);
+      if (!response.data.success) throw new Error(response.data.message);
+      setVersions([...response.data.data].sort((left, right) => right.versionNumber - left.versionNumber));
+    } catch (error) {
+      setVersions([]);
+      setVersionError(errorMessage(error));
     } finally {
-      setDownloadingId(null);
+      setIsLoadingVersions(false);
+    }
+  }, []);
+
+  const uploadVersion = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedFile || isUploadingVersion) return;
+
+    setIsUploadingVersion(true);
+    setVersionError(null);
+    try {
+      const response = await fileApi.createVersion(selectedFile.id, file);
+      if (!response.data.success) throw new Error(response.data.message);
+      await Promise.all([loadVersions(selectedFile), onRefresh()]);
+      event.target.value = '';
+    } catch (error) {
+      setVersionError(errorMessage(error));
+    } finally {
+      setIsUploadingVersion(false);
     }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Workspace Files</h3>
-      </div>
-      <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-900/50 text-[10px] uppercase font-bold text-slate-455 tracking-wider">
-                <th className="p-4">File Name</th>
-                <th className="p-4">Size</th>
-                <th className="p-4">Uploaded By</th>
-                <th className="p-4">Date</th>
-                <th className="p-4 text-right">Actions</th>
+    <section aria-labelledby="workspace-files-heading">
+      <h3 id="workspace-files-heading">Workspace Files</h3>
+      {isLoading ? <p>Loading files…</p> : files.length === 0 ? <p>No files found.</p> : (
+        <table>
+          <thead><tr><th>Name</th><th>Size</th><th>Category</th><th>Actions</th></tr></thead>
+          <tbody>
+            {files.map((file) => (
+              <tr key={file.id}>
+                <td>{file.originalFileName}</td><td>{file.sizeBytes} bytes</td><td>{file.category}</td>
+                <td>
+                  <button aria-label={`Download ${file.originalFileName}`} onClick={() => void onDownload(file.id, file.originalFileName)}><Download size={14} /></button>
+                  <button aria-label={`Preview ${file.originalFileName}`} onClick={() => void onPreview(file.id)}><Eye size={14} /></button>
+                  <button aria-label={`View versions for ${file.originalFileName}`} onClick={() => void loadVersions(file)}><History size={14} /></button>
+                  <button aria-label={`Delete ${file.originalFileName}`} onClick={() => void onDelete(file.id)}><Trash2 size={14} /></button>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 text-xs text-slate-350">
-              {files.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500 font-semibold">
-                    No files found in workspace.
-                  </td>
-                </tr>
-              ) : (
-                files.map((file) => (
-                  <tr key={file.id} className="hover:bg-slate-900/20 transition-colors">
-                    <td className="p-4 font-semibold text-slate-250 flex items-center gap-2">
-                      <FileCode size={16} className="text-slate-500 shrink-0" />
-                      <span className="truncate max-w-[200px] sm:max-w-xs md:max-w-md block" title={file.name}>
-                        {file.name}
-                      </span>
-                      {file.isMock && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
-                          <ShieldAlert size={8} />
-                          Mock Data
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-4 whitespace-nowrap">{file.size}</td>
-                    <td className="p-4 whitespace-nowrap">{file.uploader}</td>
-                    <td className="p-4 whitespace-nowrap">{file.date}</td>
-                    <td className="p-4 text-right space-x-2 whitespace-nowrap">
-                      <button
-                        onClick={() => handleDownloadClick(file)}
-                        disabled={isLoading}
-                        className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={file.isMock ? "Mock download only" : "Download file"}
-                      >
-                        {downloadingId === file.id && isLoading ? (
-                          <div className="h-3.5 w-3.5 border border-slate-400 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Download size={14} />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => onDelete(file.id)}
-                        className="p-1.5 hover:bg-slate-800 text-rose-455 hover:text-rose-350 rounded-md transition-colors"
-                        title="Remove from view"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {selectedFile && (
+        <aside aria-label="File version history">
+          <h4>Version history: {selectedFile.originalFileName}</h4>
+          <p>{selectedFile.versionCount ? `${selectedFile.versionCount} versions reported by File Service.` : 'Current version information is supplied by File Service.'}</p>
+          {versionError && <div role="alert">{versionError}<button onClick={() => void loadVersions(selectedFile)}>Retry</button></div>}
+          <label>
+            <span>Upload new version</span>
+            <input aria-label="Upload new version" type="file" disabled={isUploadingVersion} onChange={(event) => void uploadVersion(event)} />
+          </label>
+          {isUploadingVersion && <p>Uploading version…</p>}
+          {isLoadingVersions ? <p>Loading version history…</p> : !versionError && versions.length === 0 ? <p>No version history found.</p> : (
+            <ul>
+              {versions.map((version, index) => (
+                <li key={version.id}>
+                  <strong>{index === 0 ? 'Current ' : ''}Version {version.versionNumber}</strong>
+                  <span> · {version.storedFileName} · {version.sizeBytes} bytes · {new Date(version.uploadedAt).toLocaleString()}</span>
+                  <button aria-label={`Download version ${version.versionNumber}`} onClick={() => void onDownload(version.fileAssetId, selectedFile.originalFileName)}><Download size={14} /></button>
+                  <button aria-label={`Preview version ${version.versionNumber}`} onClick={() => void onPreview(version.fileAssetId)}><Eye size={14} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      )}
+    </section>
   );
 }

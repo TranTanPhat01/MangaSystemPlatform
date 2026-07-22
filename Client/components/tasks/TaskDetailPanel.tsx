@@ -74,6 +74,10 @@ export default function TaskDetailPanel({
         {/* Right: Instructions & Reference Files */}
         <div className="space-y-5">
           <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Submission history</p>
+            {task.submissionHistory.length === 0 ? <p className="text-xs text-slate-500">No submissions yet.</p> : <div className="space-y-2">{task.submissionHistory.map((submission) => <div key={submission.id} className="border border-slate-800 rounded p-2 text-xs"><p>File: {submission.fileId ?? '—'}</p><p>Submitted by: {submission.submittedByUserId}</p><p>{new Date(submission.submittedAt).toLocaleString()} · Status {submission.status}</p>{submission.note && <p>{submission.note}</p>}{submission.fileId && <button onClick={() => onDownloadAsset(submission.fileId!, `submission-${submission.id}`)}><Download size={12} /> Download</button>}</div>)}</div>}
+          </div>
+          <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Task Instruction</p>
             <div className="bg-slate-950/40 border border-slate-850 rounded-xl p-4">
               <p className="text-[11px] font-bold text-slate-300 mb-1">Annotation Type: <span className="text-indigo-400">{task.annotationType}</span></p>

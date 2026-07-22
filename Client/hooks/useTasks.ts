@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fileApi } from '@/services/file-api';
 import { mangaApi } from '@/services/manga-api';
-import { TaskPriority, TaskResponse, TaskStatus } from '@/types/manga';
+import { TaskPriority, TaskResponse, TaskStatus, TaskSubmissionResponse } from '@/types/manga';
 
 export interface TaskItemUI {
   id: string;
@@ -18,6 +18,8 @@ export interface TaskItemUI {
   pageFileAssetId?: string;
   submittedFileAssetId?: string;
   notes?: string;
+  latestSubmission?: TaskSubmissionResponse | null;
+  submissionHistory: TaskSubmissionResponse[];
   isMock: false;
 }
 
@@ -53,6 +55,8 @@ function toTaskItem(task: TaskResponse): TaskItemUI {
     pageFileAssetId: task.pageFileId ?? undefined,
     submittedFileAssetId: task.latestSubmission?.fileId ?? undefined,
     notes: task.latestSubmission?.note ?? undefined,
+    latestSubmission: task.latestSubmission,
+    submissionHistory: task.submissionHistory ?? (task.latestSubmission ? [task.latestSubmission] : []),
     isMock: false,
   };
 }

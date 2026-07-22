@@ -65,4 +65,7 @@ export const fileApi = {
    */
   getFileVersions: (id: string) =>
     api.get<ApiResponse<FileVersionResponse[]>>(`/files/${id}/versions`),
+
+  createVersion: (id: string, file: File) => { const data=new FormData(); data.append('file',file); return api.post<ApiResponse<FileVersionResponse>>(`/files/${id}/versions`,data,{headers:{'Content-Type':'multipart/form-data'}}); },
+  deleteFile: (id: string) => api.delete<ApiResponse<object>>(`/files/${id}`),
 };

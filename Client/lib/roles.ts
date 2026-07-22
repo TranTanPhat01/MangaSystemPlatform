@@ -1,0 +1,5 @@
+export type AppRole = 'admin'|'mangaka'|'assistant'|'tantoueditor'|'editorialboard';
+export const normalizeRole=(role:string):AppRole|undefined=>{const value=role.toLowerCase().replace(/[\s_-]/g,'');return value==='admin'||value==='mangaka'||value==='assistant'||value==='tantoueditor'||value==='editorialboard'?value:undefined};
+const access:Record<string,AppRole[]>={ '/assistant':['assistant','admin'],'/board':['editorialboard','admin'],'/editorial':['tantoueditor','editorialboard','admin'],'/files':['mangaka','assistant','admin'],'/series':['mangaka','admin'],'/tasks':['mangaka','assistant','admin'],'/admin':['admin']};
+export const canAccessRoute=(roles:string[],pathname:string)=>{const allowed=Object.entries(access).find(([path])=>pathname.startsWith(path))?.[1];return !allowed||roles.map(normalizeRole).some((role)=>role !== undefined && allowed.includes(role))};
+export const getDashboardRoute=(roles:string[])=>{const role=roles.map(normalizeRole).find(Boolean);return role==='admin'?'/admin/users':role==='mangaka'?'/dashboard':role==='assistant'?'/assistant':role==='tantoueditor'?'/editorial':role==='editorialboard'?'/board':'/login'};

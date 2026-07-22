@@ -1,0 +1,3 @@
+import { describe, expect, it } from 'vitest';
+import { canAccessRoute, getDashboardRoute, normalizeRole } from '@/lib/roles';
+describe('role guards',()=>{it('normalizes known roles and rejects unknown values',()=>{expect(normalizeRole('Editorial Board')).toBe('editorialboard');expect(normalizeRole('unknown')).toBeUndefined()});it('authorizes direct routes only for matching roles',()=>{expect(canAccessRoute(['Assistant'],'/assistant')).toBe(true);expect(canAccessRoute(['Assistant'],'/admin')).toBe(false);expect(canAccessRoute(['Mangaka'],'/series')).toBe(true);expect(canAccessRoute(['Mangaka'],'/board')).toBe(false)});it('never maps an unknown role to Mangaka',()=>expect(getDashboardRoute(['unknown'])).toBe('/login'))});

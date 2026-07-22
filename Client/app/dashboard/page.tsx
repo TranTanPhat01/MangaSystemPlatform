@@ -8,6 +8,7 @@ import { AssistantDashboard } from '@/components/assistant/AssistantDashboard';
 import { EditorialBoardDashboard } from '@/components/board/EditorialBoardDashboard';
 import { TantouEditorDashboard } from '@/components/editorial/TantouEditorDashboard';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import { normalizeRole } from '@/lib/roles';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -36,10 +37,7 @@ export default function DashboardPage() {
     return null;
   }
 
-  // Safe role normalization: lowercase and strip spaces/underscores
-  const roles = (user.roles || []).map((r) =>
-    r.toLowerCase().replace(/[\s_-]/g, '')
-  );
+  const roles = (user.roles || []).map(normalizeRole).filter((role): role is NonNullable<typeof role> => Boolean(role));
 
   if (roles.includes('admin')) {
     return <AdminDashboard />;
@@ -53,14 +51,13 @@ export default function DashboardPage() {
     return <AssistantDashboard />;
   }
 
-  if (roles.includes('tantoueditor') || roles.includes('editor')) {
+  if (roles.includes('tantoueditor')) {
     return <TantouEditorDashboard />;
   }
 
-  if (roles.includes('editorialboard') || roles.includes('board')) {
+  if (roles.includes('editorialboard')) {
     return <EditorialBoardDashboard />;
   }
 
-  // Default fallback if no known role matches
-  return <MangakaDashboard />;
+  return <div className="flex h-screen items-center justify-center"><p>Forbidden: no recognized role.</p></div>;
 }

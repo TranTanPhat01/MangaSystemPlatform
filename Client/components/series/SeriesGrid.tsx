@@ -2,6 +2,7 @@ import React from 'react';
 import { BookOpen, Calendar, Star, Send } from 'lucide-react';
 import { SeriesResponse } from '@/types/manga';
 import SeriesStatusBadge from './SeriesStatusBadge';
+import Link from 'next/link';
 
 interface SeriesGridProps {
   seriesList: SeriesResponse[];
@@ -70,12 +71,7 @@ export default function SeriesGrid({
                   <span>Submit Proposal</span>
                 </button>
               )}
-              <button 
-                onClick={() => alert(`Redirecting to manage details for ${series.title}`)}
-                className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-0.5"
-              >
-                Manage Details &rarr;
-              </button>
+              <Link href={`/series/${series.id}`} className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-0.5">Manage Details &rarr;</Link>
             </div>
           </div>
         </div>

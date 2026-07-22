@@ -12,7 +12,23 @@ export const api = axios.create({
 
 const isAuthSessionEndpoint = (url?: string) => {
   const path = url?.split('?')[0];
-  return path === '/identity/auth/logout' || path === '/identity/auth/refresh';
+  return path === '/identity/auth/login' || path === '/identity/auth/register' || path === '/identity/auth/logout' || path === '/identity/auth/refresh';
+};
+
+let refreshInFlight: Promise<string> | null = null;
+
+const refreshAccessToken = async (): Promise<string> => {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const { refreshToken, setAuth } = useAuthStore.getState();
+    if (!refreshToken) throw new Error('No refresh token.');
+    const response = await axios.post(`${baseURL}/identity/auth/refresh`, { refreshToken });
+    const payload = response.data?.data;
+    if (!response.data?.success || !payload?.accessToken) throw new Error('Refresh failed.');
+    setAuth(payload);
+    return payload.accessToken as string;
+  })().finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
 };
 
 api.interceptors.request.use(
@@ -24,7 +40,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
+  async (error) => {
     return Promise.reject(error);
   }
 );
@@ -33,13 +49,17 @@ api.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
-    if (error.response?.status === 401 && !isAuthSessionEndpoint(error.config?.url)) {
-      // If unauthorized, logout the user
-      useAuthStore.getState().clearAuthSession();
-      if (typeof window !== 'undefined') {
-        // Redirect to login page
-        window.location.href = '/login';
+  async (error) => {
+    const request = error.config as (typeof error.config & { _retry?: boolean });
+    if (error.response?.status === 401 && request && !request._retry && !isAuthSessionEndpoint(request.url)) {
+      request._retry = true;
+      try {
+        const accessToken = await refreshAccessToken();
+        request.headers.Authorization = `Bearer ${accessToken}`;
+        return api(request);
+      } catch {
+        useAuthStore.getState().clearAuthSession();
+        if (typeof window !== 'undefined') window.location.href = '/login';
       }
     }
     return Promise.reject(error);

@@ -40,8 +40,18 @@ public sealed class RankingService : IRankingService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<RankingSnapshotResponse>.Success(await ToResponseAsync(snapshot, cancellationToken));
     }
-    public async Task<Result<IReadOnlyList<RankingSnapshotResponse>>> GetRankingsAsync(Guid issueId, CancellationToken cancellationToken = default) { var snapshots = await _repository.ListAsync<RankingSnapshot>(s => s.IssueId == issueId, cancellationToken); var responses = new List<RankingSnapshotResponse>(); foreach (var snapshot in snapshots) responses.Add(await ToResponseAsync(snapshot, cancellationToken)); return Result<IReadOnlyList<RankingSnapshotResponse>>.Success(responses); }
-    public async Task<Result<IReadOnlyList<RankingItemResponse>>> GetSeriesRankingHistoryAsync(Guid seriesId, CancellationToken cancellationToken = default) => Result<IReadOnlyList<RankingItemResponse>>.Success((await _repository.ListAsync<RankingItem>(i => i.SeriesId == seriesId, cancellationToken)).Select(ToResponse).ToArray());
+    public async Task<Result<IReadOnlyList<RankingSnapshotResponse>>> GetRankingsAsync(Guid issueId, CancellationToken cancellationToken = default) { var snapshots = (await _repository.ListAsync<RankingSnapshot>(s => s.IssueId == issueId, cancellationToken)).OrderByDescending(snapshot => snapshot.GeneratedAt); var responses = new List<RankingSnapshotResponse>(); foreach (var snapshot in snapshots) responses.Add(await ToResponseAsync(snapshot, cancellationToken)); return Result<IReadOnlyList<RankingSnapshotResponse>>.Success(responses); }
+    public async Task<Result<IReadOnlyList<RankingItemResponse>>> GetSeriesRankingHistoryAsync(Guid seriesId, CancellationToken cancellationToken = default)
+    {
+        var snapshots = await _repository.ListAsync<RankingSnapshot>(cancellationToken: cancellationToken);
+        var history = snapshots.OrderByDescending(snapshot => snapshot.GeneratedAt).SelectMany(snapshot => snapshot.Items.Where(item => item.SeriesId == seriesId).Select(item =>
+        {
+            var response = ToResponse(item, null, Math.Max(1, snapshot.Items.Sum(other => other.VoteCount)));
+            response.SnapshotGeneratedAt = snapshot.GeneratedAt;
+            return response;
+        })).ToArray();
+        return Result<IReadOnlyList<RankingItemResponse>>.Success(history);
+    }
     public async Task<Result<IReadOnlyList<CancellationWarningResponse>>> GetCancellationWarningsAsync(Guid seriesId, CancellationToken cancellationToken = default) => Result<IReadOnlyList<CancellationWarningResponse>>.Success((await _repository.ListAsync<CancellationWarning>(w => w.SeriesId == seriesId, cancellationToken)).Select(ToResponse).ToArray());
     private async Task CreateWarningIfMissingAsync(Guid seriesId, int rank, CancellationToken cancellationToken) { var active = await _repository.ListAsync<CancellationWarning>(w => w.SeriesId == seriesId && !w.IsResolved, cancellationToken); if (active.Count == 0) { var warning = new CancellationWarning { SeriesId = seriesId, Reason = $"Series ranked low at position {rank}.", RiskLevel = rank >= 10 ? CancellationRiskLevel.High : CancellationRiskLevel.Medium, CreatedAt = DateTime.UtcNow }; await _repository.AddAsync(warning, cancellationToken); await _eventBus.PublishAsync(new CancellationWarningCreatedEvent(Guid.NewGuid(), warning.SeriesId, warning.RiskLevel.ToString(), warning.Reason, warning.CreatedAt), cancellationToken); } }
     private static ReaderVoteResponse ToResponse(ReaderVote v) => new() { Id = v.Id, IssueId = v.IssueId, SeriesId = v.SeriesId, VoteCount = v.VoteCount, RankPosition = v.RankPosition, ImportedByUserId = v.ImportedByUserId, CreatedAt = v.CreatedAt };

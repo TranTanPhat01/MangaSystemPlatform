@@ -3,6 +3,7 @@
 export type ActiveNav =
   | 'Dashboard'
   | 'Series Proposals'
+  | 'Issue Management'
   | 'Board Voting'
   | 'Publication Schedule'
   | 'Reader Voting'

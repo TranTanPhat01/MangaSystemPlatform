@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import { 
   LayoutDashboard, 
   FileText, 
+  Newspaper,
   Vote, 
   Calendar, 
   BarChart2, 
@@ -20,6 +21,7 @@ import { ActiveNav } from '@/types/board';
 const NAV_ITEMS: { name: ActiveNav; icon: React.ComponentType<{ className?: string; size?: number }> }[] = [
   { name: 'Dashboard', icon: LayoutDashboard },
   { name: 'Series Proposals', icon: FileText },
+  { name: 'Issue Management', icon: Newspaper },
   { name: 'Board Voting', icon: Vote },
   { name: 'Publication Schedule', icon: Calendar },
   { name: 'Reader Voting', icon: BarChart2 },

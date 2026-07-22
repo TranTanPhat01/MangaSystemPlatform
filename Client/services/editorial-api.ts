@@ -18,6 +18,10 @@ import {
   ReaderVoteInputRequest,
   FinalizeProposalRequest,
   IssueResponse,
+  CreateIssueRequest,
+  UpdateIssueStatusRequest,
+  RankingItemResponse,
+  CancellationWarningResponse,
 } from '@/types/editorial';
 
 
@@ -105,6 +109,10 @@ export const editorialApi = {
    */
   createPublicationSchedule: (data: CreatePublicationScheduleRequest) =>
     api.post<ApiResponse<PublicationScheduleResponse>>('/editorial/publication-schedules', data),
+  getPublicationSchedule: (scheduleId: string) =>
+    api.get<ApiResponse<PublicationScheduleResponse>>(`/editorial/publication-schedules/${scheduleId}`),
+  publishPublicationSchedule: (scheduleId: string) =>
+    api.post<ApiResponse<PublicationScheduleResponse>>(`/editorial/publication-schedules/${scheduleId}/publish`),
 
   // ─── Reader Voting & Rankings ─────────────────────────────────────────────
 
@@ -112,7 +120,13 @@ export const editorialApi = {
    * POST /editorial/reader-votes
    * Input reader vote counts for a series in a given period
    */
+  createIssue: (data: CreateIssueRequest) =>
+    api.post<ApiResponse<IssueResponse>>('/editorial/issues', data),
   getIssues: () => api.get<ApiResponse<IssueResponse[]>>('/editorial/issues'),
+  getIssue: (issueId: string) =>
+    api.get<ApiResponse<IssueResponse>>(`/editorial/issues/${issueId}`),
+  updateIssueStatus: (issueId: string, data: UpdateIssueStatusRequest) =>
+    api.patch<ApiResponse<IssueResponse>>(`/editorial/issues/${issueId}/status`, data),
   inputReaderVote: (issueId: string, data: ReaderVoteInputRequest) =>
     api.post<ApiResponse<unknown>>(`/editorial/issues/${issueId}/reader-votes`, data),
 
@@ -127,5 +141,14 @@ export const editorialApi = {
    * GET /editorial/rankings
    */
   getRankings: (issueId: string) =>
-    api.get<ApiResponse<RankingSnapshotResponse>>(`/editorial/issues/${issueId}/rankings`),
+    api.get<ApiResponse<RankingSnapshotResponse[]>>(`/editorial/issues/${issueId}/rankings`),
+
+  getSeriesRankingHistory: (seriesId: string) =>
+    api.get<ApiResponse<RankingItemResponse[]>>(`/editorial/series/${seriesId}/ranking-history`),
+  getCancellationWarnings: (seriesId: string) =>
+    api.get<ApiResponse<CancellationWarningResponse[]>>(`/editorial/series/${seriesId}/cancellation-warnings`),
+  setSeriesHiatus: (seriesId: string) =>
+    api.post<ApiResponse<PublicationScheduleResponse>>(`/editorial/series/${seriesId}/hiatus`),
+  cancelSeries: (seriesId: string) =>
+    api.post<ApiResponse<PublicationScheduleResponse>>(`/editorial/series/${seriesId}/cancel`),
 };

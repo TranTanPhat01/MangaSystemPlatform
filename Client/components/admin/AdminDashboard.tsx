@@ -3,12 +3,26 @@
 import React from 'react';
 import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper';
 import { useAuthStore } from '@/store/auth-store';
-import { Users, Settings, BookOpen, ShieldAlert, Cpu } from 'lucide-react';
+import { Users, Settings, BookOpen, ShieldAlert, Cpu, FileText } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import AdminOverview from './AdminOverview';
+import UserManagement from './UserManagement';
+import SystemHealth from './SystemHealth';
+import LogViewerTab from './LogViewerTab';
 
 export function AdminDashboard() {
   const { user } = useAuthStore();
+  const searchParams = useSearchParams();
+  const activeTab = (searchParams?.get('tab') || 'overview').toLowerCase();
+
+  const renderContent = () => {
+    if (activeTab === 'users') return <UserManagement />;
+    if (activeTab === 'system') return <SystemHealth />;
+    if (activeTab === 'logs') return <LogViewerTab />;
+
+    return <AdminOverview />;
+  };
 
   return (
     <DashboardLayoutWrapper>
@@ -46,7 +60,7 @@ export function AdminDashboard() {
         {/* Quick Navigation Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Link 
-            href="/admin/users" 
+            href="/dashboard?tab=users" 
             className="group relative bg-slate-900 hover:bg-slate-850 border border-slate-800/80 hover:border-indigo-500/30 rounded-2xl p-6 transition-all duration-300 shadow-md flex flex-col justify-between h-44"
           >
             <div>
@@ -64,7 +78,7 @@ export function AdminDashboard() {
           </Link>
 
           <Link 
-            href="/admin/system" 
+            href="/dashboard?tab=system" 
             className="group relative bg-slate-900 hover:bg-slate-850 border border-slate-800/80 hover:border-indigo-500/30 rounded-2xl p-6 transition-all duration-300 shadow-md flex flex-col justify-between h-44"
           >
             <div>
@@ -82,32 +96,32 @@ export function AdminDashboard() {
           </Link>
 
           <Link 
-            href="/admin/manga" 
+            href="/dashboard?tab=logs" 
             className="group relative bg-slate-900 hover:bg-slate-850 border border-slate-800/80 hover:border-indigo-500/30 rounded-2xl p-6 transition-all duration-300 shadow-md flex flex-col justify-between h-44"
           >
             <div>
               <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform duration-300">
                 <BookOpen size={20} />
               </div>
-              <h3 className="text-sm font-bold text-slate-200 mt-4 group-hover:text-white transition-colors">Manga Management</h3>
+              <h3 className="text-sm font-bold text-slate-200 mt-4 group-hover:text-white transition-colors">Audit Logs</h3>
               <p className="text-[11px] text-slate-500 font-semibold mt-1 leading-relaxed">
-                Setup test fixtures, create public ongoing series, manage chapters, and publish content.
+                Review identity and gateway activity such as role changes, lock events, and authentication actions.
               </p>
             </div>
             <div className="text-[10px] font-bold text-indigo-400 group-hover:translate-x-1.5 transition-transform duration-200 flex items-center gap-1">
-              Go to Manga &rarr;
+              Go to Logs &rarr;
             </div>
           </Link>
         </div>
 
-        {/* Overview Stats Dashboard */}
+        {/* Content Area */}
         <div className="pt-2">
           <div className="border-t border-slate-850 pt-8">
             <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-6 flex items-center gap-2">
               <ShieldAlert size={14} className="text-indigo-400" />
-              Live System Overview
+              {activeTab === 'users' ? 'User Administration' : activeTab === 'system' ? 'System Health' : activeTab === 'logs' ? 'Security Audit Logs' : 'Live System Overview'}
             </h2>
-            <AdminOverview />
+            {renderContent()}
           </div>
         </div>
       </div>

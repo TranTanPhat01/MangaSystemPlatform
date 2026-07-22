@@ -37,17 +37,20 @@ export interface ChapterResponse {
   chapterNumber: number;
   title?: string;
   status: ChapterStatus;
-  pageCount: number;
+  progressPercentage?: number;
+  deadline?: string;
+  pageCount?: number;
   submittedAt?: string;
   approvedAt?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface PageResponse {
   id: string;
   chapterId: string;
   pageNumber: number;
+  fileId?: string;
   fileAssetId?: string;
   fileUrl?: string;
   status: string;
@@ -58,12 +61,15 @@ export interface AnnotationResponse {
   id: string;
   pageId: string;
   type: AnnotationType;
+  coordinatesJson?: string;
+  description?: string;
   notes?: string;
   createdAt: string;
 }
 
 export interface TaskResponse {
   id: string;
+  title?: string;
   pageId: string;
   chapterId?: string;
   seriesId?: string;
@@ -73,7 +79,7 @@ export interface TaskResponse {
   assignedToId: string;
   assignedToName?: string;
   assignedById?: string;
-  annotationType: AnnotationType;
+  annotationType?: AnnotationType;
   description?: string;
   priority: TaskPriority;
   status: TaskStatus;

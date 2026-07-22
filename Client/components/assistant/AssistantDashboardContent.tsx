@@ -19,6 +19,10 @@ export default function AssistantDashboardContent() {
     useMockFallback,
     apiTasksLength,
     fetchMyTasks,
+    startTask,
+    submitTask,
+    isSubmitting,
+    submissionMessage,
   } = useAssistantDashboard();
 
   return (
@@ -65,9 +69,24 @@ export default function AssistantDashboardContent() {
             useMockFallback={useMockFallback}
             apiTasksLength={apiTasksLength}
             onRetry={fetchMyTasks}
+            onAction={async (task) => {
+              if (task.action === 'Fix Now') {
+                await startTask(task.id);
+              }
+              setSelectedTask(task);
+            }}
           />
 
-          {selectedTask && <AssistantTaskDetailPreview selectedTask={selectedTask} />}
+          {selectedTask && (
+            <AssistantTaskDetailPreview
+              selectedTask={selectedTask}
+              onUploadSubmission={async (file) => {
+                await submitTask(selectedTask.id, file, 'Submitted from assistant workspace');
+              }}
+              isSubmitting={isSubmitting}
+              submissionMessage={submissionMessage}
+            />
+          )}
 
           <AssistantRevisionPanel />
 

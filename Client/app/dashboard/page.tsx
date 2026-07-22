@@ -42,10 +42,7 @@ export default function DashboardPage() {
   );
 
   if (roles.includes('admin')) {
-    if (typeof window !== 'undefined') {
-      router.replace('/admin/users');
-    }
-    return null;
+    return <AdminDashboard />;
   }
   
   if (roles.includes('mangaka')) {

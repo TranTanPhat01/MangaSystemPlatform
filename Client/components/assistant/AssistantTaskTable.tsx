@@ -49,6 +49,7 @@ interface AssistantTaskTableProps {
   useMockFallback: boolean;
   apiTasksLength: number;
   onRetry: () => void;
+  onAction?: (task: Task) => void | Promise<void>;
 }
 
 export default function AssistantTaskTable({
@@ -60,6 +61,7 @@ export default function AssistantTaskTable({
   useMockFallback,
   apiTasksLength,
   onRetry,
+  onAction,
 }: AssistantTaskTableProps) {
   return (
     <section className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -176,7 +178,13 @@ export default function AssistantTaskTable({
                       'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all',
                       actionStyle(task.action)
                     )}
-                    onClick={e => { e.stopPropagation(); onSelectTask(task); }}
+                    onClick={e => {
+                      e.stopPropagation();
+                      onSelectTask(task);
+                      if (onAction) {
+                        void onAction(task);
+                      }
+                    }}
                   >
                     {actionIcon(task.action)}
                     {task.action}

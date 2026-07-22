@@ -13,6 +13,9 @@ vi.mock('next/navigation', () => ({
     push: mockPush,
   }),
   usePathname: () => '/admin/users',
+  useSearchParams: () => ({
+    get: (key: string) => null,
+  }),
 }));
 
 // Mock Auth Store state

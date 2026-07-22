@@ -11,7 +11,6 @@ import {
   ChapterResponse,
   PageResponse,
   TaskResponse,
-  StartTaskRequest,
   SubmitTaskRequest,
   RequestRevisionRequest,
   AnnotationResponse,
@@ -40,32 +39,55 @@ export const mangaApi = {
 
   // ─── Chapters ──────────────────────────────────────────────────────────────
 
-  createChapter: (seriesId: string, data: { chapterNumber: number; title?: string }) =>
+  createChapter: (
+    seriesId: string,
+    data: { chapterNumber: number; title?: string; deadline?: string; progressPercentage?: number }
+  ) =>
     api.post<ApiResponse<ChapterResponse>>(`/manga/series/${seriesId}/chapters`, data),
+
+  getChapters: (seriesId: string) =>
+    api.get<ApiResponse<ChapterResponse[]>>(`/manga/series/${seriesId}/chapters`),
 
   getChapterById: (chapterId: string) =>
     api.get<ApiResponse<ChapterResponse>>(`/manga/chapters/${chapterId}`),
 
   submitChapterForReview: (chapterId: string) =>
-    api.post<ApiResponse<SubmissionResponse>>(`/manga/chapters/${chapterId}/submit`),
+    api.post<ApiResponse<SubmissionResponse>>(`/manga/chapters/${chapterId}/submit-review`),
 
   // ─── Pages ─────────────────────────────────────────────────────────────────
 
-  createPage: (chapterId: string, data: { pageNumber: number; fileAssetId?: string }) =>
+  createPage: (chapterId: string, data: { pageNumber: number; fileId?: string }) =>
     api.post<ApiResponse<PageResponse>>(`/manga/chapters/${chapterId}/pages`, data),
+
+  getPages: (chapterId: string) =>
+    api.get<ApiResponse<PageResponse[]>>(`/manga/chapters/${chapterId}/pages`),
 
   getPage: (pageId: string) =>
     api.get<ApiResponse<PageResponse>>(`/manga/pages/${pageId}`),
 
   // ─── Annotations ───────────────────────────────────────────────────────────
 
-  createAnnotation: (pageId: string, data: { type: AnnotationType; notes?: string }) =>
+  createAnnotation: (
+    pageId: string,
+    data: { type: AnnotationType; coordinatesJson?: string; description?: string; notes?: string }
+  ) =>
     api.post<ApiResponse<AnnotationResponse>>(`/manga/pages/${pageId}/annotations`, data),
 
   deleteAnnotation: (annotationId: string) =>
     api.delete<ApiResponse<null>>(`/manga/annotations/${annotationId}`),
 
   // ─── Tasks ─────────────────────────────────────────────────────────────────
+
+  createTask: (data: {
+    annotationId: string;
+    pageId: string;
+    title: string;
+    description?: string;
+    assignedToUserId: string;
+    priority?: string;
+    deadline?: string;
+  }) =>
+    api.post<ApiResponse<TaskResponse>>('/manga/tasks', data),
 
   /**
    * GET /manga/tasks/my

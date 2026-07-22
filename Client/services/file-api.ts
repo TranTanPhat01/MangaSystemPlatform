@@ -32,6 +32,13 @@ export const fileApi = {
   },
 
   /**
+   * GET /files/my
+   * Returns files belonging to the current user
+   */
+  getMyFiles: () =>
+    api.get<ApiResponse<FileAssetResponse[]>>('/files/my'),
+
+  /**
    * GET /files/{id}
    * Returns file metadata (no binary content)
    */

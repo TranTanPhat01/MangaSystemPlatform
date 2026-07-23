@@ -66,7 +66,7 @@ export default function AssistantRevisionPanel() {
                 </div>
               </div>
               <p className="text-xs text-slate-700 bg-white border border-slate-200 rounded p-2 italic">
-                "{revision.reason}"
+                &quot;{revision.reason}&quot;
               </p>
               <button
                 className="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-700 underline"

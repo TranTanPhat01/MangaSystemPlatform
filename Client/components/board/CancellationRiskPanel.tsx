@@ -166,7 +166,7 @@ export default function CancellationRiskPanel({
                         <td className="px-3 py-2 text-slate-600">Period {rankingHistory.length - idx}</td>
                         <td className="px-3 py-2 text-center font-semibold">#{item.rankPosition || '—'}</td>
                         <td className="px-3 py-2 text-right text-slate-600">
-                          {item.votes || item.voteCount || 0}
+                          {item.voteCount || 0}
                         </td>
                         <td className="px-3 py-2 text-center font-semibold text-indigo-700">
                           {item.score || 0}
@@ -182,5 +182,4 @@ export default function CancellationRiskPanel({
       )}
     </section>
   );
-}{item.reason}</span><span className="shrink-0 rounded border border-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-800">{riskLabel[item.riskLevel] || item.riskLevel}</span></li>)}</ul>}</div><div><h3 className="mb-2 font-semibold">Ranking history</h3>{rankingHistory.length === 0 ? <p className="text-sm text-slate-500">Chưa có lịch sử ranking.</p> : <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-slate-50"><tr><th className="p-2">Thời điểm</th><th className="p-2">Hạng</th><th className="p-2">Phiếu</th><th className="p-2">Xu hướng</th><th className="p-2">Rủi ro</th></tr></thead><tbody>{rankingHistory.map((item, index) => <tr key={`${item.snapshotGeneratedAt}-${index}`} className="border-t"><td className="p-2">{item.snapshotGeneratedAt ? new Date(item.snapshotGeneratedAt).toLocaleDateString('vi-VN') : '-'}</td><td className="p-2 font-semibold">#{item.rankPosition}</td><td className="p-2">{item.voteCount}</td><td className="p-2">{item.trend}</td><td className="p-2">{item.riskLevel}</td></tr>)}</tbody></table></div>}</div></div>}</section>;
 }

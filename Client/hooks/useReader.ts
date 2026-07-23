@@ -1,12 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { readerApi } from '@/services/reader-api';
 import { 
-  ReaderFavoriteResponse, 
-  ReaderBookmarkResponse, 
-  ReadingProgressResponse,
-  RatingSummaryResponse,
-  ReaderCommentResponse,
-  ReaderActivitySummaryResponse,
   CreateBookmarkRequest,
   SaveReadingProgressRequest,
   UpsertRatingRequest,

@@ -74,11 +74,6 @@ export function useMangakaEditorial() {
       '2': 'Approved',
       '3': 'Revision Required',
       '4': 'Rejected',
-      0: 'Pending',
-      1: 'In Review',
-      2: 'Approved',
-      3: 'Revision Required',
-      4: 'Rejected',
     };
     return statusMap[status] || 'Unknown';
   };

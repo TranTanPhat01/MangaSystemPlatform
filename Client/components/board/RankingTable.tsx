@@ -153,7 +153,7 @@ export default function RankingTable({
         <div className="p-8 text-center">
           <AlertCircle size={32} className="mx-auto text-slate-300 mb-3" />
           <p className="text-sm text-slate-600 font-semibold">No ranking data available</p>
-          <p className="text-xs text-slate-500 mt-1">This issue hasn't been calculated yet.</p>
+          <p className="text-xs text-slate-500 mt-1">This issue hasn&apos;t been calculated yet.</p>
           <button
             onClick={() => void onRetry()}
             className="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-700 underline"
@@ -186,7 +186,7 @@ export default function RankingTable({
                     {getSeriesTitle(item.seriesId)}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-700 font-semibold">
-                    {item.votes || item.voteCount || 0}
+                    {item.voteCount || 0}
                   </td>
                   <td className="px-4 py-3 text-center flex justify-center">
                     {getTrendIcon(item.trend || 'stable')}

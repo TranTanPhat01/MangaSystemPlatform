@@ -5,7 +5,7 @@ interface EditorialFeedbackCardProps {
   chapter: string;
   editorName: string;
   status: string;
-  note: string;
+  note?: string;
   onViewFeedback: () => void;
 }
 
@@ -44,7 +44,7 @@ export default function EditorialFeedbackCard({
         {/* Feedback note text box */}
         <div className="p-3 bg-white/60 border border-burgundy-100/40 rounded-lg mb-4 text-xs text-slate-650 leading-relaxed font-medium italic relative">
           <MessageSquare size={12} className="absolute top-2.5 right-2.5 text-burgundy-300" />
-          "{note}"
+          &quot;{note}&quot;
         </div>
       </div>
 

@@ -67,7 +67,7 @@ export default function MangakaEditorialTab({ triggerModal }: MangakaEditorialTa
                 triggerModal(
                   `Editorial Feedback: ${feedback.chapterTitle}`,
                   feedback.comments.length > 0
-                    ? `${feedback.comments.map(c => c.content).join('\n\n')}`
+                    ? `${feedback.comments.map(c => c.commentText).join('\n\n')}`
                     : feedback.note || 'No detailed feedback provided yet.'
                 )
               }

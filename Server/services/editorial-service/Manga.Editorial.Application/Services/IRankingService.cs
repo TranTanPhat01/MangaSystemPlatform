@@ -11,4 +11,5 @@ public interface IRankingService
     Task<Result<IReadOnlyList<RankingSnapshotResponse>>> GetRankingsAsync(Guid issueId, CancellationToken cancellationToken = default);
     Task<Result<IReadOnlyList<RankingItemResponse>>> GetSeriesRankingHistoryAsync(Guid seriesId, CancellationToken cancellationToken = default);
     Task<Result<IReadOnlyList<CancellationWarningResponse>>> GetCancellationWarningsAsync(Guid seriesId, CancellationToken cancellationToken = default);
+    Task<Result<IReadOnlyList<CancellationWarningResponse>>> GetAllCancellationWarningsAsync(CancellationToken cancellationToken = default);
 }

@@ -25,4 +25,5 @@ public sealed class IssuesController : ApiControllerBase
     [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("{issueId:guid}/calculate-ranking")] public async Task<IActionResult> Calculate(Guid issueId, CancellationToken ct) => ToActionResult(await _rankingService.CalculateRankingAsync(issueId, ct));
     [HttpGet("{issueId:guid}/rankings")] public async Task<IActionResult> Rankings(Guid issueId, CancellationToken ct) => ToActionResult(await _rankingService.GetRankingsAsync(issueId, ct));
+    [HttpGet("cancellation-warnings")] public async Task<IActionResult> AllWarnings(CancellationToken ct) => ToActionResult(await _rankingService.GetAllCancellationWarningsAsync(ct));
 }

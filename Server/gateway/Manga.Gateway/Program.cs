@@ -1,6 +1,7 @@
 using Manga.BuildingBlocks.DependencyInjection;
 using Manga.BuildingBlocks.Health;
 using Manga.BuildingBlocks.Authorization;
+using Manga.BuildingBlocks.Responses;
 using Manga.Gateway;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -128,9 +129,21 @@ app.UseRateLimiter();
 app.MapHealthChecks("/health/live", CreateHealthCheckOptions("live"));
 app.MapHealthChecks("/health/ready", CreateHealthCheckOptions("ready"));
 var monitoring = app.MapGroup("/admin/monitoring").RequireAuthorization(PermissionPolicies.RequireAdminMonitoringRead);
-monitoring.MapGet("/overview", async (MonitoringAggregator aggregator, HttpRequest request, CancellationToken cancellationToken) => Results.Ok(await aggregator.GetOverviewAsync(request.Headers.Authorization, cancellationToken)));
-monitoring.MapGet("/services", async (MonitoringAggregator aggregator, HttpRequest request, CancellationToken cancellationToken) => Results.Ok(await aggregator.GetServicesAsync(request.Headers.Authorization, cancellationToken)));
-monitoring.MapGet("/outbox-summary", async (MonitoringAggregator aggregator, HttpRequest request, CancellationToken cancellationToken) => Results.Ok(await aggregator.GetOutboxSummaryAsync(request.Headers.Authorization, cancellationToken))).RequireAuthorization(PermissionPolicies.RequireAdminOutboxRead);
+monitoring.MapGet("/overview", async (MonitoringAggregator aggregator, HttpRequest request, CancellationToken cancellationToken) =>
+{
+    var data = await aggregator.GetOverviewAsync(request.Headers.Authorization, cancellationToken);
+    return Results.Ok(ApiResponse<MonitoringOverviewResponse>.Ok(data, "Monitoring overview retrieved successfully"));
+});
+monitoring.MapGet("/services", async (MonitoringAggregator aggregator, HttpRequest request, CancellationToken cancellationToken) =>
+{
+    var data = await aggregator.GetServicesAsync(request.Headers.Authorization, cancellationToken);
+    return Results.Ok(ApiResponse<IReadOnlyList<ServiceMonitoringResponse>>.Ok(data, "Services status retrieved successfully"));
+});
+monitoring.MapGet("/outbox-summary", async (MonitoringAggregator aggregator, HttpRequest request, CancellationToken cancellationToken) =>
+{
+    var data = await aggregator.GetOutboxSummaryAsync(request.Headers.Authorization, cancellationToken);
+    return Results.Ok(ApiResponse<OutboxMonitoringResponse>.Ok(data, "Outbox summary retrieved successfully"));
+}).RequireAuthorization(PermissionPolicies.RequireAdminOutboxRead);
 var servicesHealth = app.MapGet("/health/services", async (IHttpClientFactory httpClientFactory, IConfiguration configuration, CancellationToken cancellationToken) =>
 {
     var client = httpClientFactory.CreateClient("monitoring");

@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
-import { RefreshCw, Trophy, TrendingUp, TrendingDown, Minus, AlertCircle, Loader2 } from 'lucide-react';
+import { RefreshCw, Trophy, TrendingUp, TrendingDown, Minus, AlertCircle, Loader2, Plus } from 'lucide-react';
 import { IssueResponse, RankingItemResponse } from '@/types/editorial';
 import { SeriesResponse } from '@/types/manga';
+import ReaderVoteInputDialog from './ReaderVoteInputDialog';
 
 interface Props {
   issues: IssueResponse[];
@@ -31,6 +32,7 @@ export default function RankingTable({
   const [voteSeriesId, setVoteSeriesId] = React.useState('');
   const [voteCount, setVoteCount] = React.useState('');
   const [voteSubmitting, setVoteSubmitting] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
   const getSeriesTitle = (seriesId: string) => {
     return series.find(s => s.id === seriesId)?.title || seriesId;
@@ -65,7 +67,15 @@ export default function RankingTable({
   };
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+    <>
+      <ReaderVoteInputDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        series={series}
+        onSubmit={onReaderVote}
+        issueId={selectedIssueId}
+      />
+      <section className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
       <div className="p-5 border-b flex flex-wrap gap-3 items-end justify-between">
         <div>
           <h2 className="font-bold flex gap-2 items-center text-slate-800">
@@ -88,6 +98,14 @@ export default function RankingTable({
               </option>
             ))}
           </select>
+          <button
+            onClick={() => setIsDialogOpen(true)}
+            disabled={!selectedIssueId || isLoading}
+            className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold disabled:opacity-50 transition-colors flex items-center gap-1.5"
+          >
+            <Plus size={14} />
+            Input Vote
+          </button>
           <button
             onClick={() => void onRecalculate()}
             disabled={!selectedIssueId || isLoading}
@@ -206,5 +224,6 @@ export default function RankingTable({
         </div>
       )}
     </section>
+    </>
   );
 }

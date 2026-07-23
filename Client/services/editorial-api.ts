@@ -147,6 +147,8 @@ export const editorialApi = {
     api.get<ApiResponse<RankingItemResponse[]>>(`/editorial/series/${seriesId}/ranking-history`),
   getCancellationWarnings: (seriesId: string) =>
     api.get<ApiResponse<CancellationWarningResponse[]>>(`/editorial/series/${seriesId}/cancellation-warnings`),
+  getAllCancellationWarnings: () =>
+    api.get<ApiResponse<CancellationWarningResponse[]>>('/editorial/issues/cancellation-warnings'),
   setSeriesHiatus: (seriesId: string) =>
     api.post<ApiResponse<PublicationScheduleResponse>>(`/editorial/series/${seriesId}/hiatus`),
   cancelSeries: (seriesId: string) =>

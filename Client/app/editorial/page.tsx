@@ -5,13 +5,14 @@ import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper';
 import {
   AlertCircle, AlertTriangle, ChevronDown, ChevronUp, FileText,
   MessageSquare, Play, RefreshCw, ThumbsUp, XCircle, Trophy,
-  TrendingUp, TrendingDown, Minus, BarChart3,
+  TrendingUp, TrendingDown, Minus, BarChart3, ShieldAlert,
 } from 'lucide-react';
 import { editorialApi } from '@/services/editorial-api';
 import { useAuthStore } from '@/store/auth-store';
 import {
   EditorialCommentResponse, EditorialReviewResponse,
   IssueResponse, RankingItemResponse, RankingSnapshotResponse, ReviewStatus,
+  CancellationWarningResponse, CancellationRiskLevel,
 } from '@/types/editorial';
 
 type ApiError = {
@@ -171,6 +172,103 @@ export function ReviewCard({ review, canManage, onRefresh }: { review: Editorial
       <CommentForm reviewId={detail.id} disabled={!canManage} onSuccess={refreshDetailAndQueue} />
     </div>}
   </div>;
+}
+
+// ─── Cancellation Warnings Panel ──────────────────────────────────────────────
+function CancellationWarningsPanel() {
+  const [warnings, setWarnings] = useState<CancellationWarningResponse[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadWarnings = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await editorialApi.getAllCancellationWarnings();
+      if (res.data.success) {
+        setWarnings(res.data.data ?? []);
+      } else {
+        setError(res.data.message || 'Failed to load cancellation warnings.');
+      }
+    } catch {
+      setError('Could not load cancellation warnings.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadWarnings();
+  }, []);
+
+  const riskLevelColor = (level: CancellationRiskLevel) => {
+    if (level === CancellationRiskLevel.Critical) return 'bg-rose-500/10 border-rose-500/20 text-rose-400';
+    if (level === CancellationRiskLevel.High) return 'bg-orange-500/10 border-orange-500/20 text-orange-400';
+    if (level === CancellationRiskLevel.Medium) return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
+    return 'bg-slate-500/10 border-slate-500/20 text-slate-400';
+  };
+
+  const riskLevelLabel = (level: CancellationRiskLevel) => {
+    if (level === CancellationRiskLevel.Critical) return 'Critical';
+    if (level === CancellationRiskLevel.High) return 'High';
+    if (level === CancellationRiskLevel.Medium) return 'Medium';
+    return 'Low';
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldAlert size={13} className="text-rose-400" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Cancellation Warnings</h3>
+        </div>
+        <button
+          onClick={() => void loadWarnings()}
+          disabled={loading}
+          className="p-1 hover:bg-slate-800 rounded transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={11} className={loading ? 'animate-spin text-indigo-400' : 'text-slate-500'} />
+        </button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-400 font-semibold">
+          <AlertCircle size={11} />
+          {error}
+        </div>
+      )}
+
+      <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="p-6 text-center">
+            <RefreshCw size={16} className="animate-spin text-indigo-400 mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-semibold">Loading warnings…</p>
+          </div>
+        ) : warnings.length === 0 ? (
+          <div className="p-6 text-center">
+            <ShieldAlert size={22} className="text-slate-700 mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-semibold">No active warnings</p>
+            <p className="text-[10px] text-slate-600 mt-1">All series are performing well!</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-800/60">
+            {warnings.map((warning) => (
+              <div key={warning.id} className="px-4 py-3 hover:bg-slate-900/20 transition-colors">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h4 className="font-bold text-slate-200 text-xs font-mono">{compactId(warning.seriesId)}</h4>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${riskLevelColor(warning.riskLevel)}`}>
+                    {riskLevelLabel(warning.riskLevel)}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mb-1">{warning.reason}</p>
+                <p className="text-[10px] text-slate-600">Created {new Date(warning.createdAt).toLocaleDateString()}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── Rankings Panel (real data) ───────────────────────────────────────────────
@@ -408,8 +506,9 @@ export default function EditorialPage() {
             ) : null}
           </div>
 
-          {/* Right: Rankings (real data) */}
-          <div>
+          {/* Right: Warnings & Rankings */}
+          <div className="space-y-6">
+            <CancellationWarningsPanel />
             <RankingsPanel />
           </div>
         </div>

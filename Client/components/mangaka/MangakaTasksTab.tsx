@@ -242,11 +242,11 @@ export default function MangakaTasksTab({ triggerModal }: MangakaTasksTabProps) 
           {task.latestSubmission && (
             <div>
               <p>
-                Latest: {task.latestSubmission.fileId} · {task.latestSubmission.note}
+                Latest: {task.latestSubmission.fileId} ? {task.latestSubmission.note}
               </p>
               {task.submissionHistory?.map((s) => (
                 <p key={s.id}>
-                  {s.fileId} · {s.submittedAt} · {s.status}
+                  {s.fileId} ? {s.submittedAt} ? {s.status}
                 </p>
               ))}
             </div>

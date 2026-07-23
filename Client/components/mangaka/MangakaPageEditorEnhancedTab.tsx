@@ -1,20 +1,16 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Layers, Plus, X, AlertCircle, Loader2, MessageSquare, Highlighter } from 'lucide-react';
 import { mangaApi } from '@/services/manga-api';
-import { PageResponse } from '@/types/manga';
+import { PageResponse, AnnotationType, AnnotationResponse } from '@/types/manga';
 import { usePageAnnotations } from '@/hooks/usePageAnnotations';
 
 interface MangakaPageEditorEnhancedTabProps {
-  setActiveTab: (tab: string) => void;
   triggerModal: (title: string, content: string) => void;
 }
 
-type AnnotationType = 'comment' | 'highlight' | 'error' | 'correction';
-
 export default function MangakaPageEditorEnhancedTab({
-  setActiveTab,
   triggerModal,
 }: MangakaPageEditorEnhancedTabProps) {
   const [pages, setPages] = useState<PageResponse[]>([]);
@@ -25,21 +21,13 @@ export default function MangakaPageEditorEnhancedTab({
 
   // Annotation form state
   const [showAnnotationForm, setShowAnnotationForm] = useState(false);
-  const [annotationType, setAnnotationType] = useState<AnnotationType>('comment');
+  const [annotationType, setAnnotationType] = useState<AnnotationType>('Other');
   const [annotationText, setAnnotationText] = useState('');
   const [annotationSubmitting, setAnnotationSubmitting] = useState(false);
 
   // Use annotation hook for selected page
   const { annotations, loading: annotationsLoading, createAnnotation, deleteAnnotation } =
     usePageAnnotations(selectedPageId);
-
-  useEffect(() => {
-    const storedChapterId = window.localStorage.getItem('manga-current-chapter-id');
-    if (storedChapterId) {
-      setChapterId(storedChapterId);
-      void loadPages(storedChapterId);
-    }
-  }, []);
 
   const loadPages = async (currentChapterId: string) => {
     setLoading(true);
@@ -51,12 +39,23 @@ export default function MangakaPageEditorEnhancedTab({
       } else {
         setError(res.data?.message || 'Unable to load pages.');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Could not reach manga service.');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; error?: string } } };
+      setError(error.response?.data?.message || error.response?.data?.error || 'Could not reach manga service.');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const storedChapterId = window.localStorage.getItem('manga-current-chapter-id');
+    if (storedChapterId) {
+      void (async () => {
+        setChapterId(storedChapterId);
+        await loadPages(storedChapterId);
+      })();
+    }
+  }, []);
 
   const handleCreatePage = async () => {
     if (!chapterId) {
@@ -72,8 +71,9 @@ export default function MangakaPageEditorEnhancedTab({
       } else {
         triggerModal('Page Creation Failed', res.data?.message || 'The page could not be created.');
       }
-    } catch (err: any) {
-      triggerModal('Page Creation Failed', err.response?.data?.message || 'The page could not be created.');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      triggerModal('Page Creation Failed', error.response?.data?.message || 'The page could not be created.');
     }
   };
 
@@ -289,7 +289,7 @@ export default function MangakaPageEditorEnhancedTab({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {annotations.map((annotation) => (
+                  {annotations.map((annotation: AnnotationResponse) => (
                     <div
                       key={annotation.id}
                       className={`p-3 rounded-lg border flex items-start justify-between gap-3 ${getAnnotationTypeColor(

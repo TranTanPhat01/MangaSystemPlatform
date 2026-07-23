@@ -17,7 +17,7 @@ export enum TaskPriority {
   High = 3,
   Urgent = 4,
 }
-export type AnnotationType = 'Background' | 'CharacterInk' | 'Screentone' | 'Effects' | 'Lettering' | 'Color' | 'Other';
+export type AnnotationType = 'Background' | 'CharacterInk' | 'Screentone' | 'Effects' | 'Lettering' | 'Color' | 'Other' | 'comment' | 'highlight' | 'error' | 'correction';
 
 export interface SeriesResponse {
   id: string;

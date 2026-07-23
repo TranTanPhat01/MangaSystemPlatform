@@ -55,7 +55,7 @@ export function MangakaDashboard() {
       case 'Page Editor':
         return (
           <MangakaPageEditorTab
-            setActiveTab={setActiveTab}
+            // setActiveTab={setActiveTab}
             triggerModal={triggerModal}
           />
         );

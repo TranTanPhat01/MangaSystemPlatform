@@ -23,7 +23,7 @@ export default function SeriesCreateModal({ isOpen, onClose, onSubmit, isCreatin
       void adminApi
         .listStudios()
         .then((r) => setStudios(r.data.success ? r.data.data : []))
-        .catch(() => setError('Không th? t?i Studio.'));
+        .catch(() => setError('Khï¿½ng th? t?i Studio.'));
     }
   }, [isOpen]);
 
@@ -32,7 +32,7 @@ export default function SeriesCreateModal({ isOpen, onClose, onSubmit, isCreatin
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!studioId || !title.trim()) {
-      setError('Ch?n Studio và nh?p tiêu d?.');
+      setError('Ch?n Studio vï¿½ nh?p tiï¿½u d?.');
       return;
     }
     await onSubmit({
@@ -101,7 +101,7 @@ export default function SeriesCreateModal({ isOpen, onClose, onSubmit, isCreatin
             disabled={isCreating || !studioId}
             className="px-4 py-2 bg-indigo-700 rounded disabled:opacity-50"
           >
-            {isCreating ? 'Creating…' : 'Create Series'}
+            {isCreating ? 'Creating...' : 'Create Series'}
           </button>
         </form>
       </div>

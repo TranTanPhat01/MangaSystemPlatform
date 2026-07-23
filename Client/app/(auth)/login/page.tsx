@@ -275,12 +275,14 @@ export default function LoginPage() {
             <LoginForm t={t} />
           </Suspense>
 
+          {/* Temporarily disabled register link
           <div className="text-center text-xs text-slate-500 font-semibold pt-2 border-t border-slate-100">
             {t.noAccount}{' '}
             <Link href="/register" className="font-bold text-burgundy-855 hover:text-burgundy-950 hover:underline">
               {t.registerLink}
             </Link>
           </div>
+          */}
         </div>
       </div>
     </div>

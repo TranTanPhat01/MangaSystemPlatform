@@ -112,7 +112,7 @@ export default function AssistantTaskDetailPreview({
               )}
               {!['Background', 'Shading', 'Effect'].includes(selectedTask.annotationType) && (
                 <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Follow the annotation guide provided in the reference files. Complete the highlighted region according to the Mangaka's instructions.
+                  Follow the annotation guide provided in the reference files. Complete the highlighted region according to the Mangaka&apos;s instructions.
                 </p>
               )}
             </div>

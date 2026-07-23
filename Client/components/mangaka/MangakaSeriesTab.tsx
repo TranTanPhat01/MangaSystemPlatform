@@ -1,4 +1,43 @@
 import React from 'react';
 import { SeriesResponse } from '@/types/manga';
-interface Props { seriesError: string | null; seriesLoading: boolean; series: SeriesResponse[]; fetchSeries: () => void; triggerModal: (title: string, content: string) => void; }
-export default function MangakaSeriesTab({ seriesError, seriesLoading, series, fetchSeries, triggerModal }: Props) { if (seriesLoading) return <p>Đang tải Series…</p>; if (seriesError) return <button onClick={fetchSeries}>Tải lại: {seriesError}</button>; return <section><button onClick={() => triggerModal('New Series Creation', 'Create a new Series.')}>New Series</button>{series.length === 0 ? <p>Chưa có Series.</p> : <div className="grid md:grid-cols-2 gap-4">{series.map(item => <article key={item.id} className="border rounded p-4"><h3>{item.title}</h3><p>Studio: {item.studioId}</p><p>Status: {item.status}</p><p>Updated: {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : '—'}</p></article>)}</div>}</section>; }
+
+interface Props {
+  seriesError: string | null;
+  seriesLoading: boolean;
+  series: SeriesResponse[];
+  fetchSeries: () => void;
+  triggerModal: (title: string, content: string) => void;
+}
+
+export default function MangakaSeriesTab({
+  seriesError,
+  seriesLoading,
+  series,
+  fetchSeries,
+  triggerModal,
+}: Props) {
+  if (seriesLoading) return <p>Đang tải Series…</p>;
+  if (seriesError) return <button onClick={fetchSeries}>Tải lại: {seriesError}</button>;
+
+  return (
+    <section>
+      <button onClick={() => triggerModal('New Series Creation', 'Create a new Series.')}>
+        New Series
+      </button>
+      {series.length === 0 ? (
+        <p>Chưa có Series.</p>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {series.map((item) => (
+            <article key={item.id} className="border rounded p-4">
+              <h3>{item.title}</h3>
+              <p>Studio: {item.studioId}</p>
+              <p>Status: {item.status}</p>
+              <p>Updated: {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : '—'}</p>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}

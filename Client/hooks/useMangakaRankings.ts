@@ -54,11 +54,11 @@ export function useMangakaRankings() {
         const mappedRankings: MangakaSeriesRanking[] = (rankingSnapshots[0]?.items || []).map(
           (item: RankingItemResponse, index: number) => ({
             seriesId: item.seriesId,
-            seriesTitle: item.seriesTitle,
-            rank: index + 1,
-            votes: item.votes || 0,
+            seriesTitle: `Series ${item.seriesId.toString().slice(0, 8)}`,
+            rank: item.rankPosition || index + 1,
+            votes: item.voteCount || 0,
             trend: (item.trend as 'up' | 'down' | 'stable') || 'stable',
-            hasWarning: false, // Will be updated after fetching warnings
+            hasWarning: item.riskLevel !== 'Low',
           })
         );
         setRankings(mappedRankings);

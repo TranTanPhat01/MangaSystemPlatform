@@ -34,20 +34,20 @@ export function useMangakaEditorial() {
               return {
                 reviewId: review.id,
                 chapterId: review.chapterId,
-                chapterTitle: review.chapterTitle || `Chapter ${review.chapterNumber}`,
+                chapterTitle: `Chapter ${review.chapterId.toString().slice(0, 8)}`,
                 status: mapReviewStatus(review.status),
                 lastCommentDate: lastComment?.createdAt 
                   ? new Date(lastComment.createdAt).toLocaleDateString()
                   : 'No comments',
                 comments,
-                editorName: review.createdBy || 'Editor',
-                note: lastComment?.content || review.notes,
+                editorName: review.reviewerUserId ? `Editor ${review.reviewerUserId.toString().slice(0, 8)}` : 'Unassigned',
+                note: lastComment?.commentText || review.decisionNote || 'No notes',
               };
             } catch {
               return {
                 reviewId: review.id,
                 chapterId: review.chapterId,
-                chapterTitle: review.chapterTitle || `Chapter ${review.chapterNumber}`,
+                chapterTitle: `Chapter ${review.chapterId.toString().slice(0, 8)}`,
                 status: mapReviewStatus(review.status),
                 lastCommentDate: 'No data',
                 comments: [],

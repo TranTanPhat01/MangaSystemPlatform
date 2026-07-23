@@ -1,3 +1,37 @@
 'use client';
-import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper'; import FileUploadDropzone from './FileUploadDropzone'; import FileListTable from './FileListTable'; import { useFiles } from '@/hooks/useFiles'; import { FileCategory } from '@/types/file';
-export default function FileManagerPage(){const files=useFiles();return <DashboardLayoutWrapper><main>{files.error&&<div role="alert">{files.error}<button onClick={files.fetchFiles}>Retry</button></div>}{files.successMessage&&<p>{files.successMessage}</p>}<h1>Asset Manager</h1><FileUploadDropzone onUpload={(file,category:FileCategory)=>void files.uploadFile(file,category)} isUploading={files.isUploading}/><FileListTable files={files.files} onDownload={files.downloadFile} onPreview={files.previewFile} onDelete={files.deleteFile} onRefresh={files.fetchFiles} isLoading={files.isLoading}/></main></DashboardLayoutWrapper>}
+import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper';
+import FileUploadDropzone from './FileUploadDropzone';
+import FileListTable from './FileListTable';
+import { useFiles } from '@/hooks/useFiles';
+import { FileCategory } from '@/types/file';
+
+export default function FileManagerPage() {
+  const files = useFiles();
+
+  return (
+    <DashboardLayoutWrapper>
+      <main>
+        {files.error && (
+          <div role="alert">
+            {files.error}
+            <button onClick={files.fetchFiles}>Retry</button>
+          </div>
+        )}
+        {files.successMessage && <p>{files.successMessage}</p>}
+        <h1>Asset Manager</h1>
+        <FileUploadDropzone
+          onUpload={(file, category: FileCategory) => void files.uploadFile(file, category)}
+          isUploading={files.isUploading}
+        />
+        <FileListTable
+          files={files.files}
+          onDownload={files.downloadFile}
+          onPreview={files.previewFile}
+          onDelete={files.deleteFile}
+          onRefresh={files.fetchFiles}
+          isLoading={files.isLoading}
+        />
+      </main>
+    </DashboardLayoutWrapper>
+  );
+}

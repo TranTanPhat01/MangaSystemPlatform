@@ -27,15 +27,20 @@ export function useAssistantRevisions() {
           (task: TaskResponse) => task.status === TaskStatus.RevisionRequired
         );
         
-        const mapped: RevisionRequest[] = revisionTasks.map((task: TaskResponse) => ({
-          taskId: task.id,
-          pageNumber: task.pageNumber,
-          chapterInfo: `Chapter ${task.pageNumber}`,
-          reason: task.revisionReason || 'Revisions requested',
-          requestedDate: task.updatedAt
-            ? new Date(task.updatedAt).toLocaleDateString()
-            : 'Recently',
-        }));
+        const mapped: RevisionRequest[] = revisionTasks.map((task: TaskResponse) => {
+          const latestRevision = task.revisions && task.revisions.length > 0
+            ? task.revisions[task.revisions.length - 1]
+            : null;
+          return {
+            taskId: task.id,
+            pageNumber: task.pageNumber,
+            chapterInfo: `Chapter ${task.pageNumber}`,
+            reason: latestRevision?.reason || 'Revisions requested',
+            requestedDate: latestRevision?.createdAt
+              ? new Date(latestRevision.createdAt).toLocaleDateString()
+              : new Date(task.updatedAt || task.createdAt).toLocaleDateString(),
+          };
+        });
         
         setRevisions(mapped);
       } else {

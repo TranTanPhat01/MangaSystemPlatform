@@ -2,5 +2,109 @@ import React, { useEffect, useState } from 'react';
 import { X, Sparkles } from 'lucide-react';
 import { CreateSeriesRequest } from '@/types/manga';
 import { adminApi, StudioResponse } from '@/services/admin-api';
-interface Props { isOpen: boolean; onClose: () => void; onSubmit: (data: CreateSeriesRequest) => Promise<void>; isCreating: boolean; }
-export default function SeriesCreateModal({ isOpen, onClose, onSubmit, isCreating }: Props) { const [studios, setStudios] = useState<StudioResponse[]>([]); const [studioId, setStudioId] = useState(''); const [title, setTitle] = useState(''); const [description, setDescription] = useState(''); const [genre, setGenre] = useState(''); const [error, setError] = useState<string | null>(null); useEffect(() => { if (isOpen) void adminApi.listStudios().then(r => setStudios(r.data.success ? r.data.data : [])).catch(() => setError('Không thể tải Studio.')); }, [isOpen]); if (!isOpen) return null; const submit = async (event: React.FormEvent) => { event.preventDefault(); if (!studioId || !title.trim()) { setError('Chọn Studio và nhập tiêu đề.'); return; } await onSubmit({ studioId, title: title.trim(), ...(description ? { description } : {}), ...(genre ? { genre } : {}) }); setTitle(''); setDescription(''); setGenre(''); setStudioId(''); }; return <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><div className="fixed inset-0 bg-black/60" onClick={onClose}/><div className="relative bg-slate-900 text-slate-100 p-6 rounded-xl w-full max-w-md"><button onClick={onClose} className="float-right"><X/></button><h3 className="font-bold flex gap-2"><Sparkles size={16}/>Add New Manga Series</h3><form onSubmit={submit} className="mt-4 space-y-3">{error && <p className="text-sm text-rose-400">{error}</p>}<select aria-label="Studio" required disabled={isCreating} value={studioId} onChange={e => setStudioId(e.target.value)} className="w-full p-2 rounded text-slate-900"><option value="">Chọn Studio</option>{studios.map(studio => <option key={studio.id} value={studio.id}>{studio.name}</option>)}</select><input required disabled={isCreating} value={title} onChange={e => setTitle(e.target.value)} placeholder="Series Title" className="w-full p-2 rounded text-slate-900"/><input disabled={isCreating} value={genre} onChange={e => setGenre(e.target.value)} placeholder="Genre" className="w-full p-2 rounded text-slate-900"/><textarea disabled={isCreating} value={description} onChange={e => setDescription(e.target.value)} placeholder="Description" className="w-full p-2 rounded text-slate-900"/><button disabled={isCreating || !studioId} className="px-4 py-2 bg-indigo-700 rounded disabled:opacity-50">{isCreating ? 'Creating…' : 'Create Series'}</button></form></div></div>; }
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: CreateSeriesRequest) => Promise<void>;
+  isCreating: boolean;
+}
+
+export default function SeriesCreateModal({ isOpen, onClose, onSubmit, isCreating }: Props) {
+  const [studios, setStudios] = useState<StudioResponse[]>([]);
+  const [studioId, setStudioId] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [genre, setGenre] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      void adminApi
+        .listStudios()
+        .then((r) => setStudios(r.data.success ? r.data.data : []))
+        .catch(() => setError('Kh�ng th? t?i Studio.'));
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!studioId || !title.trim()) {
+      setError('Ch?n Studio v� nh?p ti�u d?.');
+      return;
+    }
+    await onSubmit({
+      studioId,
+      title: title.trim(),
+      ...(description ? { description } : {}),
+      ...(genre ? { genre } : {}),
+    });
+    setTitle('');
+    setDescription('');
+    setGenre('');
+    setStudioId('');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative bg-slate-900 text-slate-100 p-6 rounded-xl w-full max-w-md">
+        <button onClick={onClose} className="float-right">
+          <X />
+        </button>
+        <h3 className="font-bold flex gap-2">
+          <Sparkles size={16} />
+          Add New Manga Series
+        </h3>
+        <form onSubmit={submit} className="mt-4 space-y-3">
+          {error && <p className="text-sm text-rose-400">{error}</p>}
+          <select
+            aria-label="Studio"
+            required
+            disabled={isCreating}
+            value={studioId}
+            onChange={(e) => setStudioId(e.target.value)}
+            className="w-full p-2 rounded text-slate-900"
+          >
+            <option value="">Ch?n Studio</option>
+            {studios.map((studio) => (
+              <option key={studio.id} value={studio.id}>
+                {studio.name}
+              </option>
+            ))}
+          </select>
+          <input
+            required
+            disabled={isCreating}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Series Title"
+            className="w-full p-2 rounded text-slate-900"
+          />
+          <input
+            disabled={isCreating}
+            value={genre}
+            onChange={(e) => setGenre(e.target.value)}
+            placeholder="Genre"
+            className="w-full p-2 rounded text-slate-900"
+          />
+          <textarea
+            disabled={isCreating}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Description"
+            className="w-full p-2 rounded text-slate-900"
+          />
+          <button
+            disabled={isCreating || !studioId}
+            className="px-4 py-2 bg-indigo-700 rounded disabled:opacity-50"
+          >
+            {isCreating ? 'Creating�' : 'Create Series'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

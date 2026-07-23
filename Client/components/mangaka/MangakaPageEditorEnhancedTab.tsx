@@ -6,14 +6,17 @@ import { mangaApi } from '@/services/manga-api';
 import { PageResponse } from '@/types/manga';
 import { usePageAnnotations } from '@/hooks/usePageAnnotations';
 
-interface MangakaPageEditorTabProps {
+interface MangakaPageEditorEnhancedTabProps {
   setActiveTab: (tab: string) => void;
   triggerModal: (title: string, content: string) => void;
 }
 
 type AnnotationType = 'comment' | 'highlight' | 'error' | 'correction';
 
-export default function MangakaPageEditorTab({ setActiveTab, triggerModal }: MangakaPageEditorTabProps) {
+export default function MangakaPageEditorEnhancedTab({
+  setActiveTab,
+  triggerModal,
+}: MangakaPageEditorEnhancedTabProps) {
   const [pages, setPages] = useState<PageResponse[]>([]);
   const [chapterId, setChapterId] = useState('');
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);

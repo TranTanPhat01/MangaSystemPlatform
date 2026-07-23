@@ -1,15 +1,18 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import { clsx } from 'clsx';
-import { FileImage, Paperclip, Download, Upload } from 'lucide-react';
+import { FileImage, Download, Upload, AlertCircle, Loader2, ImageOff } from 'lucide-react';
 import { Task, TaskStatus } from '@/types/assistant';
+import { fileApi } from '@/services/file-api';
 
 function statusStyle(status: TaskStatus) {
   switch (status) {
-    case 'In Progress':      return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-    case 'Submitted':        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'In Progress':       return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    case 'Submitted':         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     case 'Revision Required': return 'bg-rose-50 text-rose-700 border-rose-200';
-    case 'Approved':         return 'bg-teal-50 text-teal-700 border-teal-200';
-    case 'Pending':          return 'bg-slate-100 text-slate-500 border-slate-200';
+    case 'Approved':          return 'bg-teal-50 text-teal-700 border-teal-200';
+    case 'Pending':           return 'bg-slate-100 text-slate-500 border-slate-200';
   }
 }
 
@@ -26,14 +29,55 @@ export default function AssistantTaskDetailPreview({
   isSubmitting,
   submissionMessage,
 }: AssistantTaskDetailPreviewProps) {
+  const [pageImageUrl, setPageImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  // Load real page image from fileId when task changes
+  useEffect(() => {
+    setPageImageUrl(null);
+    setImageError(false);
+
+    // Use pageFileId if available on the task (passed from API via pageFileId field)
+    // The task.pageId can be used to look up file URL if needed
+    const fileId = (selectedTask as Task & { pageFileId?: string }).pageFileId;
+
+    if (fileId) {
+      setImageLoading(true);
+      fileApi
+        .getFileUrl(fileId)
+        .then((res) => {
+          if (res.data?.success && res.data.data?.url) {
+            setPageImageUrl(res.data.data.url);
+          } else {
+            setImageError(true);
+          }
+        })
+        .catch(() => setImageError(true))
+        .finally(() => setImageLoading(false));
+    }
+  }, [selectedTask.id]);
+
   const handleFileSelection = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !onUploadSubmission) return;
     await onUploadSubmission(file);
     event.target.value = '';
   };
+
+  const handleDownload = () => {
+    if (pageImageUrl) {
+      const link = document.createElement('a');
+      link.href = pageImageUrl;
+      link.download = `page-${selectedTask.chapter}.png`;
+      link.target = '_blank';
+      link.click();
+    }
+  };
+
   return (
     <section className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
+      {/* Header */}
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-violet-50 flex items-center justify-center">
@@ -52,100 +96,107 @@ export default function AssistantTaskDetailPreview({
       </div>
 
       <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Page thumbnail + highlight zone */}
+        {/* Left: Page image from API */}
         <div>
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Manga Page Preview</p>
-          {/* Thumbnail placeholder */}
-          <div className="relative bg-slate-100 rounded-2xl overflow-hidden" style={{ aspectRatio: '3/4' }}>
-            {/* Manga page mock */}
-            <div className="absolute inset-0 flex flex-col gap-1 p-2">
-              {[3, 1, 2].map((cols, ri) => (
-                <div key={ri} className={clsx('flex gap-1', ri === 0 ? 'flex-[3]' : ri === 1 ? 'flex-[1.5]' : 'flex-[2]')}>
-                  {Array.from({ length: cols }).map((_, ci) => (
-                    <div
-                      key={ci}
-                      className={clsx(
-                        'flex-1 rounded bg-slate-200',
-                        ri === 0 && ci === 1 && 'ring-2 ring-indigo-500 ring-offset-1 bg-indigo-100'
-                      )}
-                    />
-                  ))}
+          <div
+            className="relative bg-slate-100 rounded-2xl overflow-hidden border border-slate-200"
+            style={{ aspectRatio: '3/4' }}
+          >
+            {imageLoading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <Loader2 size={22} className="animate-spin text-indigo-500" />
+                <p className="text-[10px] font-semibold text-slate-500">Loading page…</p>
+              </div>
+            ) : pageImageUrl ? (
+              <>
+                {/* Real page image */}
+                <img
+                  src={pageImageUrl}
+                  alt={`Page — ${selectedTask.chapter}`}
+                  className="absolute inset-0 w-full h-full object-contain"
+                  onError={() => { setPageImageUrl(null); setImageError(true); }}
+                />
+                {/* Chapter label */}
+                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[8px] font-bold px-2 py-0.5 rounded-md">
+                  {selectedTask.chapter}
                 </div>
-              ))}
-            </div>
-
-            {/* Highlighted region overlay */}
-            <div className="absolute top-[18%] left-[34%] w-[30%] h-[25%] border-2 border-indigo-500 rounded bg-indigo-500/10 flex items-center justify-center">
-              <span className="text-[8px] font-black text-indigo-700 bg-white/80 px-1.5 py-0.5 rounded">
-                Selected Region
-              </span>
-            </div>
-
-            {/* Corner label */}
-            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[8px] font-bold px-2 py-0.5 rounded-md">
-              {selectedTask.chapter}
-            </div>
+              </>
+            ) : imageError ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center p-4">
+                <ImageOff size={22} className="text-slate-400" />
+                <p className="text-[10px] font-semibold text-slate-500">Page image not available</p>
+                <p className="text-[9px] text-slate-400">Upload a page image to see it here</p>
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center p-4">
+                <FileImage size={22} className="text-slate-400" />
+                <p className="text-[10px] font-semibold text-slate-500">No page image</p>
+                <p className="text-[9px] text-slate-400">{selectedTask.chapter}</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Right: Instructions + files + actions */}
+        {/* Right: Task instructions + actions */}
         <div className="space-y-5">
           {/* Task instruction */}
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Task Instruction</p>
             <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
-              <p className="text-[11px] font-bold text-slate-700 mb-1">Annotation Type: <span className="text-indigo-700">{selectedTask.annotationType}</span></p>
-              {selectedTask.annotationType === 'Background' && (
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Draw a detailed urban nightscape background for the highlighted panel. Use the reference cityscape provided. Perspective point is upper-center. Avoid covering character silhouettes in panels 1 and 3.
-                </p>
-              )}
-              {selectedTask.annotationType === 'Shading' && (
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Apply cel-shading to the main character in the right panel. Light source is from upper-left at 45°. Use gradient fill for hair and flat tones for clothing.
-                </p>
-              )}
-              {selectedTask.annotationType === 'Effect' && (
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Add speed-line motion effects radiating from the focal point (marked circle). Stroke weight 1.5px, 80 lines, angle range ±35°. No blur — sharp lines only.
-                </p>
-              )}
-              {!['Background', 'Shading', 'Effect'].includes(selectedTask.annotationType) && (
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Follow the annotation guide provided in the reference files. Complete the highlighted region according to the Mangaka&apos;s instructions.
+              <p className="text-[11px] font-bold text-slate-700 mb-1">
+                Type: <span className="text-indigo-700">{selectedTask.annotationType}</span>
+              </p>
+              {selectedTask.description ? (
+                <p className="text-[10px] text-slate-600 leading-relaxed">{selectedTask.description}</p>
+              ) : (
+                <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                  No additional description provided. Follow the annotation guidelines in the Page Editor.
                 </p>
               )}
             </div>
           </div>
 
-          {/* Reference files */}
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Reference Files</p>
-            <div className="space-y-2">
-              {[
-                { name: 'reference_cityscape.psd', size: '24.2 MB', type: 'PSD' },
-                { name: 'character_guide.png', size: '3.1 MB', type: 'PNG' },
-                { name: 'annotation_overlay.ai', size: '8.7 MB', type: 'AI' },
-              ].map(f => (
-                <div
-                  key={f.name}
-                  className="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-100 rounded-xl hover:border-indigo-200 hover:bg-indigo-50/30 transition-colors cursor-pointer group"
-                >
-                  <Paperclip size={12} className="text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold text-slate-700 truncate">{f.name}</p>
-                    <p className="text-[8px] font-medium text-slate-400">{f.size}</p>
-                  </div>
-                  <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">{f.type}</span>
-                </div>
-              ))}
+          {/* Deadline & priority info */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Deadline</p>
+              <p className={clsx(
+                'text-xs font-bold',
+                selectedTask.deadlineOverdue ? 'text-rose-600' : 'text-slate-700'
+              )}>
+                {selectedTask.deadline || '—'}
+              </p>
+            </div>
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Priority</p>
+              <p className={clsx('text-xs font-bold', {
+                'text-rose-600': selectedTask.priority === 'Urgent',
+                'text-amber-600': selectedTask.priority === 'High',
+                'text-slate-700': !['Urgent','High'].includes(selectedTask.priority),
+              })}>
+                {selectedTask.priority}
+              </p>
             </div>
           </div>
 
-          {/* CTA */}
+          {/* Submission feedback message */}
+          {submissionMessage && (
+            <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-700">
+              <AlertCircle size={12} />
+              {submissionMessage}
+            </div>
+          )}
+
+          {/* CTA buttons */}
           <div className="flex gap-3 pt-1">
-            <button className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">
-              <Download size={13} />Download Assets
+            <button
+              onClick={handleDownload}
+              disabled={!pageImageUrl}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Download size={13} />
+              Download Page
             </button>
             <label className="flex-1 flex cursor-pointer items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold bg-indigo-700 text-white hover:bg-indigo-800 shadow-[0_2px_8px_rgba(79,70,229,0.25)] transition-colors">
               <Upload size={13} />
@@ -153,9 +204,6 @@ export default function AssistantTaskDetailPreview({
               <input type="file" className="hidden" accept="image/*,.psd,.zip,.pdf,.ai" onChange={handleFileSelection} />
             </label>
           </div>
-          {submissionMessage && (
-            <p className="text-[10px] font-medium text-emerald-600">{submissionMessage}</p>
-          )}
         </div>
       </div>
     </section>

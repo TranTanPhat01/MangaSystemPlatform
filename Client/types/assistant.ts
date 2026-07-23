@@ -33,6 +33,10 @@ export interface Task {
   status: TaskStatus;
   action: TaskAction;
   color: string;
+  // Real API fields for detail view
+  pageId?: string;
+  description?: string;
+  pageFileId?: string;
 }
 
 export interface RevisionRequest {

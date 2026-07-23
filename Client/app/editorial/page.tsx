@@ -2,10 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper';
-import { AlertCircle, AlertTriangle, ChevronDown, ChevronUp, FileText, MessageSquare, Play, RefreshCw, ThumbsUp, XCircle } from 'lucide-react';
+import {
+  AlertCircle, AlertTriangle, ChevronDown, ChevronUp, FileText,
+  MessageSquare, Play, RefreshCw, ThumbsUp, XCircle, Trophy,
+  TrendingUp, TrendingDown, Minus, BarChart3,
+} from 'lucide-react';
 import { editorialApi } from '@/services/editorial-api';
 import { useAuthStore } from '@/store/auth-store';
-import { EditorialCommentResponse, EditorialReviewResponse, ReviewStatus } from '@/types/editorial';
+import {
+  EditorialCommentResponse, EditorialReviewResponse,
+  IssueResponse, RankingItemResponse, RankingSnapshotResponse, ReviewStatus,
+} from '@/types/editorial';
 
 type ApiError = {
   message?: unknown;
@@ -36,9 +43,7 @@ function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
   return <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${classes[status]}`}>{reviewStatusLabel(status)}</span>;
 }
 
-function compactId(id: string) {
-  return id.slice(0, 8);
-}
+function compactId(id: string) { return id.slice(0, 8); }
 
 function CommentForm({ reviewId, disabled, onSuccess }: { reviewId: string; disabled: boolean; onSuccess: () => Promise<void> }) {
   const [commentText, setCommentText] = useState('');
@@ -168,6 +173,152 @@ export function ReviewCard({ review, canManage, onRefresh }: { review: Editorial
   </div>;
 }
 
+// ─── Rankings Panel (real data) ───────────────────────────────────────────────
+function RankingsPanel() {
+  const [issues, setIssues] = useState<IssueResponse[]>([]);
+  const [selectedIssueId, setSelectedIssueId] = useState<string>('');
+  const [rankItems, setRankItems] = useState<RankingItemResponse[]>([]);
+  const [loadingIssues, setLoadingIssues] = useState(false);
+  const [loadingRankings, setLoadingRankings] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoadingIssues(true);
+      try {
+        const res = await editorialApi.getIssues();
+        if (res.data.success) {
+          const sorted = (res.data.data ?? []).sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          setIssues(sorted);
+          if (sorted.length > 0) setSelectedIssueId(sorted[0].id);
+        }
+      } catch {
+        setError('Could not load issues.');
+      } finally {
+        setLoadingIssues(false);
+      }
+    };
+    void load();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedIssueId) return;
+    const load = async () => {
+      setLoadingRankings(true);
+      setError(null);
+      setRankItems([]);
+      try {
+        const res = await editorialApi.getRankings(selectedIssueId);
+        if (res.data.success) {
+          // getRankings returns RankingSnapshotResponse[] — take latest snapshot's items
+          const snapshots: RankingSnapshotResponse[] = res.data.data ?? [];
+          if (snapshots.length > 0) {
+            const latest = snapshots.sort(
+              (a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
+            )[0];
+            setRankItems(latest.items ?? []);
+          }
+        } else {
+          setError(res.data.message || 'Failed to load rankings.');
+        }
+      } catch {
+        setError('Could not load rankings data.');
+      } finally {
+        setLoadingRankings(false);
+      }
+    };
+    void load();
+  }, [selectedIssueId]);
+
+  const rankColor = (rank: number) => {
+    if (rank === 1) return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
+    if (rank === 2) return 'bg-slate-400/10 border-slate-400/20 text-slate-300';
+    if (rank === 3) return 'bg-orange-700/10 border-orange-700/20 text-orange-500';
+    return 'bg-slate-700/10 border-slate-700/20 text-slate-500';
+  };
+
+  const trendIcon = (trend: string | undefined | null) => {
+    if (trend === 'Up') return <TrendingUp size={10} className="text-emerald-400" />;
+    if (trend === 'Down') return <TrendingDown size={10} className="text-rose-400" />;
+    return <Minus size={10} className="text-slate-500" />;
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Trophy size={13} className="text-amber-400" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Weekly Rankings</h3>
+        </div>
+        {loadingRankings && <RefreshCw size={11} className="animate-spin text-indigo-400" />}
+      </div>
+
+      {/* Issue selector */}
+      {loadingIssues ? (
+        <div className="text-xs text-slate-500 font-semibold">Loading issues…</div>
+      ) : issues.length > 0 ? (
+        <select
+          value={selectedIssueId}
+          onChange={(e) => setSelectedIssueId(e.target.value)}
+          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 font-semibold focus:outline-none focus:border-indigo-500 transition-colors"
+        >
+          {issues.map((issue) => (
+            <option key={issue.id} value={issue.id}>
+              Issue #{issue.issueNumber} — {issue.title}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <p className="text-xs text-slate-500 font-semibold">No issues found. Create an issue first.</p>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-400 font-semibold">
+          <AlertCircle size={11} />
+          {error}
+        </div>
+      )}
+
+      {/* Rankings list */}
+      <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden">
+        {loadingRankings ? (
+          <div className="p-6 text-center">
+            <RefreshCw size={16} className="animate-spin text-indigo-400 mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-semibold">Loading rankings…</p>
+          </div>
+        ) : rankItems.length === 0 ? (
+          <div className="p-6 text-center">
+            <BarChart3 size={22} className="text-slate-700 mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-semibold">No rankings yet.</p>
+            <p className="text-[10px] text-slate-600 mt-1">Calculate rankings after entering reader votes.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-800/60">
+            {rankItems
+              .slice()
+              .sort((a, b) => a.rankPosition - b.rankPosition)
+              .map((item) => (
+                <div key={item.seriesId} className="flex items-center gap-3 px-4 py-3">
+                  <div className={`h-7 w-7 rounded border flex items-center justify-center font-bold text-xs font-mono shrink-0 ${rankColor(item.rankPosition)}`}>
+                    {item.rankPosition}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-slate-200 text-xs truncate font-mono">{compactId(item.seriesId)}</h4>
+                    <p className="text-[10px] text-slate-500">{item.voteCount.toLocaleString()} votes · score {item.score.toFixed(1)}</p>
+                  </div>
+                  <div className="shrink-0">{trendIcon(item.trend)}</div>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function EditorialPage() {
   const roles = useAuthStore((state) => state.user?.roles ?? []);
   const canManage = roles.some((role) => ['tantoueditor', 'admin'].includes(role.toLowerCase()));
@@ -191,13 +342,78 @@ export default function EditorialPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  return <DashboardLayoutWrapper><div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-    <div className="flex justify-between items-center"><div><h1 className="text-xl font-bold text-slate-100 mb-1">Editorial Operations</h1><p className="text-xs text-slate-500 font-medium">Review submitted manuscripts and collaborate with creators.</p></div><button onClick={() => void fetchReviews()} disabled={loading} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-800/40 border border-slate-700/50 rounded-lg disabled:opacity-50"><RefreshCw size={13} className={loading ? 'animate-spin' : ''} />Refresh</button></div>
-    {!canManage && <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">Read-only access. Editorial actions require the TantouEditor or Admin role.</p>}
-    {error && <div role="alert" className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl"><AlertTriangle size={16} className="text-rose-400 mt-0.5 shrink-0" /><div className="flex-1"><p className="text-sm font-bold text-rose-300">Failed to load reviews</p><p className="text-xs text-rose-400 mt-0.5">{error}</p></div><button onClick={() => void fetchReviews()} className="text-xs font-bold text-rose-400 underline">Retry</button></div>}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2"><h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">Manuscripts Review Queue</h3>{loading ? <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-8 text-center"><div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent mb-3" /><p className="text-xs text-slate-500">Loading reviews…</p></div> : !error && reviews.length === 0 ? <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-10 text-center"><FileText size={28} className="text-slate-600 mx-auto mb-3" /><p className="text-sm font-semibold text-slate-500">No reviews in queue</p></div> : reviews.length > 0 ? <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl overflow-hidden divide-y divide-slate-800/60">{reviews.map((review) => <ReviewCard key={review.id} review={review} canManage={canManage} onRefresh={fetchReviews} />)}</div> : null}</div>
-      <div className="space-y-4"><div className="flex items-center gap-2"><h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Weekly Popularity Rankings</h3><span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">⚠ Mock Data</span></div><div className="bg-slate-900/40 border border-slate-800/80 rounded-xl p-5 space-y-4">{[{ rank: 1, title: 'Shadow Syndicate', votes: '4,285', color: 'bg-amber-500/10 border-amber-500/20 text-amber-400' }, { rank: 2, title: 'Whisper of the Wind', votes: '3,120', color: 'bg-slate-500/10 border-slate-500/20 text-slate-400' }].map((item) => <div key={item.rank} className="flex items-center gap-3 pb-3 border-b border-slate-800/60 last:border-0 last:pb-0"><div className={`h-7 w-7 rounded border flex items-center justify-center font-bold text-xs font-mono ${item.color}`}>{item.rank}</div><div><h4 className="font-bold text-slate-200 text-xs">{item.title}</h4><p className="text-[10px] text-slate-500">{item.votes} votes this week</p></div></div>)}<div className="p-3 bg-indigo-500/5 border border-indigo-500/10 rounded-lg text-[11px] text-slate-450 leading-relaxed"><span className="font-bold text-indigo-400 block mb-1">Rankings — Not Integrated Yet</span>Connect to <code className="text-indigo-300">/editorial/rankings</code> to see live data.</div></div></div>
-    </div>
-  </div></DashboardLayoutWrapper>;
+  return (
+    <DashboardLayoutWrapper>
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold text-slate-100 mb-1">Editorial Operations</h1>
+            <p className="text-xs text-slate-500 font-medium">Review submitted manuscripts and collaborate with creators.</p>
+          </div>
+          <button
+            onClick={() => void fetchReviews()}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-800/40 border border-slate-700/50 rounded-lg disabled:opacity-50 hover:bg-slate-800 transition-colors"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
+
+        {/* Permission warning */}
+        {!canManage && (
+          <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+            Read-only access. Editorial actions require the TantouEditor or Admin role.
+          </p>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div role="alert" className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+            <AlertTriangle size={16} className="text-rose-400 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-rose-300">Failed to load reviews</p>
+              <p className="text-xs text-rose-400 mt-0.5">{error}</p>
+            </div>
+            <button onClick={() => void fetchReviews()} className="text-xs font-bold text-rose-400 underline">Retry</button>
+          </div>
+        )}
+
+        {/* Main grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Review Queue */}
+          <div className="lg:col-span-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
+              Manuscripts Review Queue
+              <span className="ml-2 text-slate-600 normal-case font-semibold">({reviews.length})</span>
+            </h3>
+            {loading ? (
+              <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-8 text-center">
+                <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent mb-3" />
+                <p className="text-xs text-slate-500">Loading reviews…</p>
+              </div>
+            ) : !error && reviews.length === 0 ? (
+              <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-10 text-center">
+                <FileText size={28} className="text-slate-600 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-slate-500">No reviews in queue</p>
+                <p className="text-xs text-slate-600 mt-1">Waiting for Mangaka to submit chapters for review.</p>
+              </div>
+            ) : reviews.length > 0 ? (
+              <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl overflow-hidden divide-y divide-slate-800/60">
+                {reviews.map((review) => (
+                  <ReviewCard key={review.id} review={review} canManage={canManage} onRefresh={fetchReviews} />
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          {/* Right: Rankings (real data) */}
+          <div>
+            <RankingsPanel />
+          </div>
+        </div>
+      </div>
+    </DashboardLayoutWrapper>
+  );
 }

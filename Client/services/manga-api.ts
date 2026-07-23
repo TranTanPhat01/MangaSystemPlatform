@@ -25,7 +25,22 @@ import {
 
 // ─── Series ──────────────────────────────────────────────────────────────────
 
+export interface StudioResponse {
+  id: string;
+  name: string;
+  description?: string;
+  ownerId: string;
+  createdAt: string;
+}
+
 export const mangaApi = {
+  // Studios
+  getMyStudios: () =>
+    api.get<ApiResponse<StudioResponse[]>>('/manga/studios/my'),
+
+  createStudio: (data: { name: string; description?: string }) =>
+    api.post<ApiResponse<StudioResponse>>('/manga/studios', data),
+
   // Series
   getSeries: () =>
     api.get<ApiResponse<SeriesResponse[]>>('/manga/series'),

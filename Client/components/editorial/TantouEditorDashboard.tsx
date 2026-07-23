@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FileText, RefreshCw, AlertTriangle, Play, CheckSquare, Layers, Clock } from 'lucide-react';
+import { FileText, RefreshCw, AlertTriangle, Play, CheckSquare, Layers, Clock, ArrowRight } from 'lucide-react';
 import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper';
 import { editorialApi } from '@/services/editorial-api';
 import { EditorialReviewResponse, ReviewStatus } from '@/types/editorial';
+import Link from 'next/link';
 
 // Status Badge Helper
 function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
@@ -136,7 +137,8 @@ export function TantouEditorDashboard() {
           ) : reviews.length === 0 ? (
             <div className="p-12 text-center text-slate-500 text-xs font-semibold">
               <FileText size={24} className="mx-auto mb-3 text-slate-600" />
-              No manuscript reviews found in the queue.
+              <p className="text-slate-400 font-bold mb-1">No manuscript reviews found in the queue.</p>
+              <p className="text-slate-600">Queue will populate when a Mangaka submits a chapter for review.</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-850">
@@ -152,12 +154,12 @@ export function TantouEditorDashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <ReviewStatusBadge status={review.status} />
-                    <a 
-                      href="/editorial" 
-                      className="px-2.5 py-1 text-[10px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 rounded border border-indigo-500/20 transition-colors"
+                    <Link
+                      href="/editorial"
+                      className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 rounded border border-indigo-500/20 transition-colors"
                     >
-                      Manage
-                    </a>
+                      Manage <ArrowRight size={9} />
+                    </Link>
                   </div>
                 </div>
               ))}

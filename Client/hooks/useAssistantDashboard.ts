@@ -103,15 +103,19 @@ export function useAssistantDashboard() {
     ? apiTasks.map((t) => ({
         id: t.id,
         title: t.title,
-        series: `Assignee ${t.assignedToUserId.slice(0, 8)}`,
-        chapter: `Page ${t.pageNumber}`,
-        annotationType: `Annotation ${t.annotationId.slice(0, 8)}`,
+        series: t.seriesTitle || `Series`,
+        chapter: t.pageNumber != null ? `Page ${t.pageNumber}` : 'Page',
+        annotationType: t.annotationType || 'Task',
         priority: mapApiPriority(t.priority),
         deadline: t.deadline ? new Date(t.deadline).toLocaleDateString() : '—',
         deadlineOverdue: t.deadline ? new Date(t.deadline) < new Date() && t.status !== ApiTaskStatus.Approved : false,
         status: mapApiStatus(t.status),
         action: (t.status === ApiTaskStatus.InProgress ? 'Continue' : t.status === ApiTaskStatus.RevisionRequired ? 'Fix Now' : t.status === ApiTaskStatus.Submitted ? 'View' : 'Review') as TaskAction,
         color: 'bg-indigo-500',
+        // Real data for detail view
+        pageId: t.pageId,
+        description: t.description,
+        pageFileId: t.pageFileId ?? undefined,
       }))
     : [];
 

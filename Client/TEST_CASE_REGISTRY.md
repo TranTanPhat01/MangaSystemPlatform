@@ -1,7 +1,7 @@
 # TEST CASE REGISTRY
 ## Hệ thống: MangaSystemPlatform
 **Ngày cập nhật:** 2026-07-23  
-**Trạng thái kiểm thử:** 100% Passed (Bộ test tích hợp gRPC và Vitest), Frontend Production Build thành công, Docker-compose Stack hoạt động ổn định.
+**Trạng thái kiểm thử:** 100% Passed (Bộ test tích hợp gRPC và Vitest), Frontend Production Build thành công, Docker-compose Stack hoạt động ổn định, E2E Web Verification thành công cho cả 4 vai trò làm việc.
 
 ---
 
@@ -76,7 +76,7 @@
 #### 🧪 AUTH-001 — Register, login, profile, refresh, logout lifecycle
 * **Mô tả:** Quy trình đăng ký, đăng nhập và lấy profile thông qua API Gateway.
 * **Trạng thái:** ✅ **PASS**
-* **Minh chứng:** Đã gửi request `POST http://localhost:5200/identity/auth/login` thông qua Gateway thành công bằng tài khoản seed `admin@gmail.com` và nhận về JWT token hợp lệ.
+* **Minh chứng:** Đã kiểm thử tự động (E2E browser) đăng nhập thành công cho cả 4 vai trò (`mangaka_test@gmail.com`, `assistant_test@gmail.com`, `editor_test@gmail.com`, `board_test@gmail.com`) với mật khẩu `Password@123` và gán vai trò tương ứng qua tài khoản Admin.
 
 #### 🧪 AUTH-002 — Invalid credentials are rejected safely
 * **Trạng thái:** ⏺️ **NOT RUN**
@@ -84,7 +84,12 @@
 #### 🧪 RBAC-001 — Role authorization matrix
 * **Mô tả:** Kiểm tra phân quyền truy cập endpoint qua API Gateway đối với vai trò khác nhau.
 * **Trạng thái:** ✅ **PASS**
-* **Minh chứng:** Gửi request đến `/health/services` khi không có token trả về `401 Unauthorized`. Khi truyền Bearer token của Admin, trả về thông tin chi tiết health dạng JSON (`200 OK`).
+* **Minh chứng:**
+  * **Mangaka:** Tự động điều hướng đến giao diện `/dashboard` (Chief Artist Akira Sato).
+  * **Assistant:** Tự động điều hướng đến giao diện `/assistant` (Kenji Tanaka).
+  * **TantouEditor:** Tự động điều hướng đến giao diện `/editorial` (Test Editor).
+  * **EditorialBoard:** Tự động điều hướng đến giao diện `/board` (Hiroshi Tanaka).
+  * **Admin:** Cho phép phân quyền vai trò cho các user khác qua API.
 
 #### 🧪 SERIES-001 — Mangaka creates and submits a series proposal
 * **Trạng thái:** ⏺️ **NOT RUN**

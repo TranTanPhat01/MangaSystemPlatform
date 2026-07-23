@@ -111,6 +111,9 @@ export interface TaskResponse {
   latestSubmission?: TaskSubmissionResponse | null;
   submissionHistory?: TaskSubmissionResponse[];
   revisions: TaskRevisionResponse[];
+  // Optional enriched fields from backend
+  seriesTitle?: string | null;
+  annotationType?: string | null;
 }
 
 export interface CreateTaskRequest {

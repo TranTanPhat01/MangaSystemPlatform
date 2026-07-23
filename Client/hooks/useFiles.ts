@@ -37,14 +37,20 @@ export function useFiles() {
 
   const uploadFile = async (file: File, category: FileCategory) => {
     setUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(0);
     setError(null);
     try {
-      const r = await fileApi.uploadFile(file, category);
-      if (!r.data.success) throw new Error(r.data.message);
+      const r = await fileApi.uploadFile(file, category, undefined, (progressEvent) => {
+        if (progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        }
+      });
+      const fileData = r.data?.data;
+      if (!r.data?.success || !fileData) throw new Error(r.data?.message || 'Upload failed');
       setUploadProgress(100);
       await load();
-      setSuccess(`Uploaded ${r.data.data.originalFileName}`);
+      setSuccess(`Uploaded ${fileData.originalFileName ?? 'file'}`);
     } catch (e) {
       setError(errorText(e));
     } finally {

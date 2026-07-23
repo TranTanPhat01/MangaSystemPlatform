@@ -224,8 +224,12 @@ export default function MangakaTasksTab({ triggerModal }: MangakaTasksTabProps) 
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      {/* Create Task Button */}
-      <button onClick={() => void create()}>Create Task</button>
+      <button
+        disabled={!pageId || !annotationId || !assignedToUserId || !title.trim()}
+        onClick={() => void create()}
+      >
+        Create Task
+      </button>
 
       {/* Revision Reason Input */}
       <input

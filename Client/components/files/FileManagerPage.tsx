@@ -22,6 +22,7 @@ export default function FileManagerPage() {
         <FileUploadDropzone
           onUpload={(file, category: FileCategory) => void files.uploadFile(file, category)}
           isUploading={files.isUploading}
+          uploadProgress={files.uploadProgress}
         />
         <FileListTable
           files={files.files}

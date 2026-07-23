@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,6 +115,11 @@ builder.Services.AddPermissionPolicies();
 
 var app = builder.Build();
 
+await MigrateDatabaseAsync<Manga.Notification.Infrastructure.Persistence.NotificationDbContext>(
+    app.Services,
+    app.Logger,
+    app.Lifetime.ApplicationStopping);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -137,3 +144,40 @@ static string BuildRabbitMqConnectionString(IConfiguration configuration)
     var password = Uri.EscapeDataString(configuration["RabbitMQ:Password"] ?? "guest");
     return $"amqp://{userName}:{password}@{host}:{port}/";
 }
+
+static async Task MigrateDatabaseAsync<TContext>(IServiceProvider services, Microsoft.Extensions.Logging.ILogger logger, CancellationToken cancellationToken)
+    where TContext : DbContext
+{
+    const int maxAttempts = 12;
+    for (var attempt = 1; ; attempt++)
+    {
+        try
+        {
+            await using var scope = services.CreateAsyncScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<TContext>();
+            var pendingMigrations = await dbContext.Database.GetPendingMigrationsAsync(cancellationToken);
+            logger.LogInformation(
+                "Applying {PendingMigrationCount} pending migrations for {DbContext}: {PendingMigrations}.",
+                pendingMigrations.Count(),
+                typeof(TContext).Name,
+                string.Join(", ", pendingMigrations));
+            await dbContext.Database.MigrateAsync(cancellationToken);
+            logger.LogInformation("Database migrations completed for {DbContext}.", typeof(TContext).Name);
+            return;
+        }
+        catch (Exception exception) when (IsDatabaseUnavailable(exception) && attempt < maxAttempts)
+        {
+            var delay = TimeSpan.FromSeconds(Math.Min(attempt * 2, 10));
+            logger.LogWarning("PostgreSQL is not ready for {DbContext}. Retrying migration in {DelaySeconds}s (attempt {Attempt}/{MaxAttempts}).", typeof(TContext).Name, delay.TotalSeconds, attempt, maxAttempts);
+            await Task.Delay(delay, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogCritical(exception, "Database migration failed for {DbContext}. Application startup is aborted.", typeof(TContext).Name);
+            throw;
+        }
+    }
+}
+
+static bool IsDatabaseUnavailable(Exception exception) =>
+    exception is NpgsqlException and not PostgresException;

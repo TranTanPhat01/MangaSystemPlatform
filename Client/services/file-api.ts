@@ -19,7 +19,12 @@ export const fileApi = {
    * Uploads a file using multipart/form-data.
    * Returns FileUploadResponse with the new file's ID and URL.
    */
-  uploadFile: (file: File, category: FileCategory = 'Other', metadata?: Record<string, string>) => {
+  uploadFile: (
+    file: File,
+    category: FileCategory = 'Other',
+    metadata?: Record<string, string>,
+    onUploadProgress?: (progressEvent: any) => void
+  ) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('category', category);
@@ -28,13 +33,17 @@ export const fileApi = {
     }
     return api.post<ApiResponse<FileUploadResponse>>('/files/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-    }).then((response) => ({
-      ...response,
-      data: {
-        ...response.data,
-        data: { ...response.data.data, id: response.data.data.fileId },
-      },
-    }));
+      onUploadProgress,
+    }).then((response) => {
+      const dataObj = response.data?.data;
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          data: dataObj ? { ...dataObj, id: dataObj.fileId } : undefined,
+        },
+      };
+    });
   },
 
   /**
@@ -56,13 +65,16 @@ export const fileApi = {
    * Returns a pre-signed or direct download URL for the file
    */
   getFileUrl: (id: string) =>
-    api.get<ApiResponse<FileUrlResponse>>(`/files/${id}/url`).then((response) => ({
-      ...response,
-      data: {
-        ...response.data,
-        data: { ...response.data.data, url: response.data.data.publicUrl ?? '' },
-      },
-    })),
+    api.get<ApiResponse<FileUrlResponse>>(`/files/${id}/url`).then((response) => {
+      const dataObj = response.data?.data;
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          data: dataObj ? { ...dataObj, url: dataObj.publicUrl ?? '' } : undefined,
+        },
+      };
+    }),
 
   /**
    * GET /files/{id}/download

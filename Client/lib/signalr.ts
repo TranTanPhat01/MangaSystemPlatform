@@ -10,7 +10,7 @@ export function createSignalRConnection(token: string): signalR.HubConnection {
     .withUrl(hubUrl, {
       accessTokenFactory: () => token,
     })
-    .withAutomaticReconnect()
+    .withAutomaticReconnect([0, 1000, 3000, 5000, 10000])
     .configureLogging(signalR.LogLevel.Warning)
     .build();
 
@@ -24,9 +24,23 @@ export async function startSignalRConnection(connection: signalR.HubConnection) 
   if (connection.state === signalR.HubConnectionState.Disconnected) {
     try {
       await connection.start();
-      console.log('SignalR connected successfully.');
+      console.log('[SignalR] Connected successfully.');
     } catch (err) {
-      console.warn('SignalR Hub connection failed to start. Notifications will poll instead. Error:', err);
+      console.warn('[SignalR] Hub connection failed to start. Notifications will poll instead. Error:', err);
     }
+  }
+}
+
+/**
+ * Stop SignalR connection cleanly
+ */
+export async function stopSignalRConnection(connection: signalR.HubConnection) {
+  try {
+    if (connection.state !== signalR.HubConnectionState.Disconnected) {
+      await connection.stop();
+      console.log('[SignalR] Connection stopped.');
+    }
+  } catch (err) {
+    console.warn('[SignalR] Error stopping connection:', err);
   }
 }

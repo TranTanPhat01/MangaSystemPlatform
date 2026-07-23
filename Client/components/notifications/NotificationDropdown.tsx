@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNotificationStore } from '@/store/notification-store';
 import { useAuthStore } from '@/store/auth-store';
-import { createSignalRConnection, startSignalRConnection } from '@/lib/signalr';
+import { createSignalRConnection, startSignalRConnection, stopSignalRConnection } from '@/lib/signalr';
+import { HubConnection } from '@microsoft/signalr';
 import { 
   Bell, 
   Check, 
@@ -33,10 +34,14 @@ export default function NotificationDropdown() {
     deleteNotification,
     addNotification,
     clearError,
+    reconcileAfterReconnect,
   } = useNotificationStore();
   const accessToken = useAuthStore((state) => state.accessToken);
   const [isOpen, setIsOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const connectionRef = useRef<HubConnection | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Fetch notifications on mount
   useEffect(() => {
@@ -44,25 +49,89 @@ export default function NotificationDropdown() {
     fetchUnreadCount();
   }, [fetchNotifications, fetchUnreadCount]);
 
-  // Set up SignalR – handle both event names for compatibility
+  // Set up SignalR with enhanced reconnection handling
   useEffect(() => {
     if (!accessToken) return;
 
     const connection = createSignalRConnection(accessToken);
+    connectionRef.current = connection;
 
     // Backend may emit either name – register both to be safe
     const handleNotification = (notification: NotificationResponse) => {
+      console.log('[SignalR] Received notification:', notification.id);
       addNotification(notification);
     };
+
+     // Schedule reconnect with exponential backoff
+    const scheduleReconnect = (connection: HubConnection) => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+      reconnectTimeoutRef.current = setTimeout(() => {
+        if (accessToken) {
+        console.log('[SignalR] Attempting manual reconnect...');
+        startSignalRConnection(connection).then(() => {
+          setConnectionStatus('connected');
+          });
+        }
+      }, 5000); // 5 second retry
+    };
+
+    // Event listeners for notifications
     connection.on('NotificationReceived', handleNotification);
     connection.on('ReceiveNotification', handleNotification);
 
-    startSignalRConnection(connection);
+    // Task update events (if backend broadcasts these via SignalR)
+    connection.on('TaskStatusChanged', (taskData: any) => {
+      console.log('[SignalR] Task status changed:', taskData);
+      // Could trigger toast or invalidate queries here
+    });
 
+    // Editorial update events (if backend broadcasts these via SignalR)
+    connection.on('EditorialDecisionMade', (editorialData: any) => {
+      console.log('[SignalR] Editorial decision made:', editorialData);
+      // Could trigger toast or invalidate queries here
+    });
+
+    // Connection state handlers
+    connection.onreconnecting(() => {
+      console.log('[SignalR] Attempting to reconnect...');
+      setConnectionStatus('reconnecting');
+    });
+
+    connection.onreconnected(() => {
+      console.log('[SignalR] Reconnected successfully, reconciling state...');
+      setConnectionStatus('connected');
+      // Reconcile state after reconnect
+      reconcileAfterReconnect();
+      // Refresh unread count
+      fetchUnreadCount();
+    });
+
+    connection.onclose(() => {
+      console.log('[SignalR] Connection closed');
+      setConnectionStatus('disconnected');
+      // Attempt reconnect with exponential backoff
+      scheduleReconnect(connection);
+    });
+
+    startSignalRConnection(connection).then(() => {
+      setConnectionStatus('connected');
+    });
+
+    // Cleanup function
     return () => {
-      connection.stop().catch((err) => console.log('SignalR stop error:', err));
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      stopSignalRConnection(connection).catch((err) => {
+        console.warn('[SignalR] Error during cleanup:', err);
+      });
+      connectionRef.current = null;
     };
-  }, [accessToken, addNotification]);
+  }, [accessToken, addNotification, reconcileAfterReconnect, fetchUnreadCount]);
+
+ 
 
   // Click outside listener
   useEffect(() => {
@@ -115,7 +184,7 @@ export default function NotificationDropdown() {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      {/* Bell Button */}
+      {/* Bell Button with connection indicator */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800/80 border border-transparent hover:border-slate-800/40 transition-all duration-200"
@@ -126,6 +195,12 @@ export default function NotificationDropdown() {
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
+        {/* Connection status indicator */}
+        <span className={`absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full border border-slate-900 ${
+          connectionStatus === 'connected' ? 'bg-emerald-500' : 
+          connectionStatus === 'reconnecting' ? 'bg-yellow-500 animate-pulse' : 
+          'bg-slate-600'
+        }`} />
       </button>
 
       {/* Dropdown Panel */}
@@ -135,6 +210,14 @@ export default function NotificationDropdown() {
           <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
             <span className="font-semibold text-sm text-slate-200">Notifications</span>
             <div className="flex items-center gap-2">
+              {/* Connection status text */}
+              <span className={`text-[9px] font-mono px-2 py-0.5 rounded ${
+                connectionStatus === 'connected' ? 'bg-emerald-500/10 text-emerald-400' :
+                connectionStatus === 'reconnecting' ? 'bg-yellow-500/10 text-yellow-400' :
+                'bg-slate-700/50 text-slate-500'
+              }`}>
+                {connectionStatus}
+              </span>
               {/* Refresh button */}
               <button
                 onClick={() => { clearError(); fetchNotifications(); }}

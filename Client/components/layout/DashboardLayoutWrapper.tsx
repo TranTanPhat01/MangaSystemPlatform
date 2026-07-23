@@ -17,7 +17,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  ChevronRight
+  ChevronRight,
+  Heart
 } from 'lucide-react';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import Logo from '@/components/mangaka/Logo';
@@ -47,7 +48,8 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
     const roles = user.roles.map(r => r.toLowerCase());
 
     const links = [
-      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Reader', href: '/reader', icon: Heart }
     ];
 
     if (roles.includes('mangaka')) {
@@ -91,6 +93,7 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
 
   const getPageTitle = () => {
     if (pathname === '/dashboard') return 'Overview';
+    if (pathname === '/reader' || pathname.startsWith('/reader/')) return 'Reader Profile';
     if (pathname.startsWith('/admin/users')) return 'User Management';
     if (pathname.startsWith('/admin/system')) return 'System Health';
     if (pathname.startsWith('/admin/manga')) return 'Manga Management';

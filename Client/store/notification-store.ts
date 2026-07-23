@@ -8,6 +8,7 @@ interface NotificationState {
   unreadCount: number;
   isLoading: boolean;
   error: string | null;
+  lastSeenNotificationIds: Set<string>;
   fetchNotifications: () => Promise<void>;
   fetchUnreadCount: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
@@ -15,6 +16,7 @@ interface NotificationState {
   deleteNotification: (id: string) => Promise<void>;
   addNotification: (notification: NotificationResponse) => void;
   clearError: () => void;
+  reconcileAfterReconnect: () => Promise<void>;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -22,6 +24,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   unreadCount: 0,
   isLoading: false,
   error: null,
+  lastSeenNotificationIds: new Set(),
 
   clearError: () => set({ error: null }),
 
@@ -30,7 +33,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     try {
       const response = await api.get<ApiResponse<NotificationResponse[]>>('/notifications/my');
       if (response.data && response.data.success) {
-        set({ notifications: response.data.data });
+        const notifications = response.data.data || [];
+        const seenIds = new Set(notifications.map((n) => n.id));
+        set({ 
+          notifications, 
+          lastSeenNotificationIds: seenIds,
+        });
       } else {
         set({ error: response.data.message || 'Failed to load notifications.' });
       }
@@ -117,9 +125,50 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
 
   addNotification: (notification: NotificationResponse) => {
-    set((state) => ({
-      notifications: [notification, ...state.notifications],
-      unreadCount: state.unreadCount + 1,
-    }));
+    set((state) => {
+      // Deduplication: check if we've already seen this notification
+      if (state.lastSeenNotificationIds.has(notification.id)) {
+        console.log(`[Notification] Skipped duplicate: ${notification.id}`);
+        return state;
+      }
+
+      // Check if notification already exists in list
+      if (state.notifications.some((n) => n.id === notification.id)) {
+        console.log(`[Notification] Notification already in list: ${notification.id}`);
+        return state;
+      }
+
+      const newLastSeenIds = new Set(state.lastSeenNotificationIds);
+      newLastSeenIds.add(notification.id);
+
+      return {
+        ...state,
+        notifications: [notification, ...state.notifications],
+        unreadCount: state.unreadCount + 1,
+        lastSeenNotificationIds: newLastSeenIds,
+      };
+    });
+  },
+
+  reconcileAfterReconnect: async () => {
+    set({ isLoading: true });
+    try {
+      // Fetch fresh notifications after reconnect
+      const response = await api.get<ApiResponse<NotificationResponse[]>>('/notifications/my');
+      if (response.data && response.data.success) {
+        const freshNotifications = response.data.data || [];
+        // Clear seen IDs and repopulate from server
+        const newLastSeenIds = new Set(freshNotifications.map((n) => n.id));
+        set({
+          notifications: freshNotifications,
+          lastSeenNotificationIds: newLastSeenIds,
+        });
+        console.log(`[Notification] Reconciled after reconnect: ${freshNotifications.length} notifications`);
+      }
+    } catch (err) {
+      console.warn('[Notification] Failed to reconcile after reconnect:', err);
+    } finally {
+      set({ isLoading: false });
+    }
   },
 }));

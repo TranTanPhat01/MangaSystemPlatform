@@ -188,14 +188,13 @@ export function ChapterManagement({ seriesId, seriesTitle, onChapterPublished }:
       formData.append('category', 'PageScan');
       
       const uploadRes = await fileApi.uploadFile(file, 'PageScan');
-      if (uploadRes.data.success) {
-        const fileAsset = uploadRes.data.data;
-        
+      const fileAsset = uploadRes.data?.data;
+      if (uploadRes.data?.success && fileAsset) {
         // Link to page entity in chapter
         const pageNumber = pages.length + 1;
         const pageRes = await adminApi.createPage(selectedChapter.id, {
           pageNumber,
-          fileId: fileAsset.fileId
+          fileId: fileAsset.fileId || fileAsset.id || ''
         });
         
         if (pageRes.data.success) {

@@ -59,7 +59,8 @@ export default function ChapterDetailPage() {
       ]);
       if (!a.data.success) throw new Error(a.data.message);
       setAnnotations(a.data.data);
-      if (u?.data.success) setUrl(u.data.data.url);
+      const fileUrlData = u?.data?.data;
+      if (u?.data?.success && fileUrlData) setUrl(fileUrlData.url);
     } catch (e) {
       setError(message(e));
     } finally {
@@ -72,10 +73,11 @@ export default function ChapterDetailPage() {
     setError(null);
     try {
       const u = await fileApi.uploadFile(file, 'PageScan');
-      if (!u.data.success) throw new Error(u.data.message);
+      const fileData = u.data?.data;
+      if (!u.data?.success || !fileData) throw new Error(u.data?.message || 'Upload failed');
       const r = await mangaApi.createPage(chapterId, {
         pageNumber: pages.length + 1,
-        fileId: u.data.data.id,
+        fileId: fileData.id,
       });
       if (!r.data.success) throw new Error(r.data.message);
       setFile(null);

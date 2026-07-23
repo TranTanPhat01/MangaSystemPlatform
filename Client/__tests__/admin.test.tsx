@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 // --- Mocks ---
@@ -14,12 +14,12 @@ vi.mock('next/navigation', () => ({
   }),
   usePathname: () => '/admin/users',
   useSearchParams: () => ({
-    get: (key: string) => null,
+    get: () => null,
   }),
 }));
 
 // Mock Auth Store state
-let mockUserStore = {
+const mockUserStore = {
   user: {
     fullName: 'Test Admin',
     roles: ['Admin'],
@@ -83,13 +83,14 @@ import AdminLayout from '@/app/admin/layout';
 import UserManagement from '@/components/admin/UserManagement';
 import SystemHealth from '@/components/admin/SystemHealth';
 import SeriesManagement from '@/components/admin/SeriesManagement';
-import ChapterManagement from '@/components/admin/ChapterManagement';
+
+type MockFunction = ReturnType<typeof vi.fn>;
 
 describe('Admin Portal MVP Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default mock responses
-    (adminApi.listUsers as any).mockResolvedValue({
+    (adminApi.listUsers as MockFunction).mockResolvedValue({
       data: {
         success: true,
         data: {
@@ -104,7 +105,7 @@ describe('Admin Portal MVP Tests', () => {
       }
     });
 
-    (adminApi.getRoles as any).mockResolvedValue({
+    (adminApi.getRoles as MockFunction).mockResolvedValue({
       data: {
         success: true,
         data: [
@@ -114,21 +115,21 @@ describe('Admin Portal MVP Tests', () => {
       }
     });
 
-    (adminApi.listStudios as any).mockResolvedValue({
+    (adminApi.listStudios as MockFunction).mockResolvedValue({
       data: {
         success: true,
         data: [{ id: 'studio-1', name: 'Studio Ghibli' }]
       }
     });
 
-    (healthApi.getServices as any).mockResolvedValue({
+    (healthApi.getServices as MockFunction).mockResolvedValue({
       data: {
         'Identity API': 'Healthy',
         'Manga API': 'Healthy'
       }
     });
 
-    (mangaApi.getSeries as any).mockResolvedValue({
+    (mangaApi.getSeries as MockFunction).mockResolvedValue({
       data: {
         success: true,
         data: [
@@ -137,7 +138,7 @@ describe('Admin Portal MVP Tests', () => {
       }
     });
 
-    (healthApi.getDetailedOverview as any).mockResolvedValue({
+    (healthApi.getDetailedOverview as MockFunction).mockResolvedValue({
       data: {
         success: true,
         data: {
@@ -243,16 +244,190 @@ describe('Admin Portal MVP Tests', () => {
     });
   });
 
-  it('handles 403 Forbidden safely in health module', async () => {
-    (healthApi.getDetailedOverview as any).mockRejectedValue({
-      response: { status: 403 }
+  it('uses real gateway and service statuses when detailed monitoring falls back', async () => {
+    (healthApi.getDetailedOverview as MockFunction).mockRejectedValue(new Error('overview unavailable'));
+    (healthApi.getLive as MockFunction).mockResolvedValue({ data: { status: 'Healthy' } });
+    (healthApi.getServices as MockFunction).mockResolvedValue({
+      data: {
+        identity: 'Healthy',
+        manga: 'Unhealthy',
+      },
     });
 
     render(<SystemHealth />);
 
     await waitFor(() => {
-      expect(screen.getByText(/403 Forbidden/)).toBeDefined();
+      expect(healthApi.getLive).toHaveBeenCalled();
+      expect(healthApi.getServices).toHaveBeenCalled();
+      expect(screen.getByText('1 / 2')).toBeDefined();
+      expect(screen.getByText('identity')).toBeDefined();
+      expect(screen.getByText('manga')).toBeDefined();
+      expect(screen.getByText('Unhealthy')).toBeDefined();
     });
+  });
+
+  it('preserves real service statuses from a 503 health response payload', async () => {
+    (healthApi.getDetailedOverview as MockFunction).mockRejectedValue(new Error('overview unavailable'));
+    (healthApi.getLive as MockFunction).mockResolvedValue({ data: { status: 'Healthy' } });
+    (healthApi.getServices as MockFunction).mockRejectedValue({
+      response: {
+        status: 503,
+        data: {
+          gateway: 'Healthy',
+          identity: 'Healthy',
+          manga: 'Unhealthy',
+        },
+      },
+    });
+
+    render(<SystemHealth />);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 / 2')).toBeDefined();
+      expect(screen.getByText('identity')).toBeDefined();
+      expect(screen.getByText('manga')).toBeDefined();
+      expect(screen.getByText('Unhealthy')).toBeDefined();
+    });
+  });
+
+  it('shows unavailable outbox metrics as N/A in fallback mode', async () => {
+    (healthApi.getDetailedOverview as MockFunction).mockRejectedValue(new Error('overview unavailable'));
+    (healthApi.getLive as MockFunction).mockResolvedValue({ data: { status: 'Healthy' } });
+    (healthApi.getServices as MockFunction).mockResolvedValue({
+      data: { identity: 'Healthy' },
+    });
+
+    render(<SystemHealth />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('N/A')).toHaveLength(2);
+    });
+  });
+
+  it('marks unavailable service data as unknown instead of inventing healthy services', async () => {
+    (healthApi.getDetailedOverview as MockFunction).mockRejectedValue(new Error('overview unavailable'));
+    (healthApi.getLive as MockFunction).mockResolvedValue({ data: { status: 'Healthy' } });
+    (healthApi.getServices as MockFunction).mockRejectedValue(new Error('services unavailable'));
+
+    render(<SystemHealth />);
+
+    await waitFor(() => {
+      expect(screen.getByText('0 / 5')).toBeDefined();
+      expect(screen.getAllByText('Unknown')).toHaveLength(5);
+      expect(screen.getByText('Service status data is unavailable. Gateway health is shown from /health/live.')).toBeDefined();
+    });
+  });
+
+  it('does not interpret a 503 error envelope as a service status map', async () => {
+    (healthApi.getDetailedOverview as MockFunction).mockRejectedValue(new Error('overview unavailable'));
+    (healthApi.getLive as MockFunction).mockResolvedValue({ data: { status: 'Healthy' } });
+    (healthApi.getServices as MockFunction).mockRejectedValue({
+      response: { status: 503, data: { message: 'services unavailable' } },
+    });
+
+    render(<SystemHealth />);
+
+    await waitFor(() => {
+      expect(screen.getByText('0 / 5')).toBeDefined();
+      expect(screen.getAllByText('Unknown')).toHaveLength(5);
+      expect(screen.queryByText('services unavailable')).toBeNull();
+    });
+  });
+
+  it('labels preserved health data as stale after a later total fallback failure', async () => {
+    render(<SystemHealth />);
+    await screen.findByText('Gateway');
+
+    (healthApi.getDetailedOverview as MockFunction).mockRejectedValue(new Error('overview unavailable'));
+    (healthApi.getLive as MockFunction).mockRejectedValue(new Error('gateway unavailable'));
+    (healthApi.getServices as MockFunction).mockRejectedValue(new Error('services unavailable'));
+    fireEvent.click(screen.getByRole('button', { name: /force refresh/i }));
+
+    expect(await screen.findByText(/showing last known data/i)).toBeDefined();
+    expect(screen.getByText('Gateway')).toBeDefined();
+  });
+
+  it('renders an unknown degraded state when every monitoring endpoint fails', async () => {
+    (healthApi.getDetailedOverview as MockFunction).mockRejectedValue(new Error('overview unavailable'));
+    (healthApi.getLive as MockFunction).mockRejectedValue(new Error('gateway unavailable'));
+    (healthApi.getServices as MockFunction).mockRejectedValue(new Error('services unavailable'));
+
+    render(<SystemHealth />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Unknown')).toHaveLength(6);
+      expect(screen.getByText('0 / 5')).toBeDefined();
+      expect(screen.getByText(/gateway health and service status data are unavailable/i)).toBeDefined();
+    });
+  });
+
+  it('uses amber rather than red styling for unknown fallback services', async () => {
+    (healthApi.getDetailedOverview as MockFunction).mockRejectedValue(new Error('overview unavailable'));
+    (healthApi.getLive as MockFunction).mockResolvedValue({ data: { status: 'Healthy' } });
+    (healthApi.getServices as MockFunction).mockRejectedValue(new Error('services unavailable'));
+
+    render(<SystemHealth />);
+
+    const identityCard = (await screen.findByText('Identity Service')).closest('[data-service-status]');
+    expect(identityCard?.className).toContain('border-amber');
+    expect(identityCard?.className).not.toContain('border-rose');
+  });
+
+  it('does not let an older polling response overwrite a newer health snapshot', async () => {
+    vi.useFakeTimers();
+    let resolveFirst: ((value: unknown) => void) | undefined;
+    const firstResponse = new Promise((resolve) => {
+      resolveFirst = resolve;
+    });
+    (healthApi.getDetailedOverview as MockFunction)
+      .mockReturnValueOnce(firstResponse)
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: {
+            status: 'Healthy',
+            checkedAt: '2026-07-18T10:01:00Z',
+            environment: 'New snapshot',
+            summary: { healthyServices: 1, totalServices: 1, totalFailedOutbox: 0, totalPendingOutbox: 0, criticalAlerts: 0, warningAlerts: 0 },
+            services: [{ name: 'New Service', status: 'Healthy', version: '2.0', build: 'new', checkedAt: '2026-07-18T10:01:00Z', dependencies: [], warnings: [] }],
+          },
+        },
+      });
+
+    try {
+      render(<SystemHealth />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(healthApi.getDetailedOverview).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15000);
+      });
+      expect(healthApi.getDetailedOverview).toHaveBeenCalledTimes(2);
+      expect(screen.getByText('New snapshot')).toBeDefined();
+
+      await act(async () => {
+        resolveFirst?.({
+          data: {
+            success: true,
+            data: {
+              status: 'Healthy',
+              checkedAt: '2026-07-18T10:00:00Z',
+              environment: 'Old snapshot',
+              summary: { healthyServices: 1, totalServices: 1, totalFailedOutbox: 0, totalPendingOutbox: 0, criticalAlerts: 0, warningAlerts: 0 },
+              services: [{ name: 'Old Service', status: 'Healthy', version: '1.0', build: 'old', checkedAt: '2026-07-18T10:00:00Z', dependencies: [], warnings: [] }],
+            },
+          },
+        });
+        await Promise.resolve();
+      });
+
+      expect(screen.getByText('New snapshot')).toBeDefined();
+      expect(screen.queryByText('Old snapshot')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // --- Priority 5: Series and Chapter Workflow ---

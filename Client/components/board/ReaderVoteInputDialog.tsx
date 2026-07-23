@@ -32,8 +32,8 @@ export default function ReaderVoteInputDialog({
     }
 
     const count = Number(voteCount);
-    if (count < 0) {
-      setError('Vote count cannot be negative.');
+    if (!Number.isFinite(count) || !Number.isInteger(count) || count < 0) {
+      setError('Vote count must be a non-negative whole number.');
       return;
     }
 
@@ -86,7 +86,7 @@ export default function ReaderVoteInputDialog({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="p-6 space-y-4">
           {error && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-sm text-rose-700 font-semibold">
               {error}
@@ -95,10 +95,11 @@ export default function ReaderVoteInputDialog({
 
           {/* Series Selection */}
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label htmlFor="reader-vote-series" className="block text-sm font-bold text-slate-700 mb-2">
               Select Series <span className="text-rose-500">*</span>
             </label>
             <select
+              id="reader-vote-series"
               value={selectedSeriesId}
               onChange={(e) => setSelectedSeriesId(e.target.value)}
               required
@@ -116,12 +117,13 @@ export default function ReaderVoteInputDialog({
 
           {/* Vote Count Input */}
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label htmlFor="reader-vote-count" className="block text-sm font-bold text-slate-700 mb-2">
               Vote Count <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <TrendingUp size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
+                id="reader-vote-count"
                 type="number"
                 min="0"
                 step="1"

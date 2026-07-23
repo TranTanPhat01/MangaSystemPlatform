@@ -32,3 +32,14 @@ Thumbs.db
 __pycache__
 *.pyc
 venv
+# Harness
+.harness/
+.codex/
+.claude/
+.cursor/
+hs.settings.json
+
+
+# Browser test artifacts
+Client/test-results/
+Client/playwright-report/

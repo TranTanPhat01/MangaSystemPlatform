@@ -12,28 +12,36 @@ import { ActiveNav } from '@/types/board';
 import { useBoardDashboard } from '@/hooks/useBoardDashboard';
 import { useAuthStore } from '@/store/auth-store';
 
+const EMPTY_ROLES: string[] = [];
+
 export function BoardDashboard() {
   const board = useBoardDashboard();
   const [activeNav, setActiveNav] = useState<ActiveNav>('Dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedSeriesId, setSelectedSeriesId] = useState('');
+  const loadSeriesInsights = board.loadSeriesInsights;
+  const clearBoardError = board.clearError;
+  const boardError = board.error;
 
   useEffect(() => {
-    if (!selectedSeriesId && board.series[0]) setSelectedSeriesId(board.series[0].id);
+    if (selectedSeriesId || !board.series[0]) return;
+    const timer = window.setTimeout(() => setSelectedSeriesId(board.series[0].id), 0);
+    return () => window.clearTimeout(timer);
   }, [board.series, selectedSeriesId]);
 
   useEffect(() => {
-    void board.loadSeriesInsights(selectedSeriesId);
-  }, [board.loadSeriesInsights, selectedSeriesId]);
+    void loadSeriesInsights(selectedSeriesId);
+  }, [loadSeriesInsights, selectedSeriesId]);
 
   useEffect(() => {
-    if (!board.error) return;
-    const timer = setTimeout(board.clearError, 5000);
+    if (!boardError) return;
+    const timer = setTimeout(clearBoardError, 5000);
     return () => clearTimeout(timer);
-  }, [board.error]);
+  }, [boardError, clearBoardError]);
 
   const selected = board.series.find((item) => item.id === selectedSeriesId) || null;
-  const roles = useAuthStore((state) => state.user?.roles ?? []);
+  const storedRoles = useAuthStore((state) => state.user?.roles);
+  const roles = storedRoles ?? EMPTY_ROLES;
   const canManageIssues = roles.some((role) =>
     ['editorialboard', 'admin'].includes(role.toLowerCase())
   );
@@ -112,6 +120,7 @@ export function BoardDashboard() {
         onCreate={board.createIssue}
         onStatusChange={(issueId, status) => board.updateIssueStatus(issueId, { status })}
         onRefresh={board.fetchBoardData}
+        onRankingCalculated={board.applyCalculatedRanking}
       />
     ) : activeNav === 'Board Voting' ? (
       voting
@@ -158,7 +167,8 @@ export function BoardDashboard() {
               </button>
             </div>
           )}
-          {board.isLoading ? <p>Đang tải workspace…</p> : content}
+          {board.isLoading && <p>Đang tải workspace…</p>}
+          {content}
         </div>
       </div>
     </div>

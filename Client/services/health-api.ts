@@ -44,10 +44,10 @@ export interface MonitoringOverviewResponse {
   summary: {
     healthyServices: number;
     totalServices: number;
-    totalFailedOutbox: number;
-    totalPendingOutbox: number;
-    criticalAlerts: number;
-    warningAlerts: number;
+    totalFailedOutbox: number | null;
+    totalPendingOutbox: number | null;
+    criticalAlerts: number | null;
+    warningAlerts: number | null;
   };
   services: ServiceHealthDetail[];
 }

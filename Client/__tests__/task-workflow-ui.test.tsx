@@ -13,8 +13,10 @@ describe('task workflow UI', () => {
     vi.clearAllMocks(); mangaApi.getSeries.mockResolvedValue({ data: { success: true, data: [{ id: ids.series, title: 'Series' }] } }); authApi.getAssistants.mockResolvedValue({ data: { success: true, data: [{ id: ids.assistant, fullName: 'Assistant', email: 'a@example.com' }] } }); mangaApi.getMyTasks.mockResolvedValue({ data: { success: true, data: [] } }); mangaApi.getChapters.mockResolvedValue({ data: { success: true, data: [{ id: ids.chapter, chapterNumber: 1, title: 'One' }] } }); mangaApi.getPages.mockResolvedValue({ data: { success: true, data: [{ id: ids.page, pageNumber: 1 }] } }); mangaApi.getPageAnnotations.mockResolvedValue({ data: { success: true, data: [{ id: ids.annotation, type: 'Background' }] } }); mangaApi.createTask.mockResolvedValue({ data: { success: true, data: {} } });
   });
   it('blocks creation until page, annotation, assistant and title are selected', async () => {
-    render(<MangakaTasksTab triggerModal={vi.fn()} />); await waitFor(() => expect((screen.getByLabelText('Series') as HTMLSelectElement).disabled).toBe(false));
-    const create = screen.getByRole('button', { name: 'Create Task' }) as HTMLButtonElement; expect(create.disabled).toBe(true);
+    render(<MangakaTasksTab triggerModal={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Assign New Task' }));
+    await waitFor(() => expect((screen.getByLabelText('Series') as HTMLSelectElement).disabled).toBe(false));
+    const create = screen.getByRole('button', { name: 'Create & Assign Task' }) as HTMLButtonElement; expect(create.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText('Series'), { target: { value: ids.series } }); await waitFor(() => expect((screen.getByLabelText('Chapter') as HTMLSelectElement).disabled).toBe(false));
     fireEvent.change(screen.getByLabelText('Chapter'), { target: { value: ids.chapter } }); await waitFor(() => expect((screen.getByLabelText('Page') as HTMLSelectElement).disabled).toBe(false));
     fireEvent.change(screen.getByLabelText('Page'), { target: { value: ids.page } }); await waitFor(() => expect((screen.getByLabelText('Annotation') as HTMLSelectElement).disabled).toBe(false));

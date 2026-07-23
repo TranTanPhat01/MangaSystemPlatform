@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { 
   Activity, 
   RefreshCw, 
@@ -13,94 +13,139 @@ import {
 } from 'lucide-react';
 import { healthApi, ServiceHealthDetail, MonitoringOverviewResponse } from '@/services/health-api';
 
+const FALLBACK_SERVICE_NAMES = [
+  'Identity Service',
+  'Manga Management Service',
+  'Editorial Service',
+  'Notification Service',
+  'File Service',
+];
+const HEALTH_STATUSES = new Set(['healthy', 'degraded', 'unhealthy', 'unknown', 'unavailable']);
+
+function normalizeStatus(status: unknown) {
+  return typeof status === 'string' && status.trim() ? status : 'Unknown';
+}
+
+function unknownService(name: string, checkedAt: string): ServiceHealthDetail {
+  return {
+    name,
+    status: 'Unknown',
+    version: 'N/A',
+    build: 'N/A',
+    checkedAt,
+    dependencies: [],
+    warnings: ['Service status data is unavailable.'],
+  };
+}
+
+function settledResponseData<T>(result: PromiseSettledResult<{ data: T }>): T | undefined {
+  if (result.status === 'fulfilled') return result.value.data;
+  return (result.reason as { response?: { data?: T } })?.response?.data;
+}
+
+function serviceStatusEntries(payload: unknown): Array<[string, string]> {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return [];
+  return Object.entries(payload)
+    .filter(([name, status]) =>
+      name.toLowerCase() !== 'gateway'
+      && typeof status === 'string'
+      && HEALTH_STATUSES.has(status.toLowerCase()))
+    .map(([name, status]) => [name, status as string]);
+}
+
 export function SystemHealth() {
   const [data, setData] = useState<MonitoringOverviewResponse | null>(null);
+  const hasUsableDataRef = useRef(false);
+  const latestRequestRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pollingInterval, setPollingInterval] = useState<number>(15000); // 15s default
   const [isPollingActive, setIsPollingActive] = useState<boolean>(true);
 
+  const tryFallback = useCallback(async (requestId: number) => {
+    if (requestId !== latestRequestRef.current) return;
+    const [liveResult, servicesResult] = await Promise.allSettled([
+      healthApi.getLive(),
+      healthApi.getServices(),
+    ]);
+    if (requestId !== latestRequestRef.current) return;
+    const checkedAt = new Date().toISOString();
+    const livePayload = settledResponseData(liveResult);
+    const servicePayload = settledResponseData(servicesResult);
+    const liveStatus = normalizeStatus(livePayload?.status);
+    const liveAvailable = liveStatus !== 'Unknown';
+    const serviceEntries = serviceStatusEntries(servicePayload);
+    const servicesAvailable = serviceEntries.length > 0;
+    const services: ServiceHealthDetail[] = servicesAvailable
+      ? serviceEntries.map(([name, status]) => ({
+          name,
+          status: normalizeStatus(status),
+          version: 'N/A',
+          build: 'N/A',
+          checkedAt,
+          dependencies: [],
+          warnings: [],
+        }))
+      : FALLBACK_SERVICE_NAMES.map(name => unknownService(name, checkedAt));
+
+    const fallbackOverview: MonitoringOverviewResponse = {
+      status: liveStatus,
+      checkedAt,
+      environment: 'Gateway fallback',
+      summary: {
+        healthyServices: services.filter(service => service.status === 'Healthy').length,
+        totalServices: services.length,
+        totalFailedOutbox: null,
+        totalPendingOutbox: null,
+        criticalAlerts: null,
+        warningAlerts: null,
+      },
+      services,
+    };
+
+    const noFallbackData = !liveAvailable && !servicesAvailable;
+    const hasPreviousData = hasUsableDataRef.current;
+    setData(previous => noFallbackData && previous ? previous : fallbackOverview);
+    if (!noFallbackData) hasUsableDataRef.current = true;
+
+    if (!liveAvailable && !servicesAvailable) {
+      setErrorMsg(hasPreviousData
+        ? 'Gateway health and service status data are unavailable. Showing last known data; timestamps may be stale.'
+        : 'Gateway health and service status data are unavailable. Showing unknown fallback status.');
+    } else if (!servicesAvailable) {
+      setErrorMsg('Service status data is unavailable. Gateway health is shown from /health/live.');
+    } else if (!liveAvailable) {
+      setErrorMsg('Gateway health data is unavailable. Service statuses are shown from /health/services.');
+    } else {
+      setErrorMsg('Detailed monitoring is unavailable. Showing gateway fallback data.');
+    }
+  }, []);
+
   // Fetch Health Data with Fallback
-  const fetchHealthData = async () => {
+  const fetchHealthData = useCallback(async () => {
+    const requestId = ++latestRequestRef.current;
     setLoading(true);
     setErrorMsg(null);
     try {
       const res = await healthApi.getDetailedOverview();
+      if (requestId !== latestRequestRef.current) return;
       if (res.data?.success) {
+        hasUsableDataRef.current = true;
         setData(res.data.data);
       } else {
-        await tryFallback();
+        await tryFallback(requestId);
       }
     } catch {
-      await tryFallback();
+      await tryFallback(requestId);
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
-  };
-
-  const tryFallback = async () => {
-    try {
-      const [liveRes, servicesRes] = await Promise.all([
-        healthApi.getLive().catch(() => ({ data: { status: 'Healthy' } })),
-        healthApi.getServices().catch(() => ({ data: {} as Record<string, string> })),
-      ]);
-
-      const liveStatus = liveRes.data?.status || 'Healthy';
-      const svcMap = servicesRes.data || {};
-      const svcEntries = Object.entries(svcMap);
-
-      const services: ServiceHealthDetail[] = svcEntries.map(([name, status]) => ({
-        name,
-        status: typeof status === 'string' ? status : 'Healthy',
-        version: '1.0.0',
-        build: 'Release',
-        checkedAt: new Date().toISOString(),
-        dependencies: [
-          { name: `${name} DB`, type: 'PostgreSQL', status: typeof status === 'string' ? status : 'Healthy', latencyMs: 12 }
-        ],
-        warnings: [],
-      }));
-
-      // Default microservices if empty
-      if (services.length === 0) {
-        const defaults = ['Identity Service', 'Manga Management Service', 'Editorial Service', 'Notification Service', 'File Service'];
-        defaults.forEach(name => {
-          services.push({
-            name,
-            status: 'Healthy',
-            version: '1.0.0',
-            build: 'Release',
-            checkedAt: new Date().toISOString(),
-            dependencies: [{ name: `${name} DB`, type: 'Database', status: 'Healthy', latencyMs: 8 }],
-            warnings: [],
-          });
-        });
-      }
-
-      const fallbackOverview: MonitoringOverviewResponse = {
-        status: liveStatus,
-        checkedAt: new Date().toISOString(),
-        environment: 'Development (Gateway Aggregation)',
-        summary: {
-          healthyServices: services.filter(s => s.status === 'Healthy').length,
-          totalServices: services.length,
-          totalFailedOutbox: 0,
-          totalPendingOutbox: 0,
-          criticalAlerts: 0,
-          warningAlerts: 0,
-        },
-        services,
-      };
-
-      setData(fallbackOverview);
-    } catch {
-      setErrorMsg('Failed to fetch detailed system monitoring.');
-    }
-  };
+  }, [tryFallback]);
 
   useEffect(() => {
-    void fetchHealthData();
-  }, []);
+    const timer = window.setTimeout(() => { void fetchHealthData(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchHealthData]);
 
   // Poll intervals
   useEffect(() => {
@@ -111,16 +156,19 @@ export function SystemHealth() {
     }, pollingInterval);
 
     return () => clearInterval(timer);
-  }, [isPollingActive, pollingInterval]);
+  }, [fetchHealthData, isPollingActive, pollingInterval]);
 
   // Status Style Helper
   const getStatusBadge = (status: string) => {
     const isHealthy = status === 'Healthy';
+    const isUnknown = status === 'Unknown' || status === 'Unavailable';
     return (
       <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
         isHealthy 
           ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-          : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+          : isUnknown
+            ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
       }`}>
         {status}
       </span>
@@ -131,13 +179,13 @@ export function SystemHealth() {
     <div className="space-y-6">
       {/* Notifications / Errors */}
       {errorMsg && (
-        <div className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded-xl text-xs font-semibold animate-in fade-in duration-200">
-          <AlertTriangle size={16} className="text-rose-400 mt-0.5 shrink-0" />
+        <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 text-amber-200 rounded-xl text-xs font-semibold animate-in fade-in duration-200">
+          <AlertTriangle size={16} className="text-amber-400 mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="font-bold">Monitoring Alert</p>
-            <p className="mt-0.5 text-rose-400">{errorMsg}</p>
+            <p className="font-bold">Monitoring degraded</p>
+            <p className="mt-0.5 text-amber-300">{errorMsg}</p>
           </div>
-          <button onClick={() => setErrorMsg(null)} className="text-rose-400 hover:text-rose-200 underline font-bold shrink-0">
+          <button onClick={() => setErrorMsg(null)} className="text-amber-400 hover:text-amber-200 underline font-bold shrink-0">
             Dismiss
           </button>
         </div>
@@ -196,7 +244,9 @@ export function SystemHealth() {
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Gateway status</p>
               <h3 className="text-base font-extrabold text-white mt-1 flex items-center gap-1">
-                <CheckCircle2 size={14} className="text-emerald-500" />
+                {data.status === 'Healthy'
+                  ? <CheckCircle2 size={14} className="text-emerald-500" />
+                  : <AlertTriangle size={14} className={data.status === 'Unknown' ? 'text-amber-400' : 'text-rose-400'} />}
                 {data.status}
               </h3>
             </div>
@@ -216,8 +266,8 @@ export function SystemHealth() {
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Failed Outbox</p>
-              <h3 className={`text-base font-extrabold mt-1 ${data.summary.totalFailedOutbox > 0 ? 'text-rose-400' : 'text-white'}`}>
-                {data.summary.totalFailedOutbox}
+              <h3 className={`text-base font-extrabold mt-1 ${(data.summary.totalFailedOutbox ?? 0) > 0 ? 'text-rose-400' : 'text-white'}`}>
+                {data.summary.totalFailedOutbox ?? 'N/A'}
               </h3>
             </div>
             <AlertTriangle size={22} className="text-slate-700" />
@@ -227,7 +277,7 @@ export function SystemHealth() {
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Pending Outbox</p>
               <h3 className="text-base font-extrabold text-white mt-1">
-                {data.summary.totalPendingOutbox}
+                {data.summary.totalPendingOutbox ?? 'N/A'}
               </h3>
             </div>
             <Send size={22} className="text-slate-700" />
@@ -240,11 +290,17 @@ export function SystemHealth() {
         {data ? (
           data.services.map((service) => {
             const isServiceHealthy = service.status === 'Healthy';
+            const isServiceUnknown = service.status === 'Unknown' || service.status === 'Unavailable';
             return (
               <div 
                 key={service.name} 
+                data-service-status={service.status}
                 className={`bg-slate-900 border rounded-xl overflow-hidden shadow-md transition-all flex flex-col justify-between h-72 ${
-                  isServiceHealthy ? 'border-slate-800/80 hover:border-slate-800' : 'border-rose-500/20 hover:border-rose-500/30'
+                  isServiceHealthy
+                    ? 'border-slate-800/80 hover:border-slate-800'
+                    : isServiceUnknown
+                      ? 'border-amber-500/20 hover:border-amber-500/30'
+                      : 'border-rose-500/20 hover:border-rose-500/30'
                 }`}
               >
                 {/* Header */}
@@ -283,7 +339,11 @@ export function SystemHealth() {
 
                   {/* Errors / Warnings */}
                   {service.warnings && service.warnings.length > 0 && (
-                    <div className="p-2 bg-rose-500/5 border border-rose-500/10 rounded text-[9px] text-rose-400 font-semibold leading-relaxed">
+                    <div className={`p-2 rounded text-[9px] font-semibold leading-relaxed ${
+                      isServiceUnknown
+                        ? 'bg-amber-500/5 border border-amber-500/10 text-amber-300'
+                        : 'bg-rose-500/5 border border-rose-500/10 text-rose-400'
+                    }`}>
                       {service.warnings.join(', ')}
                     </div>
                   )}

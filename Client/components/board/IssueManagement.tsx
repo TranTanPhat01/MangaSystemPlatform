@@ -1,10 +1,10 @@
 'use client';
 
-import { FormEvent, useState, useEffect } from 'react';
-import { ChevronRight, Eye, Plus, RefreshCw, Vote, BarChart2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FormEvent, useCallback, useState, useEffect } from 'react';
+import { ChevronRight, Eye, Plus, RefreshCw, Vote, BarChart2, CheckCircle2 } from 'lucide-react';
 import { editorialApi } from '@/services/editorial-api';
 import { mangaApi } from '@/services/manga-api';
-import { CreateIssueRequest, IssueResponse, IssueStatus } from '@/types/editorial';
+import { CreateIssueRequest, IssueResponse, IssueStatus, RankingItemResponse } from '@/types/editorial';
 import { SeriesResponse } from '@/types/manga';
 import ReaderVoteInputDialog from './ReaderVoteInputDialog';
 
@@ -13,7 +13,8 @@ interface IssueManagementProps {
   canManage: boolean;
   onCreate: (data: CreateIssueRequest) => Promise<boolean>;
   onStatusChange: (issueId: string, status: IssueStatus) => Promise<boolean>;
-  onRefresh: () => Promise<void>;
+  onRefresh: () => Promise<boolean | void>;
+  onRankingCalculated: (issueId: string, items: RankingItemResponse[]) => void;
 }
 
 const STATUS_LABELS: Record<IssueStatus, string> = {
@@ -31,7 +32,7 @@ function errorText(error: unknown) {
   return 'Không thể tải chi tiết issue.';
 }
 
-export default function IssueManagement({ issues, canManage, onCreate, onStatusChange, onRefresh }: IssueManagementProps) {
+export default function IssueManagement({ issues, canManage, onCreate, onStatusChange, onRefresh, onRankingCalculated }: IssueManagementProps) {
   const [form, setForm] = useState({ issueNumber: '', title: '', releaseDate: '' });
   const [selected, setSelected] = useState<IssueResponse | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -41,22 +42,33 @@ export default function IssueManagement({ issues, canManage, onCreate, onStatusC
   const [voteDialogOpen, setVoteDialogOpen] = useState(false);
   const [targetIssueId, setTargetIssueId] = useState('');
   const [seriesList, setSeriesList] = useState<SeriesResponse[]>([]);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
+  const [seriesLoading, setSeriesLoading] = useState(false);
   const [calculatingIssueId, setCalculatingIssueId] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadSeries = async () => {
-      try {
-        const res = await mangaApi.getSeries();
-        if (res.data?.success) {
-          setSeriesList(res.data.data || []);
-        }
-      } catch (e) {
-        console.error('Failed to load series for vote dialog:', e);
+  const loadSeries = useCallback(async () => {
+    setSeriesLoading(true);
+    setSeriesError(null);
+    try {
+      const res = await mangaApi.getSeries();
+      if (res.data?.success) {
+        setSeriesList(res.data.data || []);
+      } else {
+        setSeriesError(res.data?.message || 'Could not load Manga series for reader votes.');
       }
-    };
-    void loadSeries();
+    } catch (e) {
+      console.error('Failed to load series for vote dialog:', e);
+      setSeriesError('Could not load Manga series for reader votes.');
+    } finally {
+      setSeriesLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadSeries(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadSeries]);
 
   const flash = (msg: string) => {
     setToastMsg(msg);
@@ -90,30 +102,50 @@ export default function IssueManagement({ issues, canManage, onCreate, onStatusC
 
   const handleSaveReaderVote = async (seriesId: string, voteCount: number): Promise<boolean> => {
     if (!targetIssueId) return false;
+    setDetailError(null);
     try {
       const res = await editorialApi.inputReaderVote(targetIssueId, { seriesId, voteCount });
       if (res.data?.success) {
         flash(`Saved ${voteCount} reader votes for series.`);
+        try {
+          const refreshed = await onRefresh();
+          if (refreshed === false) {
+            setDetailError('Reader vote was saved, but refreshed data could not be loaded. Use Refresh issues to try again.');
+          }
+        } catch {
+          setDetailError('Reader vote was saved, but refreshed data could not be loaded. Use Refresh issues to try again.');
+        }
         return true;
       }
+      setDetailError(res.data?.message || 'Failed to save reader vote.');
       return false;
     } catch (e) {
       console.error('Failed to save vote:', e);
+      setDetailError('Failed to save reader vote.');
       return false;
     }
   };
 
   const handleCalculateRanking = async (issueId: string) => {
     setCalculatingIssueId(issueId);
+    setDetailError(null);
     try {
       const res = await editorialApi.calculateRanking(issueId);
       if (res.data?.success) {
+        onRankingCalculated(issueId, res.data.data?.items ?? []);
         flash('Calculated rankings successfully!');
-        await onRefresh();
+        try {
+          const refreshed = await onRefresh();
+          if (refreshed === false) {
+            setDetailError('Rankings were calculated, but refreshed data could not be loaded. Use Refresh issues to try again.');
+          }
+        } catch {
+          setDetailError('Rankings were calculated, but refreshed data could not be loaded. Use Refresh issues to try again.');
+        }
       } else {
         setDetailError(res.data?.message || 'Failed to calculate rankings.');
       }
-    } catch (e) {
+    } catch {
       setDetailError('Error triggering ranking calculation.');
     } finally {
       setCalculatingIssueId(null);
@@ -151,6 +183,20 @@ export default function IssueManagement({ issues, canManage, onCreate, onStatusC
       )}
 
       {!canManage && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 font-semibold">Read-only access. Creating and changing issues requires the EditorialBoard or Admin role.</p>}
+      {seriesError && (
+        <div role="alert" className="flex items-center justify-between gap-3 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-3 font-semibold">
+          <span>{seriesError}</span>
+          <button
+            type="button"
+            aria-label="Retry loading Manga series"
+            onClick={() => void loadSeries()}
+            disabled={seriesLoading}
+            className="shrink-0 underline font-bold disabled:opacity-50"
+          >
+            {seriesLoading ? 'Retrying…' : 'Retry'}
+          </button>
+        </div>
+      )}
       {detailError && <p role="alert" className="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-3 font-semibold">{detailError}</p>}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">

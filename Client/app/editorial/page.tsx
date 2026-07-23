@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper';
 import {
   AlertCircle, AlertTriangle, ChevronDown, ChevronUp, FileText,
@@ -20,11 +20,13 @@ type ApiError = {
   response?: { status?: number; data?: { message?: unknown; error?: unknown } };
 };
 
+const EMPTY_ROLES: string[] = [];
+
 function errorMessage(error: unknown, fallback: string) {
   const apiError = error as ApiError;
+  if (apiError.response?.status === 403) return 'You do not have permission to perform this editorial action.';
   const value = apiError.response?.data?.message ?? apiError.response?.data?.error ?? apiError.message;
   if (typeof value === 'string' && value.trim()) return value;
-  if (apiError.response?.status === 403) return 'You do not have permission to perform this editorial action.';
   if (apiError.response?.status === 404) return 'This review no longer exists.';
   return fallback;
 }
@@ -175,12 +177,12 @@ export function ReviewCard({ review, canManage, onRefresh }: { review: Editorial
 }
 
 // ─── Cancellation Warnings Panel ──────────────────────────────────────────────
-function CancellationWarningsPanel() {
+export function CancellationWarningsPanel() {
   const [warnings, setWarnings] = useState<CancellationWarningResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadWarnings = async () => {
+  const loadWarnings = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -190,16 +192,17 @@ function CancellationWarningsPanel() {
       } else {
         setError(res.data.message || 'Failed to load cancellation warnings.');
       }
-    } catch {
-      setError('Could not load cancellation warnings.');
+    } catch (requestError: unknown) {
+      setError(errorMessage(requestError, 'Could not load cancellation warnings.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    void loadWarnings();
-  }, []);
+    const timer = window.setTimeout(() => { void loadWarnings(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadWarnings]);
 
   const riskLevelColor = (level: CancellationRiskLevel) => {
     if (level === CancellationRiskLevel.Critical) return 'bg-rose-500/10 border-rose-500/20 text-rose-400';
@@ -243,6 +246,12 @@ function CancellationWarningsPanel() {
           <div className="p-6 text-center">
             <RefreshCw size={16} className="animate-spin text-indigo-400 mx-auto mb-2" />
             <p className="text-xs text-slate-500 font-semibold">Loading warnings…</p>
+          </div>
+        ) : error ? (
+          <div className="p-6 text-center">
+            <AlertCircle size={22} className="text-rose-500/70 mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-semibold">Warnings unavailable</p>
+            <p className="text-[10px] text-slate-600 mt-1">Use refresh to try again.</p>
           </div>
         ) : warnings.length === 0 ? (
           <div className="p-6 text-center">
@@ -418,7 +427,8 @@ function RankingsPanel() {
 }
 
 export default function EditorialPage() {
-  const roles = useAuthStore((state) => state.user?.roles ?? []);
+  const storedRoles = useAuthStore((state) => state.user?.roles);
+  const roles = storedRoles ?? EMPTY_ROLES;
   const canManage = roles.some((role) => ['tantoueditor', 'admin'].includes(role.toLowerCase()));
   const [reviews, setReviews] = useState<EditorialReviewResponse[]>([]);
   const [loading, setLoading] = useState(false);

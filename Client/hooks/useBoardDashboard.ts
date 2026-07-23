@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { editorialApi } from '@/services/editorial-api';
 import { mangaApi } from '@/services/manga-api';
 import { SeriesResponse } from '@/types/manga';
-import { BoardVoteSummaryResponse, BoardVoteValue, CancellationWarningResponse, CreateIssueRequest, CreatePublicationScheduleRequest, IssueResponse, IssueStatus, PublicationScheduleResponse, RankingItemResponse, UpdateIssueStatusRequest, VoteDecision } from '@/types/editorial';
+import { BoardVoteSummaryResponse, BoardVoteValue, CancellationWarningResponse, CreateIssueRequest, CreatePublicationScheduleRequest, IssueResponse, PublicationScheduleResponse, RankingItemResponse, UpdateIssueStatusRequest, VoteDecision } from '@/types/editorial';
 
 function messageFor(error: unknown, action: string) {
   const response = (error as { response?: { status?: number; data?: { message?: string } } }).response;
@@ -34,15 +34,22 @@ export function useBoardDashboard() {
     setIsLoading(true); setError(null);
     try {
       const [seriesRes, schedulesRes, issuesRes] = await Promise.all([mangaApi.getSeries(), editorialApi.getPublicationSchedules(), editorialApi.getIssues()]);
-      const loadedSeries = seriesRes.data.success ? seriesRes.data.data : [];
+      const failedResponse = [seriesRes.data, schedulesRes.data, issuesRes.data]
+        .find(response => !response.success);
+      if (failedResponse) {
+        setError(failedResponse.message || 'Không thể tải dữ liệu hội đồng.');
+        return false;
+      }
+      const loadedSeries = seriesRes.data.data;
       setSeries(loadedSeries);
-      setSchedules(schedulesRes.data.success ? schedulesRes.data.data : []);
-      setIssues(issuesRes.data.success ? issuesRes.data.data : []);
+      setSchedules(schedulesRes.data.data);
+      setIssues(issuesRes.data.data);
       const entries = await Promise.all(loadedSeries.map(async item => {
         try { const response = await editorialApi.getVoteSummary(item.id); return response.data.success ? [item.id, response.data.data] as const : null; } catch { return null; }
       }));
       setVoteSummaries(Object.fromEntries(entries.filter((entry): entry is readonly [string, BoardVoteSummaryResponse] => entry !== null)));
-    } catch (error) { setError(messageFor(error, 'tải dữ liệu hội đồng')); }
+      return true;
+    } catch (error) { setError(messageFor(error, 'tải dữ liệu hội đồng')); return false; }
     finally { setIsLoading(false); }
   }, []);
 
@@ -64,6 +71,9 @@ export function useBoardDashboard() {
   }, []);
 
   const selectIssue = async (issueId: string) => { setSelectedIssueId(issueId); setRankings([]); if (issueId) await loadRankings(issueId); };
+  const applyCalculatedRanking = useCallback((issueId: string, items: RankingItemResponse[]) => {
+    if (issueId === selectedIssueId) setRankings(items);
+  }, [selectedIssueId]);
   const calculateRanking = async () => {
     if (!selectedIssueId) return;
     setIsRankingLoading(true); setError(null);
@@ -117,6 +127,11 @@ export function useBoardDashboard() {
     try { const response = await editorialApi.updateIssueStatus(issueId, data); if (response.data.success) { setIssues(previous => previous.map(issue => issue.id === issueId ? response.data.data : issue)); setSuccessMessage('Đã cập nhật trạng thái issue.'); return true; } setError(response.data.message || 'Không thể cập nhật trạng thái issue.'); return false; }
     catch (error) { setError(messageFor(error, 'cập nhật trạng thái issue')); return false; }
   };
-  useEffect(() => { void fetchBoardData(); }, [fetchBoardData]);
-  return { series, voteSummaries, issues, selectedIssueId, rankings, rankingHistory, cancellationWarnings, schedules, isLoading, isRankingLoading, isVoting, isFinalizing, isScheduling, isSeriesActionLoading, publishingScheduleId, error, successMessage, fetchBoardData, loadSeriesInsights, selectIssue, voteProposal, finalizeProposal, setSeriesStatus, calculateRanking, inputReaderVote, createSchedule, publishSchedule, createIssue, updateIssueStatus, clearError: () => setError(null), clearSuccess: () => setSuccessMessage(null) };
+  const clearError = useCallback(() => setError(null), []);
+  const clearSuccess = useCallback(() => setSuccessMessage(null), []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchBoardData(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchBoardData]);
+  return { series, voteSummaries, issues, selectedIssueId, rankings, rankingHistory, cancellationWarnings, schedules, isLoading, isRankingLoading, isVoting, isFinalizing, isScheduling, isSeriesActionLoading, publishingScheduleId, error, successMessage, fetchBoardData, loadSeriesInsights, selectIssue, applyCalculatedRanking, voteProposal, finalizeProposal, setSeriesStatus, calculateRanking, inputReaderVote, createSchedule, publishSchedule, createIssue, updateIssueStatus, clearError, clearSuccess };
 }

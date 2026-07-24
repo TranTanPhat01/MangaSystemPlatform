@@ -11,6 +11,7 @@ const rules: Record<string, string[]> = {
   '/series': ['mangaka', 'admin'],
   '/tasks': ['mangaka', 'assistant', 'admin'],
   '/admin': ['admin'],
+  '/reader': ['reader', 'admin', 'mangaka', 'assistant', 'tantoueditor', 'editorialboard'],
 };
 
 const normalize = (role: string) => role.toLowerCase().replace(/[\s_-]/g, '');

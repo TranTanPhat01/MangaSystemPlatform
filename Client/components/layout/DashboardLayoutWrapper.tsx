@@ -18,10 +18,12 @@ import {
   Menu, 
   X,
   ChevronRight,
-  Heart
+  Heart,
+  Bell
 } from 'lucide-react';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import Logo from '@/components/mangaka/Logo';
+import { useNotificationStore } from '@/store/notification-store';
 
 interface DashboardLayoutWrapperProps {
   children: React.ReactNode;
@@ -31,8 +33,18 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
   const pathname = usePathname();
   const { user } = useAuthStore();
   const { logout, isLoggingOut } = useLogoutAction();
+  const { activeToast, clearToast } = useNotificationStore();
   const [mounted, setMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Handle Toast Auto-dismiss
+  useEffect(() => {
+    if (!activeToast) return;
+    const timer = setTimeout(() => {
+      clearToast();
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [activeToast, clearToast]);
 
   useEffect(() => {
     setMounted(true);
@@ -82,7 +94,8 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
       links.push(
         { name: 'Users', href: '/admin/users', icon: Users },
         { name: 'System', href: '/admin/system', icon: Settings },
-        { name: 'Manga Management', href: '/admin/manga', icon: BookOpen }
+        { name: 'Manga Management', href: '/admin/manga', icon: BookOpen },
+        { name: 'Audit Logs', href: '/admin/logs', icon: FileText }
       );
     }
 
@@ -97,6 +110,7 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
     if (pathname.startsWith('/admin/users')) return 'User Management';
     if (pathname.startsWith('/admin/system')) return 'System Health';
     if (pathname.startsWith('/admin/manga')) return 'Manga Management';
+    if (pathname.startsWith('/admin/logs')) return 'Security Audit Logs';
     if (pathname.startsWith('/series')) return 'Series Management';
     if (pathname.startsWith('/tasks')) return 'Tasks & Workflow';
     if (pathname.startsWith('/editorial')) return 'Editorial Board';
@@ -219,6 +233,25 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
           {children}
         </main>
       </div>
+
+      {/* Toast Notification Popup */}
+      {activeToast && (
+        <div className="fixed bottom-5 right-5 z-[9999] flex items-start gap-3 bg-slate-900 border border-slate-800 text-slate-200 p-4 rounded-xl shadow-2xl shadow-black/85 max-w-sm w-80 sm:w-96 animate-in slide-in-from-bottom-3 fade-in duration-200">
+          <div className="h-8 w-8 rounded-lg bg-indigo-650/15 border border-indigo-500/20 flex items-center justify-center shrink-0 text-indigo-400">
+            <Bell size={16} className="animate-bounce" />
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <h4 className="text-xs font-extrabold text-white truncate">{activeToast.title}</h4>
+            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed break-words">{activeToast.message}</p>
+          </div>
+          <button 
+            onClick={clearToast}
+            className="text-slate-555 hover:text-slate-350 p-0.5 hover:bg-slate-800 rounded-md transition-colors"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

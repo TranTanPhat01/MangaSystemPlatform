@@ -60,5 +60,10 @@ export default function DashboardPage() {
     return <EditorialBoardDashboard />;
   }
 
+  if (roles.includes('reader')) {
+    router.replace('/reader');
+    return null;
+  }
+
   return <div className="flex h-screen items-center justify-center"><p>Forbidden: no recognized role.</p></div>;
 }

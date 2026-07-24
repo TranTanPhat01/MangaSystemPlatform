@@ -9,6 +9,8 @@ interface NotificationState {
   isLoading: boolean;
   error: string | null;
   lastSeenNotificationIds: Set<string>;
+  activeToast: NotificationResponse | null;
+  clearToast: () => void;
   fetchNotifications: () => Promise<void>;
   fetchUnreadCount: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
@@ -25,7 +27,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   isLoading: false,
   error: null,
   lastSeenNotificationIds: new Set(),
+  activeToast: null,
 
+  clearToast: () => set({ activeToast: null }),
   clearError: () => set({ error: null }),
 
   fetchNotifications: async () => {
@@ -146,6 +150,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         notifications: [notification, ...state.notifications],
         unreadCount: state.unreadCount + 1,
         lastSeenNotificationIds: newLastSeenIds,
+        activeToast: notification,
       };
     });
   },

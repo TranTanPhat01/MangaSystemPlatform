@@ -17,7 +17,9 @@ import {
   UserCheck2,
   Lock,
   Unlock,
-  AlertTriangle
+  AlertTriangle,
+  UserPlus,
+  Plus
 } from 'lucide-react';
 import { adminApi, AdminUserListItem, AdminRoleCatalog } from '@/services/admin-api';
 import UserDetailDialog from './UserDetailDialog';
@@ -52,6 +54,14 @@ export function UserManagement() {
   const [isPasswordResetOpen, setIsPasswordResetOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [passwordTargetUserId, setPasswordTargetUserId] = useState<string | null>(null);
+
+  // User Creation Modal State
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createEmail, setCreateEmail] = useState('');
+  const [createUsername, setCreateUsername] = useState('');
+  const [createFullName, setCreateFullName] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createRoles, setCreateRoles] = useState<string[]>([]);
 
   // Fetch Users Function
   const fetchUsers = useCallback(async () => {
@@ -111,6 +121,42 @@ export function UserManagement() {
   const triggerError = (msg: string) => {
     setErrorMsg(msg);
     setTimeout(() => setErrorMsg(null), 5000);
+  };
+
+  // Create User submit handler
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createEmail || !createUsername || !createFullName || !createPassword || createRoles.length === 0) {
+      triggerError('Please fill in all fields and select at least one role.');
+      return;
+    }
+    setActionLoading('create');
+    setErrorMsg(null);
+    try {
+      const res = await adminApi.createUser({
+        email: createEmail,
+        username: createUsername,
+        fullName: createFullName,
+        password: createPassword,
+        roles: createRoles,
+      });
+      if (res.data.success) {
+        triggerSuccess('User account created successfully.');
+        setIsCreateOpen(false);
+        setCreateEmail('');
+        setCreateUsername('');
+        setCreateFullName('');
+        setCreatePassword('');
+        setCreateRoles([]);
+        fetchUsers();
+      } else {
+        triggerError(res.data.message || 'Failed to create user account.');
+      }
+    } catch (err: any) {
+      triggerError(err.response?.data?.message || err.response?.data?.error || 'Failed to execute creation action.');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Toggle user status: Active (1) <-> Disabled (2)
@@ -309,14 +355,24 @@ export function UserManagement() {
           </select>
         </div>
 
-        <button
-          onClick={fetchUsers}
-          disabled={loading}
-          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-850 hover:bg-slate-800 border border-slate-700/60 rounded-lg text-xs font-bold text-slate-300 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2 justify-end">
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-650 hover:bg-indigo-750 rounded-lg text-xs font-bold text-white transition-colors"
+          >
+            <UserPlus size={13} />
+            Create User
+          </button>
+
+          <button
+            onClick={fetchUsers}
+            disabled={loading}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-slate-850 hover:bg-slate-800 border border-slate-700/60 rounded-lg text-xs font-bold text-slate-300 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Grid/Table Area */}
@@ -571,6 +627,127 @@ export function UserManagement() {
                   className="px-3 py-1.5 bg-indigo-750 hover:bg-indigo-850 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50"
                 >
                   Save New Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Creation Modal */}
+      {isCreateOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity" 
+            onClick={() => setIsCreateOpen(false)}
+          />
+          <div className="relative bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl z-10 animate-in zoom-in-95 duration-250 text-slate-200">
+            <h3 className="text-sm font-extrabold tracking-tight flex items-center gap-2 pb-3 border-b border-slate-850">
+              <UserPlus size={16} className="text-indigo-400" />
+              Create New User Account
+            </h3>
+            
+            <form onSubmit={handleCreateUserSubmit} className="mt-4 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. janesmith"
+                    value={createUsername}
+                    onChange={(e) => setCreateUsername(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Jane Smith"
+                    value={createFullName}
+                    onChange={(e) => setCreateFullName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. jane.smith@example.com"
+                  value={createEmail}
+                  onChange={(e) => setCreateEmail(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Initial Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter strong password"
+                  value={createPassword}
+                  onChange={(e) => setCreatePassword(e.target.value)}
+                  className="w-full bg-slate-955 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Assign Roles
+                </label>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto border border-slate-800 rounded-lg p-2.5 bg-slate-955">
+                  {(rolesCatalog.length > 0 
+                    ? rolesCatalog.map(r => r.name)
+                    : ['Admin', 'Mangaka', 'Assistant', 'TantouEditor', 'EditorialBoard', 'Reader']
+                  ).map((roleName) => (
+                    <label key={roleName} className="flex items-center gap-2 text-xs font-semibold text-slate-350 hover:text-slate-200 cursor-pointer py-0.5">
+                      <input
+                        type="checkbox"
+                        checked={createRoles.includes(roleName)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setCreateRoles([...createRoles, roleName]);
+                          } else {
+                            setCreateRoles(createRoles.filter((name) => name !== roleName));
+                          }
+                        }}
+                        className="rounded border-slate-800 text-indigo-600 focus:ring-indigo-500 bg-slate-900"
+                      />
+                      <span>{roleName}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-850">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateOpen(false)}
+                  className="px-3 py-1.5 hover:bg-slate-800 rounded-lg text-xs font-semibold text-slate-400 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading === 'create'}
+                  className="px-3 py-1.5 bg-indigo-750 hover:bg-indigo-850 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {actionLoading === 'create' && <RefreshCw size={12} className="animate-spin" />}
+                  Create User
                 </button>
               </div>
             </form>

@@ -26,6 +26,101 @@ const getRiskBadgeClass = (level: number | string): string => {
   return 'bg-slate-50 text-slate-700 border-slate-200';
 };
 
+const RankingLineChart = ({ data }: { data: RankingItemResponse[] }) => {
+  if (!data || data.length === 0) return null;
+
+  // Take up to 7 points, reverse to keep chronological order (oldest to newest)
+  const chartPoints = [...data].slice(0, 7).reverse();
+  const ranks = chartPoints.map(p => p.rankPosition || 1);
+  const minRank = Math.min(...ranks);
+  const maxRank = Math.max(...ranks);
+
+  const range = maxRank - minRank;
+  const padding = range === 0 ? 1 : range * 0.15;
+  const yMin = Math.max(1, minRank - padding);
+  const yMax = maxRank + padding;
+
+  const width = 500;
+  const height = 150;
+  const paddingX = 40;
+  const paddingY = 20;
+
+  const chartWidth = width - paddingX * 2;
+  const chartHeight = height - paddingY * 2;
+
+  const points = chartPoints.map((item, idx) => {
+    const x = paddingX + (idx / (chartPoints.length - 1 || 1)) * chartWidth;
+    const rank = item.rankPosition || 1;
+    const y = paddingY + ((rank - yMin) / (yMax - yMin)) * chartHeight;
+    return { x, y, rank, label: `P${idx + 1}` };
+  });
+
+  let pathD = '';
+  if (points.length > 0) {
+    pathD = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+  }
+
+  return (
+    <div className="bg-slate-950 border border-slate-850 rounded-xl p-4 my-4 select-none">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 font-mono">Ranking History Trend Line</p>
+      <div className="relative w-full">
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
+          {/* Horizontal lines */}
+          <line x1={paddingX} y1={paddingY} x2={width - paddingX} y2={paddingY} stroke="#1e293b" strokeDasharray="3,3" />
+          <line x1={paddingX} y1={height - paddingY} x2={width - paddingX} y2={height - paddingY} stroke="#1e293b" strokeDasharray="3,3" />
+
+          {/* Indigo trend line */}
+          {points.length > 1 && (
+            <path
+              d={pathD}
+              fill="none"
+              stroke="#6366f1"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="drop-shadow-[0_2px_6px_rgba(99,102,241,0.55)]"
+            />
+          )}
+
+          {/* Dots and Rank tooltips */}
+          {points.map((p, idx) => (
+            <g key={idx}>
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r="4.5"
+                fill="#6366f1"
+                stroke="#0f172a"
+                strokeWidth="1.5"
+              />
+              <text
+                x={p.x}
+                y={p.y - 9}
+                textAnchor="middle"
+                className="text-[10px] font-extrabold fill-slate-350 font-mono"
+              >
+                #{p.rank}
+              </text>
+              <text
+                x={p.x}
+                y={height - 4}
+                textAnchor="middle"
+                className="text-[9px] font-bold fill-slate-500 font-mono"
+              >
+                {p.label}
+              </text>
+            </g>
+          ))}
+
+          {/* Labels */}
+          <text x={4} y={paddingY + 3} className="text-[9px] font-extrabold fill-emerald-500 font-mono">BEST</text>
+          <text x={4} y={height - paddingY + 3} className="text-[9px] font-extrabold fill-rose-500 font-mono">WORST</text>
+        </svg>
+      </div>
+    </div>
+  );
+};
+
 export default function CancellationRiskPanel({
   series,
   selectedSeriesId,
@@ -150,6 +245,7 @@ export default function CancellationRiskPanel({
                 <TrendingDown size={16} className="text-indigo-600" />
                 Ranking Trend ({rankingHistory.length} periods)
               </h3>
+              <RankingLineChart data={rankingHistory} />
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-slate-50 border-b border-slate-200">

@@ -74,6 +74,20 @@ export default function AssistantTaskDetailPreview({
       link.click();
     }
   };
+  const handleDownloadSubmissionFile = (fileId: string, index: number) => {
+    fileApi
+      .getFileUrl(fileId)
+      .then((res) => {
+        if (res.data?.success && res.data.data?.url) {
+          const link = document.createElement('a');
+          link.href = res.data.data.url;
+          link.download = `submission-v${index + 1}.png`;
+          link.target = '_blank';
+          link.click();
+        }
+      })
+      .catch((err) => console.error('Failed to get submission file URL:', err));
+  };
 
   return (
     <section className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -179,6 +193,48 @@ export default function AssistantTaskDetailPreview({
               </p>
             </div>
           </div>
+
+          {/* Submission & Revision History */}
+          {((selectedTask.submissionHistory && selectedTask.submissionHistory.length > 0) ||
+            (selectedTask.revisions && selectedTask.revisions.length > 0)) && (
+            <div className="border-t border-slate-100 pt-4 mt-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">History & Revision Logs</p>
+              <div className="space-y-3 max-h-40 overflow-y-auto pr-1">
+                {/* Revisions list */}
+                {selectedTask.revisions?.map((rev, idx) => (
+                  <div key={rev.id || idx} className="p-2.5 bg-rose-50/50 border border-rose-100 rounded-xl text-[10px]">
+                    <div className="flex justify-between items-center mb-1 text-[9px] font-bold text-rose-700">
+                      <span>REVISION REQUESTED</span>
+                      <span className="font-mono">{new Date(rev.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-rose-900 leading-relaxed font-semibold italic">&quot;{rev.reason}&quot;</p>
+                  </div>
+                ))}
+
+                {/* Submissions list */}
+                {selectedTask.submissionHistory?.map((sub, idx) => (
+                  <div key={sub.id || idx} className="p-2.5 bg-slate-50 border border-slate-150 rounded-xl text-[10px] flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 mb-0.5">
+                        <span className="text-emerald-700">SUBMISSION V{idx + 1}</span>
+                        <span className="font-mono">{new Date(sub.submittedAt).toLocaleDateString()}</span>
+                      </div>
+                      {sub.note && <p className="text-slate-650 leading-relaxed truncate">{sub.note}</p>}
+                    </div>
+                    {sub.fileId && (
+                      <button
+                        onClick={() => handleDownloadSubmissionFile(sub.fileId, idx)}
+                        className="p-1 hover:bg-slate-200/60 rounded text-slate-500 hover:text-slate-800 transition-colors"
+                        title="Download submission file"
+                      >
+                        <Download size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Submission feedback message */}
           {submissionMessage && (

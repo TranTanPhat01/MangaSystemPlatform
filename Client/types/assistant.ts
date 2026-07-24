@@ -37,6 +37,8 @@ export interface Task {
   pageId?: string;
   description?: string;
   pageFileId?: string;
+  submissionHistory?: any[];
+  revisions?: any[];
 }
 
 export interface RevisionRequest {

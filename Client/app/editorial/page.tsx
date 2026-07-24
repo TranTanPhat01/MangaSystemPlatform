@@ -5,7 +5,7 @@ import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper';
 import {
   AlertCircle, AlertTriangle, ChevronDown, ChevronUp, FileText,
   MessageSquare, Play, RefreshCw, ThumbsUp, XCircle, Trophy,
-  TrendingUp, TrendingDown, Minus, BarChart3, ShieldAlert,
+  TrendingUp, TrendingDown, Minus, BarChart3, ShieldAlert, X,
 } from 'lucide-react';
 import { editorialApi } from '@/services/editorial-api';
 import { useAuthStore } from '@/store/auth-store';
@@ -14,6 +14,9 @@ import {
   IssueResponse, RankingItemResponse, RankingSnapshotResponse, ReviewStatus,
   CancellationWarningResponse, CancellationRiskLevel,
 } from '@/types/editorial';
+import { mangaApi } from '@/services/manga-api';
+import { fileApi } from '@/services/file-api';
+import { PageResponse, AnnotationResponse, AnnotationType } from '@/types/manga';
 
 type ApiError = {
   message?: unknown;
@@ -78,6 +81,325 @@ function CommentForm({ reviewId, disabled, onSuccess }: { reviewId: string; disa
       {loading ? 'Sending…' : 'Send Comment'}
     </button>
   </div>;
+}
+
+function VisualReviewPanel({ chapterId, canManage }: { chapterId: string; canManage: boolean }) {
+  const [pages, setPages] = useState<PageResponse[]>([]);
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [loadingPages, setLoadingPages] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [annotations, setAnnotations] = useState<AnnotationResponse[]>([]);
+  const [annotationsLoading, setAnnotationsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Drawing states
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [currentBox, setCurrentBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [annotationText, setAnnotationText] = useState('');
+  const [annotationType, setAnnotationType] = useState<AnnotationType>('error');
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchPages = useCallback(async () => {
+    setLoadingPages(true);
+    setError(null);
+    try {
+      const res = await mangaApi.getPages(chapterId);
+      if (res.data.success) {
+        setPages(res.data.data || []);
+        if (res.data.data && res.data.data.length > 0) {
+          setSelectedPageId(res.data.data[0].id);
+        }
+      }
+    } catch {
+      setError('Could not load chapter pages.');
+    } finally {
+      setLoadingPages(false);
+    }
+  }, [chapterId]);
+
+  const fetchAnnotations = useCallback(async (pageId: string) => {
+    setAnnotationsLoading(true);
+    try {
+      const res = await mangaApi.getPageAnnotations(pageId);
+      if (res.data.success) {
+        setAnnotations(res.data.data || []);
+      }
+    } catch {
+      console.warn('Failed to load annotations');
+    } finally {
+      setAnnotationsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchPages();
+  }, [fetchPages]);
+
+  useEffect(() => {
+    setImageUrl(null);
+    setAnnotations([]);
+    if (!selectedPageId) return;
+
+    const pageObj = pages.find((p) => p.id === selectedPageId);
+    if (pageObj?.fileId) {
+      setImageLoading(true);
+      fileApi
+        .getFileUrl(pageObj.fileId)
+        .then((res) => {
+          if (res.data?.success && res.data.data?.url) {
+            setImageUrl(res.data.data.url);
+          }
+        })
+        .catch((err) => console.warn('Failed to get page URL:', err))
+        .finally(() => setImageLoading(false));
+    }
+    void fetchAnnotations(selectedPageId);
+  }, [selectedPageId, pages, fetchAnnotations]);
+
+  // Drawing Canvas logic
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!canManage || submitting || !imageUrl) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setIsDrawing(true);
+    setStartPos({ x, y });
+    setCurrentBox({ x, y, width: 0, height: 0 });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || !currentBox || !imageUrl) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const currentX = ((e.clientX - rect.left) / rect.width) * 100;
+    const currentY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const x = Math.min(startPos.x, currentX);
+    const y = Math.min(startPos.y, currentY);
+    const width = Math.abs(startPos.x - currentX);
+    const height = Math.abs(startPos.y - currentY);
+
+    setCurrentBox({ x, y, width, height });
+  };
+
+  const handleMouseUp = () => {
+    if (!isDrawing || !imageUrl) return;
+    setIsDrawing(false);
+    if (currentBox && (currentBox.width > 1.5 || currentBox.height > 1.5)) {
+      setShowForm(true);
+    } else {
+      setCurrentBox(null);
+    }
+  };
+
+  const handleAddAnnotation = async () => {
+    if (!selectedPageId || !annotationText.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await mangaApi.createAnnotation(selectedPageId, {
+        type: annotationType,
+        description: annotationText.trim(),
+        notes: 'Added by Editor review',
+        coordinatesJson: currentBox ? JSON.stringify(currentBox) : undefined,
+      });
+      if (res.data.success) {
+        setAnnotationText('');
+        setShowForm(false);
+        setCurrentBox(null);
+        void fetchAnnotations(selectedPageId);
+      }
+    } catch {
+      setError('Could not create annotation.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteAnnotation = async (id: string) => {
+    if (!window.confirm('Delete this annotation?')) return;
+    try {
+      const res = await mangaApi.deleteAnnotation(id);
+      if (res.data.success && selectedPageId) {
+        void fetchAnnotations(selectedPageId);
+      }
+    } catch {
+      console.warn('Failed to delete annotation');
+    }
+  };
+
+  if (loadingPages) return <div className="text-xs text-slate-500 py-4 text-center">Loading chapter pages…</div>;
+  if (pages.length === 0) return <div className="text-xs text-slate-500 py-4 text-center">No manuscript pages uploaded for this chapter.</div>;
+
+  return (
+    <div className="mt-4 border border-slate-800 rounded-xl bg-slate-950 p-4 space-y-4 text-slate-200">
+      <div className="flex items-center justify-between border-b border-slate-850 pb-2">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Visual Review Canvas</span>
+        <select
+          value={selectedPageId || ''}
+          onChange={(e) => setSelectedPageId(e.target.value)}
+          className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none"
+        >
+          {pages.map((p) => (
+            <option key={p.id} value={p.id}>Page {p.pageNumber}</option>
+          ))}
+        </select>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-xs text-rose-400 font-semibold">
+          <AlertCircle size={11} />
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* Canvas */}
+        <div className="md:col-span-3">
+          {imageLoading ? (
+            <div className="aspect-[3/4] bg-slate-900 border border-slate-850 rounded-lg flex items-center justify-center text-xs text-slate-500">
+              Loading image…
+            </div>
+          ) : imageUrl ? (
+            <div className="relative group/canvas">
+              <div
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                className="relative w-full aspect-[3/4] rounded-lg overflow-hidden border border-slate-850 select-none cursor-crosshair bg-slate-900"
+              >
+                <img src={imageUrl} alt="Manuscript" className="w-full h-full object-contain pointer-events-none" />
+
+                {/* Overlays */}
+                {annotations.map((annot) => {
+                  if (!annot.coordinatesJson) return null;
+                  try {
+                    const box = JSON.parse(annot.coordinatesJson);
+                    return (
+                      <div
+                        key={annot.id}
+                        className={`absolute border-2 pointer-events-none rounded ${
+                          annot.type === 'error' ? 'border-rose-500 bg-rose-500/10' :
+                          annot.type === 'correction' ? 'border-purple-500 bg-purple-500/10' :
+                          'border-blue-500 bg-blue-500/10'
+                        }`}
+                        style={{
+                          left: `${box.x}%`,
+                          top: `${box.y}%`,
+                          width: `${box.width}%`,
+                          height: `${box.height}%`,
+                        }}
+                      />
+                    );
+                  } catch { return null; }
+                })}
+
+                {/* Drawing box */}
+                {isDrawing && currentBox && (
+                  <div
+                    className="absolute border-2 border-dashed border-indigo-400 bg-indigo-500/20 rounded pointer-events-none"
+                    style={{
+                      left: `${currentBox.x}%`,
+                      top: `${currentBox.y}%`,
+                      width: `${currentBox.width}%`,
+                      height: `${currentBox.height}%`,
+                    }}
+                  />
+                )}
+              </div>
+              <div className="text-[9px] text-slate-500 mt-1 font-mono text-center">
+                {canManage ? 'DRAG MOUSE OVER IMAGE TO MARK ERROR / COMMENT' : 'READ-ONLY ACCESS'}
+              </div>
+            </div>
+          ) : (
+            <div className="aspect-[3/4] bg-slate-900 border-2 border-dashed border-slate-850 rounded-lg flex flex-col items-center justify-center p-4 text-center text-slate-500 gap-1.5">
+              <FileText className="text-slate-700" size={24} />
+              <span className="text-xs font-bold">No Image Uploaded</span>
+              <span className="text-[10px] leading-relaxed max-w-xs font-mono">This page does not have an attached file asset yet.</span>
+            </div>
+          )}
+        </div>
+
+        {/* Annotations side list */}
+        <div className="md:col-span-2 space-y-3">
+          {showForm && (
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg space-y-2.5 text-slate-200">
+              <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider font-mono">New Visual Annotation</p>
+              <div>
+                <label className="text-[9px] font-bold text-slate-500 uppercase font-mono block mb-1">Type</label>
+                <select
+                  value={annotationType}
+                  onChange={(e) => setAnnotationType(e.target.value as AnnotationType)}
+                  className="w-full text-[11px] bg-slate-950 border border-slate-850 rounded px-2 py-1 text-slate-250 focus:outline-none"
+                >
+                  <option value="error">❌ Error</option>
+                  <option value="comment">💬 Comment</option>
+                  <option value="correction">✏️ Correction</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[9px] font-bold text-slate-500 uppercase font-mono block mb-1">Issue Description</label>
+                <textarea
+                  value={annotationText}
+                  onChange={(e) => setAnnotationText(e.target.value)}
+                  placeholder="Specify what needs to be fixed..."
+                  className="w-full text-xs bg-slate-950 border border-slate-850 rounded p-2 resize-none h-14 text-slate-100 focus:outline-none"
+                />
+              </div>
+              <div className="flex justify-end gap-1.5 pt-1">
+                <button
+                  onClick={() => { setShowForm(false); setCurrentBox(null); }}
+                  className="px-2 py-1 hover:bg-slate-800 rounded text-[10px] text-slate-400 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddAnnotation}
+                  disabled={submitting || !annotationText.trim()}
+                  className="px-2.5 py-1 bg-indigo-750 hover:bg-indigo-850 text-white rounded text-[10px] font-bold disabled:opacity-50"
+                >
+                  Save Box
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Current Annotations ({annotations.length})</div>
+          
+          {annotationsLoading ? (
+            <div className="text-[10px] text-slate-550 py-3 text-center">Loading annotations...</div>
+          ) : annotations.length === 0 ? (
+            <div className="text-[10px] text-slate-600 font-mono py-6 text-center border border-dashed border-slate-850 rounded-lg">No annotations on this page.</div>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {annotations.map((a) => (
+                <div key={a.id} className="p-2 bg-slate-900/60 border border-slate-850 rounded-lg flex items-start justify-between gap-2">
+                  <div className="text-[11px] flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1 font-bold font-mono text-[9px]">
+                      <span className={a.type === 'error' ? 'text-rose-455' : a.type === 'correction' ? 'text-purple-400' : 'text-blue-400'}>
+                        {a.type === 'error' ? 'ERROR' : a.type === 'correction' ? 'CORRECTION' : 'COMMENT'}
+                      </span>
+                      {a.coordinatesJson && <span className="text-[8px] bg-slate-800 px-1 py-0.2 rounded text-slate-500 font-normal">Box</span>}
+                    </div>
+                    <p className="text-slate-300 break-words text-[11px] italic leading-tight">&quot;{a.description || a.notes}&quot;</p>
+                  </div>
+                  {canManage && (
+                    <button
+                      onClick={() => void handleDeleteAnnotation(a.id)}
+                      className="text-slate-500 hover:text-rose-500 p-0.5 rounded transition-colors"
+                    >
+                      <X size={11} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ReviewCard({ review, canManage, onRefresh }: { review: EditorialReviewResponse; canManage: boolean; onRefresh: () => Promise<void> }) {
@@ -171,6 +493,12 @@ export function ReviewCard({ review, canManage, onRefresh }: { review: Editorial
     {canManage && detail.status === ReviewStatus.InReview && <textarea aria-label="Decision note" value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} placeholder="Decision note (required for revision)" rows={2} className="mt-3 w-full bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 resize-none" />}
     {expanded && <div className="mt-3 border-t border-slate-800/60 pt-3">
       {detailLoading ? <p className="text-xs text-slate-500">Loading review details…</p> : comments.length ? <div className="space-y-2 mb-3">{comments.map((comment) => <div key={comment.id} className="p-2 bg-slate-800/40 rounded-lg"><p className="text-[10px] font-bold text-slate-400 mb-0.5">User {compactId(comment.createdByUserId)} · {new Date(comment.createdAt).toLocaleDateString()}</p><p className="text-xs text-slate-300">{comment.commentText}</p></div>)}</div> : <p className="text-xs text-slate-600 mb-2">No comments yet.</p>}
+      
+      {/* Visual Canvas Annotation for Editor */}
+      {!detailLoading && (
+        <VisualReviewPanel chapterId={detail.chapterId} canManage={canManage} />
+      )}
+
       <CommentForm reviewId={detail.id} disabled={!canManage} onSuccess={refreshDetailAndQueue} />
     </div>}
   </div>;

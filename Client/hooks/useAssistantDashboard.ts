@@ -116,6 +116,8 @@ export function useAssistantDashboard() {
         pageId: t.pageId,
         description: t.description,
         pageFileId: t.pageFileId ?? undefined,
+        submissionHistory: t.submissionHistory,
+        revisions: t.revisions,
       }))
     : [];
 

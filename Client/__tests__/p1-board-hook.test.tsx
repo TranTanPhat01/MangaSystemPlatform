@@ -98,4 +98,24 @@ describe('P1 board dashboard refresh contracts', () => {
 
     expect(result.current.rankings).toEqual(rankingItems);
   });
+
+  it('returns false and preserves existing vote summaries when getVoteSummary fails for a series', async () => {
+    const { result } = renderHook(() => useBoardDashboard());
+
+    await waitFor(() => {
+      expect(result.current.series).toEqual([series]);
+    });
+    expect(result.current.voteSummaries['series-1']).toEqual({ seriesId: 'series-1' });
+
+    (editorialApi.getVoteSummary as MockFunction).mockRejectedValueOnce(new Error('Network error'));
+
+    let refreshResult: boolean | undefined;
+    await act(async () => {
+      refreshResult = await result.current.fetchBoardData();
+    });
+
+    expect(refreshResult).toBe(false);
+    expect(result.current.voteSummaries['series-1']).toEqual({ seriesId: 'series-1' });
+    expect(result.current.error).toBe('Một số tóm tắt biểu quyết không thể tải và có thể đã cũ (degraded).');
+  });
 });

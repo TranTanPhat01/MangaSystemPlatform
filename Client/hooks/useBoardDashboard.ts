@@ -44,10 +44,36 @@ export function useBoardDashboard() {
       setSeries(loadedSeries);
       setSchedules(schedulesRes.data.data);
       setIssues(issuesRes.data.data);
+
+      let hasSummaryError = false;
       const entries = await Promise.all(loadedSeries.map(async item => {
-        try { const response = await editorialApi.getVoteSummary(item.id); return response.data.success ? [item.id, response.data.data] as const : null; } catch { return null; }
+        try {
+          const response = await editorialApi.getVoteSummary(item.id);
+          if (response.data.success) {
+            return [item.id, response.data.data] as const;
+          } else {
+            hasSummaryError = true;
+            return null;
+          }
+        } catch {
+          hasSummaryError = true;
+          return null;
+        }
       }));
-      setVoteSummaries(Object.fromEntries(entries.filter((entry): entry is readonly [string, BoardVoteSummaryResponse] => entry !== null)));
+
+      const newSummaries = Object.fromEntries(
+        entries.filter((entry): entry is readonly [string, BoardVoteSummaryResponse] => entry !== null)
+      );
+
+      setVoteSummaries(prev => ({
+        ...prev,
+        ...newSummaries
+      }));
+
+      if (hasSummaryError) {
+        setError('Một số tóm tắt biểu quyết không thể tải và có thể đã cũ (degraded).');
+        return false;
+      }
       return true;
     } catch (error) { setError(messageFor(error, 'tải dữ liệu hội đồng')); return false; }
     finally { setIsLoading(false); }

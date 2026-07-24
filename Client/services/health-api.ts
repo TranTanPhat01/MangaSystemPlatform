@@ -4,6 +4,7 @@
  */
 import { api } from '@/lib/api';
 import { ApiResponse } from '@/types/api';
+import { AxiosRequestConfig } from 'axios';
 
 export interface HealthCheckResponse {
   status: string;
@@ -57,27 +58,27 @@ export const healthApi = {
    * GET /health/live
    * Gateway health check
    */
-  getLive: () =>
-    api.get<HealthCheckResponse>('/health/live'),
+  getLive: (config?: AxiosRequestConfig) =>
+    api.get<HealthCheckResponse>('/health/live', config),
 
   /**
    * GET /health/ready
    * Gateway readiness check
    */
-  getReady: () =>
-    api.get<HealthCheckResponse>('/health/ready'),
+  getReady: (config?: AxiosRequestConfig) =>
+    api.get<HealthCheckResponse>('/health/ready', config),
 
   /**
    * GET /health/services
    * Downstream services summary. In production/staging, requires ADMIN token.
    */
-  getServices: () =>
-    api.get<Record<string, string>>('/health/services'),
+  getServices: (config?: AxiosRequestConfig) =>
+    api.get<Record<string, string>>('/health/services', config),
 
   /**
    * GET /admin/monitoring/overview
    * Detailed overview (used for displaying services, latency, database health).
    */
-  getDetailedOverview: () =>
-    api.get<ApiResponse<MonitoringOverviewResponse>>('/admin/monitoring/overview'),
+  getDetailedOverview: (config?: AxiosRequestConfig) =>
+    api.get<ApiResponse<MonitoringOverviewResponse>>('/admin/monitoring/overview', config),
 };

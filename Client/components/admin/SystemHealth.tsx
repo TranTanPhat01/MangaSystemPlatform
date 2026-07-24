@@ -12,6 +12,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { healthApi, ServiceHealthDetail, MonitoringOverviewResponse } from '@/services/health-api';
+import axios from 'axios';
 
 const FALLBACK_SERVICE_NAMES = [
   'Identity Service',
@@ -62,11 +63,22 @@ export function SystemHealth() {
   const [pollingInterval, setPollingInterval] = useState<number>(15000); // 15s default
   const [isPollingActive, setIsPollingActive] = useState<boolean>(true);
 
-  const tryFallback = useCallback(async (requestId: number) => {
+  // Refs for tracking active state in polling timers without invalidating useCallback
+  const pollingActiveRef = useRef(isPollingActive);
+  const pollingIntervalRef = useRef(pollingInterval);
+  const pollTimeoutRef = useRef<any>(null);
+  const activeAbortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    pollingActiveRef.current = isPollingActive;
+    pollingIntervalRef.current = pollingInterval;
+  }, [isPollingActive, pollingInterval]);
+
+  const tryFallback = useCallback(async (requestId: number, signal?: AbortSignal) => {
     if (requestId !== latestRequestRef.current) return;
     const [liveResult, servicesResult] = await Promise.allSettled([
-      healthApi.getLive(),
-      healthApi.getServices(),
+      healthApi.getLive({ signal }),
+      healthApi.getServices({ signal }),
     ]);
     if (requestId !== latestRequestRef.current) return;
     const checkedAt = new Date().toISOString();
@@ -123,39 +135,65 @@ export function SystemHealth() {
 
   // Fetch Health Data with Fallback
   const fetchHealthData = useCallback(async () => {
+    // Clear scheduled poll timeout
+    if (pollTimeoutRef.current) {
+      clearTimeout(pollTimeoutRef.current);
+      pollTimeoutRef.current = null;
+    }
+    // Cancel in-flight request
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+    }
+
+    // Schedule next poll using setTimeout immediately to keep interval timing consistent with start of request
+    if (pollingActiveRef.current && pollingIntervalRef.current > 0) {
+      pollTimeoutRef.current = setTimeout(() => {
+        void fetchHealthData();
+      }, pollingIntervalRef.current);
+    }
+
+    const abortController = new AbortController();
+    activeAbortControllerRef.current = abortController;
     const requestId = ++latestRequestRef.current;
     setLoading(true);
-    setErrorMsg(null);
+    // Keep errorMsg as-is so users see old warnings during slow requests instead of them disappearing
+
     try {
-      const res = await healthApi.getDetailedOverview();
+      const res = await healthApi.getDetailedOverview({ signal: abortController.signal });
       if (requestId !== latestRequestRef.current) return;
       if (res.data?.success) {
         hasUsableDataRef.current = true;
         setData(res.data.data);
+        setErrorMsg(null); // Clear errorMsg on success
       } else {
-        await tryFallback(requestId);
+        await tryFallback(requestId, abortController.signal);
       }
-    } catch {
-      await tryFallback(requestId);
+    } catch (err: any) {
+      if (axios.isCancel(err) || err.name === 'CanceledError' || err.name === 'AbortError') {
+        // Ignored because request was cancelled
+        return;
+      }
+      await tryFallback(requestId, abortController.signal);
     } finally {
-      if (requestId === latestRequestRef.current) setLoading(false);
+      if (requestId === latestRequestRef.current) {
+        setLoading(false);
+        activeAbortControllerRef.current = null;
+      }
     }
   }, [tryFallback]);
 
+  // Start the poll and handle unmounting / configuration changes
   useEffect(() => {
-    const timer = window.setTimeout(() => { void fetchHealthData(); }, 0);
-    return () => window.clearTimeout(timer);
-  }, [fetchHealthData]);
+    void fetchHealthData();
 
-  // Poll intervals
-  useEffect(() => {
-    if (!isPollingActive || pollingInterval <= 0) return;
-    
-    const timer = setInterval(() => {
-      void fetchHealthData();
-    }, pollingInterval);
-
-    return () => clearInterval(timer);
+    return () => {
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+      }
+      if (activeAbortControllerRef.current) {
+        activeAbortControllerRef.current.abort();
+      }
+    };
   }, [fetchHealthData, isPollingActive, pollingInterval]);
 
   // Status Style Helper

@@ -22,6 +22,8 @@ describe('task workflow UI', () => {
     fireEvent.change(screen.getByLabelText('Page'), { target: { value: ids.page } }); await waitFor(() => expect((screen.getByLabelText('Annotation') as HTMLSelectElement).disabled).toBe(false));
     fireEvent.change(screen.getByLabelText('Annotation'), { target: { value: ids.annotation } }); fireEvent.change(screen.getByLabelText('Assistant'), { target: { value: ids.assistant } }); fireEvent.change(screen.getByLabelText('Task title'), { target: { value: 'Shade panel' } });
     await waitFor(() => expect(create.disabled).toBe(false));
-    fireEvent.click(create); await waitFor(() => expect(mangaApi.createTask).toHaveBeenCalledWith(expect.objectContaining({ assignedToUserId: ids.assistant })));
+    fireEvent.change(screen.getByLabelText('Task priority'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Task deadline'), { target: { value: '2026-08-01' } });
+    fireEvent.click(create); await waitFor(() => expect(mangaApi.createTask).toHaveBeenCalledWith(expect.objectContaining({ assignedToUserId: ids.assistant, priority: 4, deadline: '2026-08-01' })));
   });
 });

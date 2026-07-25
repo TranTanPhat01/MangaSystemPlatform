@@ -6,6 +6,7 @@ using Manga.Editorial.Application.Services;
 using Manga.Editorial.Domain.Entities;
 using Manga.Editorial.Domain.Enums;
 using Manga.Management.Application.EventHandlers;
+using Manga.Management.Application.DTOs;
 using Manga.Management.Application.Services;
 using Manga.Management.Domain.Entities;
 using Manga.Management.Domain.Enums;
@@ -17,11 +18,57 @@ namespace MangaSystemPlatform.GrpcIntegrationTests;
 public sealed class EditorialReviewWorkflowTests
 {
     [Fact]
+    public async Task DirectProposalDecision_PublishesNotificationEvent()
+    {
+        var seriesId = Guid.NewGuid();
+        var authorId = Guid.NewGuid();
+        var repository = new FakeManagementRepository();
+        repository.Seed(seriesId, new Series { Id = seriesId, StudioId = Guid.NewGuid(), Title = "Proposal", CreatedBy = authorId, Status = SeriesStatus.Submitted });
+        var events = new FakeEventBus();
+        var service = new SeriesService(repository, new FakeManagementUnitOfWork(), new FakeManagementAccessService { Allowed = true }, events);
+
+        var result = await service.ApproveProposalAsync(
+            seriesId,
+            new SeriesDecisionRequest { DecisionNote = "Approved directly" },
+            Guid.NewGuid());
+
+        result.IsSuccess.Should().BeTrue();
+        var decided = events.PublishedEvents.OfType<SeriesProposalDecidedEvent>().Should().ContainSingle().Subject;
+        decided.SeriesId.Should().Be(seriesId);
+        decided.RequestedByUserId.Should().Be(authorId);
+        decided.Decision.Should().Be("Approve");
+    }
+
+    [Fact]
+    public async Task SchedulePublication_PublishesChapterAndRequestsReaderNotification()
+    {
+        var chapterId = Guid.NewGuid();
+        var seriesId = Guid.NewGuid();
+        var readerId = Guid.NewGuid();
+        var repository = new FakeManagementRepository();
+        var chapter = new Chapter { Id = chapterId, SeriesId = seriesId, Title = "Published chapter", Status = ChapterStatus.Approved };
+        repository.Seed(chapterId, chapter);
+        repository.Seed(Guid.NewGuid(), new ReaderFavorite { UserId = readerId, SeriesId = seriesId });
+        var events = new FakeEventBus();
+        var service = new ChapterService(repository, new FakeManagementUnitOfWork(), events, new FakeManagementAccessService());
+
+        var result = await service.PublishFromScheduleAsync(chapterId);
+
+        result.IsSuccess.Should().BeTrue();
+        chapter.Status.Should().Be(ChapterStatus.Published);
+        events.PublishedEvents.Should().ContainSingle(message => message is ChapterPublishedEvent);
+        var notification = events.PublishedEvents.OfType<ReaderChapterNotificationRequestedEvent>().Should().ContainSingle().Subject;
+        notification.UserId.Should().Be(readerId);
+    }
+
+    [Fact]
     public async Task MangakaOwner_CanSubmitChapterForReview_AndUnrelatedUserCannot()
     {
         var chapterId = Guid.NewGuid();
+        var pageId = Guid.NewGuid();
         var repository = new FakeManagementRepository();
         repository.Seed(chapterId, new Chapter { Id = chapterId, SeriesId = Guid.NewGuid(), Title = "Chapter", Status = ChapterStatus.InProduction });
+        repository.Seed(pageId, new Page { Id = pageId, ChapterId = chapterId, PageNumber = 1, FileId = Guid.NewGuid() });
         var events = new FakeEventBus();
         var allowed = new FakeManagementAccessService { Allowed = true };
         var service = new ChapterService(repository, new FakeManagementUnitOfWork(), events, allowed);
@@ -36,6 +83,27 @@ public sealed class EditorialReviewWorkflowTests
         repository.Seed(otherChapterId, new Chapter { Id = otherChapterId, SeriesId = Guid.NewGuid(), Title = "Other", Status = ChapterStatus.InProduction });
         var denied = new ChapterService(repository, new FakeManagementUnitOfWork(), new FakeEventBus(), new FakeManagementAccessService { Allowed = false });
         (await denied.SubmitChapterForReviewAsync(otherChapterId, Guid.NewGuid())).IsSuccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SubmitChapterForReview_RejectsMissingManuscriptOrIncompleteAssistantWork()
+    {
+        var chapterId = Guid.NewGuid();
+        var repository = new FakeManagementRepository();
+        repository.Seed(chapterId, new Chapter { Id = chapterId, SeriesId = Guid.NewGuid(), Title = "Chapter", Status = ChapterStatus.InProduction });
+        var service = new ChapterService(repository, new FakeManagementUnitOfWork(), new FakeEventBus(), new FakeManagementAccessService { Allowed = true });
+
+        var missingPages = await service.SubmitChapterForReviewAsync(chapterId, Guid.NewGuid());
+        missingPages.IsSuccess.Should().BeFalse();
+        missingPages.Error.Should().Be("Add at least one manuscript page before submitting the chapter for review.");
+
+        var pageId = Guid.NewGuid();
+        repository.Seed(pageId, new Page { Id = pageId, ChapterId = chapterId, PageNumber = 1, FileId = Guid.NewGuid() });
+        repository.Seed(Guid.NewGuid(), new MangaTask { Id = Guid.NewGuid(), PageId = pageId, AnnotationId = Guid.NewGuid(), Title = "Ink panel", Status = Manga.Management.Domain.Enums.TaskStatus.InProgress });
+
+        var incompleteTasks = await service.SubmitChapterForReviewAsync(chapterId, Guid.NewGuid());
+        incompleteTasks.IsSuccess.Should().BeFalse();
+        incompleteTasks.Error.Should().Be("Approve or complete all assistant tasks before submitting the chapter for review.");
     }
 
     [Fact]

@@ -37,6 +37,30 @@ export default function MangakaPageEditorTab({ triggerModal }: MangakaPageEditor
   const { annotations, loading: annotationsLoading, createAnnotation, deleteAnnotation } =
     usePageAnnotations(selectedPageId);
 
+  const loadPages = async (currentChapterId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await mangaApi.getPages(currentChapterId);
+      if (res.data?.success) {
+        setPages(res.data.data || []);
+      } else {
+        setError(res.data?.message || "Unable to load pages.");
+      }
+    } catch (err: unknown) {
+      const error = err as {
+        response?: { data?: { message?: string; error?: string } };
+      };
+      setError(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Could not reach manga service.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const storedChapterId = window.localStorage.getItem('manga-current-chapter-id');
     if (storedChapterId) {
@@ -68,42 +92,31 @@ export default function MangakaPageEditorTab({ triggerModal }: MangakaPageEditor
         });
     }
   }, [selectedPageId, pages]);
-
-  const loadPages = async (currentChapterId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await mangaApi.getPages(currentChapterId);
-      if (res.data?.success) {
-        setPages(res.data.data || []);
-      } else {
-        setError(res.data?.message || 'Unable to load pages.');
-      }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string; error?: string } } };
-      setError(error.response?.data?.message || error.response?.data?.error || 'Could not reach manga service.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreatePage = async () => {
+  const handleCreatePage = async (file: File) => {
     if (!chapterId) {
       triggerModal('Select a chapter first', 'Open the Chapters tab and pick a chapter before creating pages.');
       return;
     }
 
     try {
-      const res = await mangaApi.createPage(chapterId, { pageNumber: pages.length + 1 });
+      setLoading(true);
+      const upload = await fileApi.uploadFile(file, 'PageScan', { source: 'mangaka-page-editor' });
+      const fileId = upload.data?.data?.fileId ?? upload.data?.data?.id;
+      if (!upload.data?.success || !fileId) {
+        throw new Error(upload.data?.message || 'The manuscript upload failed.');
+      }
+      const res = await mangaApi.createPage(chapterId, { pageNumber: pages.length + 1, fileId });
       if (res.data?.success) {
-        triggerModal('Page Created', 'A new page record was created for the selected chapter.');
+        triggerModal('Page Added', 'The manuscript was uploaded and linked to the new page.');
         void loadPages(chapterId);
       } else {
         triggerModal('Page Creation Failed', res.data?.message || 'The page could not be created.');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      triggerModal('Page Creation Failed', error.response?.data?.message || 'The page could not be created.');
+      triggerModal('Page Upload Failed', error.response?.data?.message || (err instanceof Error ? err.message : 'The page could not be created.'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -232,13 +245,21 @@ export default function MangakaPageEditorTab({ triggerModal }: MangakaPageEditor
             Review layout files visually, click and drag to define coordinate boxes, and allocate task requirements.
           </p>
         </div>
-        <button
-          onClick={handleCreatePage}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-650 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-750 transition-colors"
-        >
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-indigo-650 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-750 transition-colors">
           <Plus size={14} />
-          Add Page
-        </button>
+          Upload & Add Page
+          <input
+            aria-label="Upload manuscript page"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void handleCreatePage(file);
+              event.currentTarget.value = '';
+            }}
+          />
+        </label>
       </div>
 
       {loading ? (
@@ -379,7 +400,7 @@ export default function MangakaPageEditorTab({ triggerModal }: MangakaPageEditor
                       <Layers className="text-slate-300" size={32} />
                       <p className="text-xs font-bold text-slate-700">No Image Uploaded</p>
                       <p className="text-[11px] text-slate-500 max-w-xs leading-relaxed font-semibold">
-                        This page has no attached canvas file. Upload an asset under the "Files" tab or attach a file to begin visual editing.
+                        This page has no attached canvas file. Upload an asset under the &quot;Files&quot; tab or attach a file to begin visual editing.
                       </p>
                     </div>
                   )}

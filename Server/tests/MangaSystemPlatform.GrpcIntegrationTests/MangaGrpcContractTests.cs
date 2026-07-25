@@ -1,8 +1,10 @@
 using FluentAssertions;
 using Grpc.Core;
+using Manga.BuildingBlocks.Messaging;
 using Manga.Contracts.Management.V1;
 using Manga.Management.Api.GrpcServices;
 using Manga.Management.Application.Abstractions;
+using Manga.Management.Application.Services;
 using Manga.Management.Domain.Entities;
 using Manga.Management.Domain.Enums;
 using MangaSystemPlatform.GrpcIntegrationTests.TestSupport;
@@ -90,6 +92,22 @@ public sealed class MangaGrpcContractTests
     }
 
     [Fact]
+    public async Task PublishChapter_UpdatesChapterAndReturnsSuccess()
+    {
+        var chapter = CreateChapter();
+        chapter.Status = ChapterStatus.Approved;
+        using var host = CreateHost(chapter: chapter);
+        var client = host.CreateClient(channel => new MangaManagementGrpcService.MangaManagementGrpcServiceClient(channel));
+
+        var response = await client.PublishChapterAsync(
+            new PublishChapterRequest { ChapterId = chapter.Id.ToString() },
+            GrpcTestHost.ValidMetadata());
+
+        response.Published.Should().BeTrue();
+        chapter.Status.Should().Be(ChapterStatus.Published);
+    }
+
+    [Fact]
     public async Task Request_WithWrongApiKey_ReturnsUnauthenticated()
     {
         using var host = CreateHost();
@@ -105,6 +123,8 @@ public sealed class MangaGrpcContractTests
     private static GrpcTestHost CreateHost(Series? series = null, Chapter? chapter = null)
     {
         var repository = new FakeManagementRepository();
+        var unitOfWork = new FakeManagementUnitOfWork();
+        var eventBus = new FakeEventBus();
         if (series is not null)
         {
             repository.Seed(series.Id, series);
@@ -116,7 +136,13 @@ public sealed class MangaGrpcContractTests
         }
 
         return new GrpcTestHost(
-            services => { services.AddSingleton<IManagementRepository>(repository); services.AddSingleton<IManagementUnitOfWork, FakeManagementUnitOfWork>(); },
+            services =>
+            {
+                services.AddSingleton<IManagementRepository>(repository);
+                services.AddSingleton<IManagementUnitOfWork>(unitOfWork);
+                services.AddSingleton<IEventBus>(eventBus);
+                services.AddSingleton<IChapterService>(new ChapterService(repository, unitOfWork, eventBus, new FakeManagementAccessService()));
+            },
             endpoints => endpoints.MapGrpcService<MangaManagementGrpcServiceImpl>());
     }
 

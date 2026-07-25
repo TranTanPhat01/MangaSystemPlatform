@@ -9,6 +9,7 @@ service MangaManagementGrpcService {
   rpc GetChapterById (GetChapterByIdRequest) returns (GetChapterByIdResponse);
   rpc CanAccessFile (CanAccessFileRequest) returns (CanAccessFileResponse);
   rpc ApplyProposalDecision (ApplyProposalDecisionRequest) returns (ApplyProposalDecisionResponse);
+  rpc PublishChapter (PublishChapterRequest) returns (PublishChapterResponse);
 }
 
 message GetSeriesByIdRequest {
@@ -52,4 +53,12 @@ message ApplyProposalDecisionRequest {
 
 message ApplyProposalDecisionResponse {
   bool applied = 1;
+}
+
+message PublishChapterRequest {
+  string chapter_id = 1;
+}
+
+message PublishChapterResponse {
+  bool published = 1;
 }

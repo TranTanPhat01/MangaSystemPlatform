@@ -296,4 +296,12 @@ internal sealed class FakeMangaLookupClient : IMangaLookupClient
         ProposalDecision = decision;
         return Task.FromResult(ProposalDecisionApplied);
     }
+
+    public bool ChapterPublicationApplied { get; set; } = true;
+    public Guid? PublishedChapterId { get; private set; }
+    public Task<bool> PublishChapterAsync(Guid chapterId, CancellationToken cancellationToken = default)
+    {
+        PublishedChapterId = chapterId;
+        return Task.FromResult(ChapterPublicationApplied);
+    }
 }

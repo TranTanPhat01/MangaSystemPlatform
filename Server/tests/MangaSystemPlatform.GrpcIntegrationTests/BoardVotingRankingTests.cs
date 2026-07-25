@@ -74,7 +74,12 @@ public sealed class BoardVotingRankingTests
         var publication = new PublicationService(repository, new FakeEditorialUnitOfWork(), board, manga);
         (await publication.CreateScheduleAsync(new CreatePublicationScheduleRequest { SeriesId = seriesId, ChapterId = chapterId, PublicationType = PublicationType.Weekly, ScheduledDate = DateTime.UtcNow })).IsSuccess.Should().BeFalse();
         manga.Series.Status = "Approved";
-        (await publication.CreateScheduleAsync(new CreatePublicationScheduleRequest { SeriesId = seriesId, ChapterId = chapterId, PublicationType = PublicationType.Weekly, ScheduledDate = DateTime.UtcNow })).IsSuccess.Should().BeTrue();
+        var scheduled = await publication.CreateScheduleAsync(new CreatePublicationScheduleRequest { SeriesId = seriesId, ChapterId = chapterId, PublicationType = PublicationType.Weekly, ScheduledDate = DateTime.UtcNow });
+        scheduled.IsSuccess.Should().BeTrue();
+        var published = await publication.PublishAsync(scheduled.Value!.Id);
+        published.IsSuccess.Should().BeTrue();
+        published.Value!.Status.Should().Be(PublicationStatus.Published);
+        manga.PublishedChapterId.Should().Be(chapterId);
 
         var events = new FakeEventBus();
         var ranking = new RankingService(repository, new FakeEditorialUnitOfWork(), board, events);

@@ -67,7 +67,7 @@ export const mangaApi = {
 
   createChapter: (
     seriesId: string,
-    data: { chapterNumber: number; title?: string; deadline?: string; progressPercentage?: number }
+    data: { chapterNumber: number; title: string; deadline?: string; progressPercentage?: number }
   ) =>
     api.post<ApiResponse<ChapterResponse>>(`/manga/series/${seriesId}/chapters`, data),
 
@@ -82,7 +82,7 @@ export const mangaApi = {
 
   // ─── Pages ─────────────────────────────────────────────────────────────────
 
-  createPage: (chapterId: string, data: { pageNumber: number; fileId?: string }) =>
+  createPage: (chapterId: string, data: { pageNumber: number; fileId: string }) =>
     api.post<ApiResponse<PageResponse>>(`/manga/chapters/${chapterId}/pages`, data),
 
   getPages: (chapterId: string) =>

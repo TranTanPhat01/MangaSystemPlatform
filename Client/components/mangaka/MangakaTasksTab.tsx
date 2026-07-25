@@ -57,6 +57,8 @@ export default function MangakaTasksTab({ triggerModal }: MangakaTasksTabProps) 
 
   // Form
   const [title,  setTitle]  = useState('');
+  const [priority, setPriority] = useState<TaskPriority>(TaskPriority.Medium);
+  const [deadline, setDeadline] = useState('');
   const [reason, setReason] = useState('');
   const [revisionTargetId, setRevisionTargetId] = useState<string | null>(null);
 
@@ -106,10 +108,11 @@ export default function MangakaTasksTab({ triggerModal }: MangakaTasksTabProps) 
       const r = await mangaApi.createTask({
         pageId, annotationId, assignedToUserId,
         title: title.trim(),
-        priority: TaskPriority.Medium,
+        priority,
+        deadline: deadline || undefined,
       } as CreateTaskRequest);
       if (!r.data.success) throw new Error(r.data.message);
-      setTitle(''); setAnnotationId(''); setShowCreateForm(false);
+      setTitle(''); setPriority(TaskPriority.Medium); setDeadline(''); setAnnotationId(''); setShowCreateForm(false);
       flash('Task created and assigned successfully.');
       await refresh();
     } catch (e) {
@@ -330,6 +333,32 @@ export default function MangakaTasksTab({ triggerModal }: MangakaTasksTabProps) 
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Translate panel text, Ink background…"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-xs text-slate-300 font-semibold placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Priority</label>
+              <select
+                aria-label="Task priority"
+                value={priority}
+                onChange={(e) => setPriority(Number(e.target.value) as TaskPriority)}
+                className="w-full appearance-none bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-xs text-slate-300 font-semibold focus:outline-none focus:border-indigo-500 transition-colors"
+              >
+                <option value={TaskPriority.Low}>Low</option>
+                <option value={TaskPriority.Medium}>Medium</option>
+                <option value={TaskPriority.High}>High</option>
+                <option value={TaskPriority.Urgent}>Urgent</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Deadline</label>
+              <input
+                aria-label="Task deadline"
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-xs text-slate-300 font-semibold focus:outline-none focus:border-indigo-500 transition-colors"
               />
             </div>
           </div>

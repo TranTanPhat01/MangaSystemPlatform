@@ -7,6 +7,8 @@ public sealed class CreatePageRequest
 {
     [Range(1, int.MaxValue)]
     public int PageNumber { get; set; }
+
+    [Required]
     public Guid? FileId { get; set; }
 }
 

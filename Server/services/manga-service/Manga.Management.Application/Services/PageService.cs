@@ -17,7 +17,8 @@ public sealed class PageService : IPageService
     {
         if (await _repository.GetByIdAsync<Chapter>(chapterId, cancellationToken) is null) return Result<PageResponse>.Failure("Chapter not found.");
         if (!await _access.CanManageChapterAsync(chapterId, cancellationToken)) return Result<PageResponse>.Failure("You do not have permission to manage this chapter.");
-        if (request.FileId.HasValue && !await _fileLookupClient.FileExistsAsync(request.FileId.Value, cancellationToken)) return Result<PageResponse>.Failure("File does not exist or is not accessible.");
+        if (!request.FileId.HasValue) return Result<PageResponse>.Failure("A manuscript file is required for each page.");
+        if (!await _fileLookupClient.FileExistsAsync(request.FileId.Value, cancellationToken)) return Result<PageResponse>.Failure("File does not exist or is not accessible.");
         var page = new Page { ChapterId = chapterId, PageNumber = request.PageNumber, FileId = request.FileId, CreatedAt = DateTime.UtcNow };
         await _repository.AddAsync(page, cancellationToken); await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<PageResponse>.Success(ToResponse(page));

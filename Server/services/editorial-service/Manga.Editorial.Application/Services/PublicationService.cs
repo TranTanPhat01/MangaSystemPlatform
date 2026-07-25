@@ -26,7 +26,20 @@ public sealed class PublicationService : IPublicationService
     }
     public async Task<Result<IReadOnlyList<PublicationScheduleResponse>>> GetSchedulesAsync(CancellationToken cancellationToken = default) => Result<IReadOnlyList<PublicationScheduleResponse>>.Success((await _repository.ListAsync<PublicationSchedule>(cancellationToken: cancellationToken)).Select(ToResponse).ToArray());
     public async Task<Result<PublicationScheduleResponse>> GetScheduleAsync(Guid id, CancellationToken cancellationToken = default) { var schedule = await _repository.GetByIdAsync<PublicationSchedule>(id, cancellationToken); return schedule is null ? Result<PublicationScheduleResponse>.Failure("Publication schedule not found.") : Result<PublicationScheduleResponse>.Success(ToResponse(schedule)); }
-    public async Task<Result<PublicationScheduleResponse>> PublishAsync(Guid id, CancellationToken cancellationToken = default) { if (!CanManageBoard()) return Result<PublicationScheduleResponse>.Failure("Only Editorial Board members can publish schedules."); var schedule = await _repository.GetByIdAsync<PublicationSchedule>(id, cancellationToken); if (schedule is null) return Result<PublicationScheduleResponse>.Failure("Publication schedule not found."); if (schedule.Status != PublicationStatus.Scheduled) return Result<PublicationScheduleResponse>.Failure("Only scheduled publications can be published."); schedule.Status = PublicationStatus.Published; schedule.PublishedAt = DateTime.UtcNow; await _unitOfWork.SaveChangesAsync(cancellationToken); return Result<PublicationScheduleResponse>.Success(ToResponse(schedule)); }
+    public async Task<Result<PublicationScheduleResponse>> PublishAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!CanManageBoard()) return Result<PublicationScheduleResponse>.Failure("Only Editorial Board members can publish schedules.");
+        var schedule = await _repository.GetByIdAsync<PublicationSchedule>(id, cancellationToken);
+        if (schedule is null) return Result<PublicationScheduleResponse>.Failure("Publication schedule not found.");
+        if (schedule.Status != PublicationStatus.Scheduled) return Result<PublicationScheduleResponse>.Failure("Only scheduled publications can be published.");
+        if (!await _manga.PublishChapterAsync(schedule.ChapterId, cancellationToken))
+            return Result<PublicationScheduleResponse>.Failure("The Manga service could not publish the scheduled chapter.");
+
+        schedule.Status = PublicationStatus.Published;
+        schedule.PublishedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result<PublicationScheduleResponse>.Success(ToResponse(schedule));
+    }
     public async Task<Result<PublicationScheduleResponse>> SetSeriesPublicationStatusAsync(Guid seriesId, PublicationStatus status, CancellationToken cancellationToken = default)
     {
         if (!CanManageBoard()) return Result<PublicationScheduleResponse>.Failure("Only Editorial Board members can change series publication status.");

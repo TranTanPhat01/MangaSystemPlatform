@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Layers, Plus, X, AlertCircle, Loader2, MessageSquare, Highlighter } from 'lucide-react';
 import { mangaApi } from '@/services/manga-api';
+import { fileApi } from '@/services/file-api';
 import { PageResponse, AnnotationType, AnnotationResponse } from '@/types/manga';
 import { usePageAnnotations } from '@/hooks/usePageAnnotations';
 
@@ -57,23 +58,31 @@ export default function MangakaPageEditorEnhancedTab({
     }
   }, []);
 
-  const handleCreatePage = async () => {
+  const handleCreatePage = async (file: File) => {
     if (!chapterId) {
       triggerModal('Select a chapter first', 'Open the Chapters tab and pick a chapter before creating pages.');
       return;
     }
 
     try {
-      const res = await mangaApi.createPage(chapterId, { pageNumber: pages.length + 1 });
+      setLoading(true);
+      const upload = await fileApi.uploadFile(file, 'PageScan', { source: 'mangaka-page-editor' });
+      const fileId = upload.data?.data?.fileId ?? upload.data?.data?.id;
+      if (!upload.data?.success || !fileId) {
+        throw new Error(upload.data?.message || 'The manuscript upload failed.');
+      }
+      const res = await mangaApi.createPage(chapterId, { pageNumber: pages.length + 1, fileId });
       if (res.data?.success) {
-        triggerModal('Page Created', 'A new page record was created for the selected chapter.');
+        triggerModal('Page Added', 'The manuscript was uploaded and linked to the new page.');
         void loadPages(chapterId);
       } else {
         triggerModal('Page Creation Failed', res.data?.message || 'The page could not be created.');
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      triggerModal('Page Creation Failed', error.response?.data?.message || 'The page could not be created.');
+      triggerModal('Page Upload Failed', error.response?.data?.message || (err instanceof Error ? err.message : 'The page could not be created.'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -148,13 +157,15 @@ export default function MangakaPageEditorEnhancedTab({
             Review pages, add annotations, manage feedback, and organize sequences.
           </p>
         </div>
-        <button
-          onClick={handleCreatePage}
-          className="inline-flex items-center gap-2 rounded-lg bg-burgundy-850 px-3 py-2 text-xs font-bold text-white hover:bg-burgundy-950 transition-colors"
-        >
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-burgundy-850 px-3 py-2 text-xs font-bold text-white hover:bg-burgundy-950 transition-colors">
           <Plus size={14} />
-          Add Page
-        </button>
+          Upload & Add Page
+          <input aria-label="Upload manuscript page" type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void handleCreatePage(file);
+            event.currentTarget.value = '';
+          }} />
+        </label>
       </div>
 
       {loading ? (

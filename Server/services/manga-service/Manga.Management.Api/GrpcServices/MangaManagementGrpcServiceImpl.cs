@@ -1,6 +1,7 @@
 using Grpc.Core;
 using Manga.Contracts.Management.V1;
 using Manga.Management.Application.Abstractions;
+using Manga.Management.Application.Services;
 using Manga.Management.Domain.Entities;
 using Manga.Management.Domain.Enums;
 
@@ -11,15 +12,18 @@ public sealed class MangaManagementGrpcServiceImpl : MangaManagementGrpcService.
     private readonly IManagementRepository _repository;
     private readonly ILogger<MangaManagementGrpcServiceImpl> _logger;
     private readonly IManagementUnitOfWork _unitOfWork;
+    private readonly IChapterService? _chapterService;
 
     public MangaManagementGrpcServiceImpl(
         IManagementRepository repository,
         ILogger<MangaManagementGrpcServiceImpl> logger,
-        IManagementUnitOfWork unitOfWork)
+        IManagementUnitOfWork unitOfWork,
+        IChapterService? chapterService = null)
     {
         _repository = repository;
         _logger = logger;
         _unitOfWork = unitOfWork;
+        _chapterService = chapterService;
     }
 
     public override async Task<GetSeriesByIdResponse> GetSeriesById(
@@ -115,6 +119,22 @@ public sealed class MangaManagementGrpcServiceImpl : MangaManagementGrpcService.
         await _unitOfWork.SaveChangesAsync(context.CancellationToken);
         _logger.LogInformation("Series proposal {SeriesId} updated to {Status} by Editorial decision.", series.Id, series.Status);
         return new ApplyProposalDecisionResponse { Applied = true };
+    }
+
+    public override async Task<PublishChapterResponse> PublishChapter(PublishChapterRequest request, ServerCallContext context)
+    {
+        if (_chapterService is null || !Guid.TryParse(request.ChapterId, out var chapterId))
+            return new PublishChapterResponse { Published = false };
+
+        var result = await _chapterService.PublishFromScheduleAsync(chapterId, context.CancellationToken);
+        if (!result.IsSuccess)
+        {
+            _logger.LogWarning("Manga gRPC chapter publication rejected for {ChapterId}: {Error}", chapterId, result.Error);
+            return new PublishChapterResponse { Published = false };
+        }
+
+        _logger.LogInformation("Chapter {ChapterId} published through Editorial schedule.", chapterId);
+        return new PublishChapterResponse { Published = true };
     }
 
     private async Task<bool> CanReadPageFileAsync(Guid userId, Guid fileId, CancellationToken cancellationToken)

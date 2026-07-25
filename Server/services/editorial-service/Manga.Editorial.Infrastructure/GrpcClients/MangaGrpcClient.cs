@@ -103,4 +103,21 @@ internal sealed class MangaGrpcClient : IMangaLookupClient
             return false;
         }
     }
+
+    public async Task<bool> PublishChapterAsync(Guid chapterId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _client.PublishChapterAsync(
+                new PublishChapterRequest { ChapterId = chapterId.ToString() },
+                deadline: DateTime.UtcNow.AddSeconds(_timeoutSeconds),
+                cancellationToken: cancellationToken);
+            return response.Published;
+        }
+        catch (RpcException exception)
+        {
+            _logger.LogWarning(exception, "Manga gRPC chapter publication failed for chapter {ChapterId}.", chapterId);
+            return false;
+        }
+    }
 }

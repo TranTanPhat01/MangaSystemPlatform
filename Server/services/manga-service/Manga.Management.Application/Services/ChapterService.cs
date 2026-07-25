@@ -54,17 +54,24 @@ public sealed class ChapterService : IChapterService
         if (request.Status == ChapterStatus.SubmittedForReview) await _eventBus.PublishAsync(new ChapterSubmittedForReviewEvent(Guid.NewGuid(), chapter.Id, chapter.SeriesId, currentUserId, chapter.UpdatedAt.Value), cancellationToken);
         if (request.Status == ChapterStatus.Published && !wasPublished)
         {
-            var publishedAt = DateTime.UtcNow;
-            var publicationEvent = new ChapterPublishedEvent(Guid.NewGuid(), chapter.Id, chapter.SeriesId, chapter.Title, publishedAt);
-            await _eventBus.PublishAsync(publicationEvent, cancellationToken);
-            var readerIds = _readerRepository is null
-                ? (await _repository.ListAsync<ReaderFavorite>(x => x.SeriesId == chapter.SeriesId, cancellationToken)).Select(x => x.UserId)
-                : await _readerRepository.GetFavoriteUserIdsAsync(chapter.SeriesId, cancellationToken);
-            foreach (var readerId in readerIds)
-            {
-                await _eventBus.PublishAsync(new ReaderChapterNotificationRequestedEvent(Guid.NewGuid(), publicationEvent.EventId, readerId, chapter.Id, chapter.SeriesId, chapter.Title, publishedAt), cancellationToken);
-            }
+            await PublishEventsAsync(chapter, cancellationToken);
         }
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result<ChapterResponse>.Success(ToResponse(chapter));
+    }
+
+    public async Task<Result<ChapterResponse>> PublishFromScheduleAsync(Guid chapterId, CancellationToken cancellationToken = default)
+    {
+        var chapter = await _repository.GetByIdAsync<Chapter>(chapterId, cancellationToken);
+        if (chapter is null) return Result<ChapterResponse>.Failure("Chapter not found.");
+        if (chapter.Status == ChapterStatus.Published) return Result<ChapterResponse>.Success(ToResponse(chapter));
+        if (chapter.Status is not (ChapterStatus.Approved or ChapterStatus.Scheduled))
+            return Result<ChapterResponse>.Failure("Only approved or scheduled chapters can be published.");
+
+        chapter.Status = ChapterStatus.Published;
+        chapter.ProgressPercentage = 100;
+        chapter.UpdatedAt = DateTime.UtcNow;
+        await PublishEventsAsync(chapter, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<ChapterResponse>.Success(ToResponse(chapter));
     }
@@ -75,10 +82,33 @@ public sealed class ChapterService : IChapterService
         if (chapter is null) throw new NotFoundException("Chapter not found.", "CHAPTER_NOT_FOUND");
         if (!await _access.CanManageChapterAsync(chapterId, cancellationToken)) return Result<ChapterResponse>.Failure("You do not have permission to manage this chapter.");
         if (chapter.Status is not (ChapterStatus.Draft or ChapterStatus.InProduction or ChapterStatus.RevisionRequired)) return Result<ChapterResponse>.Failure("Chapter cannot be submitted for review in its current status.");
+
+        var pages = await _repository.ListAsync<Page>(page => page.ChapterId == chapterId, cancellationToken);
+        if (pages.Count == 0) return Result<ChapterResponse>.Failure("Add at least one manuscript page before submitting the chapter for review.");
+        if (pages.Any(page => !page.FileId.HasValue)) return Result<ChapterResponse>.Failure("Every chapter page must have an uploaded manuscript file before review.");
+
+        var pageIds = pages.Select(page => page.Id).ToHashSet();
+        var incompleteTasks = await _repository.ListAsync<MangaTask>(task => pageIds.Contains(task.PageId) && task.Status != Manga.Management.Domain.Enums.TaskStatus.Approved, cancellationToken);
+        if (incompleteTasks.Count > 0) return Result<ChapterResponse>.Failure("Approve or complete all assistant tasks before submitting the chapter for review.");
+
         chapter.Status = ChapterStatus.SubmittedForReview; chapter.ProgressPercentage = Math.Max(chapter.ProgressPercentage, 90); chapter.UpdatedAt = DateTime.UtcNow;
         await _eventBus.PublishAsync(new ChapterSubmittedForReviewEvent(Guid.NewGuid(), chapter.Id, chapter.SeriesId, currentUserId, DateTime.UtcNow), cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<ChapterResponse>.Success(ToResponse(chapter));
+    }
+
+    private async Task PublishEventsAsync(Chapter chapter, CancellationToken cancellationToken)
+    {
+        var publishedAt = DateTime.UtcNow;
+        var publicationEvent = new ChapterPublishedEvent(Guid.NewGuid(), chapter.Id, chapter.SeriesId, chapter.Title, publishedAt);
+        await _eventBus.PublishAsync(publicationEvent, cancellationToken);
+        var readerIds = _readerRepository is null
+            ? (await _repository.ListAsync<ReaderFavorite>(x => x.SeriesId == chapter.SeriesId, cancellationToken)).Select(x => x.UserId)
+            : await _readerRepository.GetFavoriteUserIdsAsync(chapter.SeriesId, cancellationToken);
+        foreach (var readerId in readerIds)
+        {
+            await _eventBus.PublishAsync(new ReaderChapterNotificationRequestedEvent(Guid.NewGuid(), publicationEvent.EventId, readerId, chapter.Id, chapter.SeriesId, chapter.Title, publishedAt), cancellationToken);
+        }
     }
 
     private static ChapterResponse ToResponse(Chapter chapter) => new() { Id = chapter.Id, SeriesId = chapter.SeriesId, ChapterNumber = chapter.ChapterNumber, Title = chapter.Title, Status = chapter.Status, ProgressPercentage = chapter.ProgressPercentage, Deadline = chapter.Deadline, CreatedAt = chapter.CreatedAt, UpdatedAt = chapter.UpdatedAt };

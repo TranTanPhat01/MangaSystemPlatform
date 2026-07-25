@@ -10,4 +10,5 @@ public interface IChapterService
     Task<Result<ChapterResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Result<ChapterResponse>> UpdateStatusAsync(Guid id, UpdateChapterStatusRequest request, Guid currentUserId, CancellationToken cancellationToken = default);
     Task<Result<ChapterResponse>> SubmitChapterForReviewAsync(Guid chapterId, Guid currentUserId, CancellationToken cancellationToken = default);
+    Task<Result<ChapterResponse>> PublishFromScheduleAsync(Guid chapterId, CancellationToken cancellationToken = default);
 }

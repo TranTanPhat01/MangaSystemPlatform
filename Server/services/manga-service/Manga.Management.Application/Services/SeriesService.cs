@@ -1,3 +1,5 @@
+using Manga.BuildingBlocks.Messaging;
+using Manga.Contracts.Events;
 using Manga.Management.Application.Abstractions;
 using Manga.Management.Application.Common;
 using Manga.Management.Application.DTOs;
@@ -11,12 +13,14 @@ public sealed class SeriesService : ISeriesService
     private readonly IManagementRepository _repository;
     private readonly IManagementUnitOfWork _unitOfWork;
     private readonly IManagementAccessService _access;
+    private readonly IEventBus? _eventBus;
 
-    public SeriesService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IManagementAccessService access)
+    public SeriesService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IManagementAccessService access, IEventBus? eventBus = null)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _access = access;
+        _eventBus = eventBus;
     }
 
     public async Task<Result<SeriesResponse>> CreateAsync(CreateSeriesRequest request, Guid currentUserId, CancellationToken cancellationToken = default)
@@ -76,10 +80,10 @@ public sealed class SeriesService : ISeriesService
         return Result<SeriesResponse>.Success(ToResponse(series));
     }
 
-    public Task<Result<SeriesResponse>> ApproveProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) => DecideProposalAsync(id, SeriesStatus.Approved, cancellationToken);
-    public Task<Result<SeriesResponse>> RejectProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) => DecideProposalAsync(id, SeriesStatus.Rejected, cancellationToken);
+    public Task<Result<SeriesResponse>> ApproveProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) => DecideProposalAsync(id, SeriesStatus.Approved, request, cancellationToken);
+    public Task<Result<SeriesResponse>> RejectProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default) => DecideProposalAsync(id, SeriesStatus.Rejected, request, cancellationToken);
 
-    private async Task<Result<SeriesResponse>> DecideProposalAsync(Guid id, SeriesStatus targetStatus, CancellationToken cancellationToken)
+    private async Task<Result<SeriesResponse>> DecideProposalAsync(Guid id, SeriesStatus targetStatus, SeriesDecisionRequest request, CancellationToken cancellationToken)
     {
         if (!_access.CanViewBoardData) return Result<SeriesResponse>.Failure("Only Editorial Board members can decide proposals.");
         var series = await _repository.GetByIdAsync<Series>(id, cancellationToken);
@@ -87,6 +91,17 @@ public sealed class SeriesService : ISeriesService
         if (series.Status != SeriesStatus.Submitted) return Result<SeriesResponse>.Failure("Only submitted series proposals can be decided.");
         series.Status = targetStatus;
         series.UpdatedAt = DateTime.UtcNow;
+        if (_eventBus is not null)
+        {
+            var decision = targetStatus == SeriesStatus.Approved ? "Approve" : "Reject";
+            await _eventBus.PublishAsync(new SeriesProposalDecidedEvent(
+                Guid.NewGuid(),
+                series.Id,
+                series.CreatedBy,
+                decision,
+                request.DecisionNote?.Trim() ?? string.Empty,
+                series.UpdatedAt.Value), cancellationToken);
+        }
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<SeriesResponse>.Success(ToResponse(series));
     }

@@ -44,14 +44,6 @@ export default function MangakaChaptersTab({ series, triggerModal }: MangakaChap
     setTimeout(() => setSuccess(null), 4000);
   };
 
-  useEffect(() => {
-    if (series.length > 0) {
-      const firstId = series[0].id;
-      setSelectedSeriesId(firstId);
-      void loadChapters(firstId);
-    }
-  }, [series]);
-
   const loadChapters = async (seriesId: string) => {
     setLoading(true);
     setError(null);
@@ -70,14 +62,22 @@ export default function MangakaChaptersTab({ series, triggerModal }: MangakaChap
     }
   };
 
+  useEffect(() => {
+    if (series.length > 0) {
+      const firstId = series[0].id;
+      setSelectedSeriesId(firstId);
+      void loadChapters(firstId);
+    }
+  }, [series]);
+
   const handleCreateChapter = async () => {
-    if (!selectedSeriesId || !chapterNumber) return;
+    if (!selectedSeriesId || !chapterNumber || !chapterTitle.trim()) return;
     setActionLoading('create');
     setCreateError(null);
     try {
       const res = await mangaApi.createChapter(selectedSeriesId, {
         chapterNumber: parseInt(chapterNumber, 10),
-        title: chapterTitle.trim() || undefined,
+        title: chapterTitle.trim(),
         deadline: chapterDeadline || undefined,
       });
       if (res.data?.success) {
@@ -199,7 +199,7 @@ export default function MangakaChaptersTab({ series, triggerModal }: MangakaChap
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Chapter Title</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Chapter Title *</label>
               <input
                 type="text"
                 value={chapterTitle}
@@ -221,7 +221,7 @@ export default function MangakaChaptersTab({ series, triggerModal }: MangakaChap
           <div className="flex justify-end">
             <button
               onClick={() => void handleCreateChapter()}
-              disabled={!chapterNumber || !selectedSeriesId || actionLoading === 'create'}
+              disabled={!chapterNumber || !chapterTitle.trim() || !selectedSeriesId || actionLoading === 'create'}
               className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-40 shadow-sm"
             >
               {actionLoading === 'create' ? <RefreshCw size={12} className="animate-spin" /> : <Layers size={12} />}
@@ -250,7 +250,7 @@ export default function MangakaChaptersTab({ series, triggerModal }: MangakaChap
           <div className="p-8 text-center">
             <Layers size={24} className="text-slate-700 mx-auto mb-3" />
             <p className="text-sm font-semibold text-slate-600">No chapters yet.</p>
-            <p className="text-xs text-slate-700 mt-1">Click "New Chapter" to add the first chapter to this series.</p>
+            <p className="text-xs text-slate-700 mt-1">Click &quot;New Chapter&quot; to add the first chapter to this series.</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-800/60">

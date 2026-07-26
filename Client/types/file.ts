@@ -21,7 +21,6 @@ export interface FileAssetResponse {
 
 export interface FileUploadResponse {
   fileId: string;
-  id?: string;
   originalFileName: string;
   storedFileName: string;
   contentType: string;

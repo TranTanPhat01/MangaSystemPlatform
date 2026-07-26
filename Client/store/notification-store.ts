@@ -59,9 +59,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   fetchUnreadCount: async () => {
     try {
-      const response = await api.get<ApiResponse<{ unreadCount: number }>>('/notifications/unread-count');
+      const response = await api.get<ApiResponse<{ unreadCount: number; count: number }>>('/notifications/unread-count');
       if (response.data && response.data.success) {
-        set({ unreadCount: response.data.data.unreadCount });
+        const countVal = response.data.data.unreadCount !== undefined ? response.data.data.unreadCount : response.data.data.count;
+        set({ unreadCount: countVal || 0 });
       }
       // silently skip on error – unread badge is non-critical
     } catch {
@@ -145,10 +146,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       const newLastSeenIds = new Set(state.lastSeenNotificationIds);
       newLastSeenIds.add(notification.id);
 
+      const isUnread = notification.status === 1;
+
       return {
         ...state,
         notifications: [notification, ...state.notifications],
-        unreadCount: state.unreadCount + 1,
+        unreadCount: state.unreadCount + (isUnread ? 1 : 0),
         lastSeenNotificationIds: newLastSeenIds,
         activeToast: notification,
       };

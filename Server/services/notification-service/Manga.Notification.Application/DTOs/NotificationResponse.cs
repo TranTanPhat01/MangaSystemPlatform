@@ -12,6 +12,9 @@ public sealed class NotificationResponse
     public NotificationStatus Status { get; init; }
     public string? SourceEventType { get; init; }
     public Guid? SourceEventId { get; init; }
+    public string? ResourceType { get; init; }
+    public Guid? ResourceId { get; init; }
+    public string? ActionUrl { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime? ReadAt { get; init; }
 }

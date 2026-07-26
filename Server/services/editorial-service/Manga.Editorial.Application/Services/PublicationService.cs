@@ -17,12 +17,50 @@ public sealed class PublicationService : IPublicationService
     public async Task<Result<PublicationScheduleResponse>> CreateScheduleAsync(CreatePublicationScheduleRequest request, CancellationToken cancellationToken = default)
     {
         if (!CanManageBoard()) return Result<PublicationScheduleResponse>.Failure("Only Editorial Board members can create publication schedules.");
+        
         var series = await _manga.GetSeriesByIdAsync(request.SeriesId, cancellationToken);
-        if (series?.Status != "Approved") return Result<PublicationScheduleResponse>.Failure("Only approved series can be scheduled.");
+        if (series is null) return Result<PublicationScheduleResponse>.Failure("Series not found.");
+        if (series.Status == "Cancelled" || series.Status == "Hiatus")
+        {
+            return Result<PublicationScheduleResponse>.Failure("Cannot schedule chapters for a hiatus or cancelled series.");
+        }
+        if (series.Status != "Approved" && series.Status != "Ongoing")
+        {
+            return Result<PublicationScheduleResponse>.Failure("Only approved series can be scheduled.");
+        }
+        
         var approvedReview = await _repository.ListAsync<EditorialReview>(r => r.ChapterId == request.ChapterId && r.SeriesId == request.SeriesId && r.Status == EditorialReviewStatus.Approved, cancellationToken);
         if (approvedReview.Count == 0) return Result<PublicationScheduleResponse>.Failure("Only approved/reviewed chapters can be scheduled.");
-        var schedule = new PublicationSchedule { SeriesId = request.SeriesId, ChapterId = request.ChapterId, IssueId = request.IssueId, PublicationType = request.PublicationType, ScheduledDate = request.ScheduledDate, CreatedAt = DateTime.UtcNow };
-        await _repository.AddAsync(schedule, cancellationToken); await _unitOfWork.SaveChangesAsync(cancellationToken); return Result<PublicationScheduleResponse>.Success(ToResponse(schedule));
+
+        // PlannedDate cannot be in the past, except for Admin override
+        if (request.ScheduledDate.Date < DateTime.UtcNow.Date && !_currentUser.IsInRole("Admin"))
+        {
+            return Result<PublicationScheduleResponse>.Failure("Scheduled date cannot be in the past.");
+        }
+
+        // Prevent duplicate active schedule for the same series and chapter
+        var existing = await _repository.ListAsync<PublicationSchedule>(s => 
+            s.SeriesId == request.SeriesId && 
+            s.ChapterId == request.ChapterId && 
+            s.Status != PublicationStatus.Cancelled, cancellationToken);
+        if (existing.Count > 0)
+        {
+            return Result<PublicationScheduleResponse>.Failure("An active publication schedule already exists for this series and chapter.");
+        }
+
+        var schedule = new PublicationSchedule 
+        { 
+            SeriesId = request.SeriesId, 
+            ChapterId = request.ChapterId, 
+            IssueId = request.IssueId, 
+            PublicationType = request.PublicationType, 
+            ScheduledDate = request.ScheduledDate, 
+            CreatedAt = DateTime.UtcNow 
+        };
+        
+        await _repository.AddAsync(schedule, cancellationToken); 
+        await _unitOfWork.SaveChangesAsync(cancellationToken); 
+        return Result<PublicationScheduleResponse>.Success(ToResponse(schedule));
     }
     public async Task<Result<IReadOnlyList<PublicationScheduleResponse>>> GetSchedulesAsync(CancellationToken cancellationToken = default) => Result<IReadOnlyList<PublicationScheduleResponse>>.Success((await _repository.ListAsync<PublicationSchedule>(cancellationToken: cancellationToken)).Select(ToResponse).ToArray());
     public async Task<Result<PublicationScheduleResponse>> GetScheduleAsync(Guid id, CancellationToken cancellationToken = default) { var schedule = await _repository.GetByIdAsync<PublicationSchedule>(id, cancellationToken); return schedule is null ? Result<PublicationScheduleResponse>.Failure("Publication schedule not found.") : Result<PublicationScheduleResponse>.Success(ToResponse(schedule)); }
@@ -30,8 +68,25 @@ public sealed class PublicationService : IPublicationService
     public async Task<Result<PublicationScheduleResponse>> SetSeriesPublicationStatusAsync(Guid seriesId, PublicationStatus status, CancellationToken cancellationToken = default)
     {
         if (!CanManageBoard()) return Result<PublicationScheduleResponse>.Failure("Only Editorial Board members can change series publication status.");
+        
+        string targetSeriesStatus = status switch
+        {
+            PublicationStatus.Hiatus => "Hiatus",
+            PublicationStatus.Cancelled => "Cancelled",
+            PublicationStatus.Published => "Ongoing",
+            _ => "Ongoing"
+        };
+
+        var success = await _manga.UpdateSeriesStatusAsync(seriesId, targetSeriesStatus, $"Editorial Board Action: {status}", cancellationToken);
+        if (!success)
+        {
+            return Result<PublicationScheduleResponse>.Failure($"Failed to update series status to {targetSeriesStatus} in Manga service.");
+        }
+
         var schedule = new PublicationSchedule { SeriesId = seriesId, ChapterId = Guid.Empty, PublicationType = PublicationType.SpecialIssue, ScheduledDate = DateTime.UtcNow, Status = status, CreatedAt = DateTime.UtcNow };
-        await _repository.AddAsync(schedule, cancellationToken); await _unitOfWork.SaveChangesAsync(cancellationToken); return Result<PublicationScheduleResponse>.Success(ToResponse(schedule));
+        await _repository.AddAsync(schedule, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result<PublicationScheduleResponse>.Success(ToResponse(schedule));
     }
     private static IssueResponse ToResponse(Issue i) => new() { Id = i.Id, IssueNumber = i.IssueNumber, Title = i.Title, ReleaseDate = i.ReleaseDate, Status = i.Status, CreatedAt = i.CreatedAt };
     private static PublicationScheduleResponse ToResponse(PublicationSchedule s) => new() { Id = s.Id, SeriesId = s.SeriesId, ChapterId = s.ChapterId, IssueId = s.IssueId, PublicationType = s.PublicationType, ScheduledDate = s.ScheduledDate, Status = s.Status, CreatedAt = s.CreatedAt, PublishedAt = s.PublishedAt };

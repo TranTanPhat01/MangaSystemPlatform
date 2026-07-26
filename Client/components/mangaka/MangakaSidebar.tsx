@@ -68,7 +68,7 @@ export default function MangakaSidebar({
         {sidebarOpen && (
           <div className="overflow-hidden">
             <p className="text-[13px] font-extrabold text-white tracking-wide leading-none">MangaFlow</p>
-            <p className="text-[10px] font-semibold text-white/35 tracking-widest mt-0.5 uppercase font-mono">Mangaka</p>
+            <p className="text-[10px] font-semibold text-white/75 tracking-widest mt-0.5 uppercase font-mono">Mangaka</p>
           </div>
         )}
       </div>
@@ -81,9 +81,9 @@ export default function MangakaSidebar({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-white truncate">Akira Sato</p>
-            <p className="text-[10px] text-white/40 font-medium truncate">Chief Artist</p>
+            <p className="text-[10px] text-white/75 font-medium truncate">Chief Artist</p>
           </div>
-          <ChevronRight size={12} className="text-white/20 shrink-0" />
+          <ChevronRight size={12} className="text-white/70 shrink-0" />
         </div>
       )}
 
@@ -102,7 +102,7 @@ export default function MangakaSidebar({
                 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 group relative',
                 isActive
                   ? 'bg-white/[0.08] text-white'
-                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'
+                  : 'text-white/75 hover:text-white hover:bg-white/[0.04]'
               )}
             >
               {/* Active left glow bar */}
@@ -114,7 +114,7 @@ export default function MangakaSidebar({
                 size={17}
                 className={clsx(
                   'shrink-0 transition-colors',
-                  isActive ? 'text-burgundy-400' : 'text-white/30 group-hover:text-white/60'
+                  isActive ? 'text-burgundy-400' : 'text-white/70 group-hover:text-white'
                 )}
               />
 
@@ -144,8 +144,8 @@ export default function MangakaSidebar({
         <div className="mx-3 mb-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <HardDrive size={12} className="text-white/30" />
-              <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Storage</span>
+              <HardDrive size={12} className="text-white/70" />
+              <span className="text-[10px] font-semibold text-white/75 uppercase tracking-wider">Storage</span>
             </div>
             <span className="text-[10px] font-bold text-white/50">{storagePercent}%</span>
           </div>
@@ -162,7 +162,7 @@ export default function MangakaSidebar({
           </div>
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-[10px] font-bold text-white/60">{STORAGE_USED_GB} GB</span>
-            <span className="text-[10px] text-white/25">/ {STORAGE_TOTAL_GB} GB</span>
+            <span className="text-[10px] text-white/75">/ {STORAGE_TOTAL_GB} GB</span>
           </div>
         </div>
       )}

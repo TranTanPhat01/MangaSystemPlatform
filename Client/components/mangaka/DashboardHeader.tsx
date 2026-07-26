@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Search, Bell, Menu, User, LogOut, Settings, HelpCircle, Plus, Upload, ChevronDown, Sparkles } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useLogoutAction } from '@/lib/logout';
+import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 
 interface DashboardHeaderProps {
   user: {
@@ -39,7 +40,7 @@ export default function DashboardHeader({
       {/* Mobile Toggle */}
       <button
         onClick={onToggleSidebar}
-        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 lg:hidden transition-colors shrink-0"
+        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-700 lg:hidden transition-colors shrink-0"
         title="Toggle Sidebar"
       >
         <Menu size={18} />
@@ -47,7 +48,7 @@ export default function DashboardHeader({
 
       {/* Greeting (desktop) */}
       <div className="hidden sm:flex flex-col shrink-0">
-        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none">Workspace</p>
+        <p className="text-[10px] font-semibold text-slate-700 uppercase tracking-widest leading-none">Workspace</p>
         <h2 className="text-sm font-black text-slate-800 leading-snug mt-0.5">
           Xin chào, {user.name}! 👋
         </h2>
@@ -72,12 +73,12 @@ export default function DashboardHeader({
 
         {/* CTA buttons (desktop) */}
         <div className="hidden lg:flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all duration-150 group">
-            <Plus size={13} className="text-slate-400 group-hover:text-burgundy-600 transition-colors" />
+          <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all duration-150 group">
+            <Plus size={13} className="text-slate-700 group-hover:text-burgundy-600 transition-colors" />
             New Series
           </button>
-          <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-all duration-150 group">
-            <Sparkles size={13} className="text-slate-400 group-hover:text-plum-600 transition-colors" />
+          <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all duration-150 group">
+            <Sparkles size={13} className="text-slate-700 group-hover:text-plum-600 transition-colors" />
             New Chapter
           </button>
           <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-burgundy-800 text-xs font-bold text-white hover:bg-burgundy-900 shadow-[0_2px_8px_rgba(107,29,47,0.2)] hover:shadow-[0_4px_12px_rgba(107,29,47,0.3)] transition-all duration-200 active:scale-[0.98]">
@@ -87,17 +88,7 @@ export default function DashboardHeader({
         </div>
 
         {/* Notification Bell */}
-        <button
-          className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all duration-150"
-          title="Notifications"
-        >
-          <Bell size={17} className="stroke-[2]" />
-          {notificationsCount > 0 && (
-            <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-burgundy-600 text-[8px] font-black text-white flex items-center justify-center border-2 border-white">
-              {notificationsCount}
-            </span>
-          )}
-        </button>
+        <NotificationDropdown />
 
         {/* Profile menu */}
         <div className="relative">
@@ -110,9 +101,9 @@ export default function DashboardHeader({
             </div>
             <div className="hidden md:block text-left">
               <p className="text-xs font-bold text-slate-800 leading-none">{user.name}</p>
-              <p className="text-[9px] font-semibold text-slate-400 mt-0.5">Mangaka</p>
+              <p className="text-[9px] font-semibold text-slate-700 mt-0.5">Mangaka</p>
             </div>
-            <ChevronDown size={12} className={clsx('text-slate-400 transition-transform duration-200 hidden md:block', dropdownOpen && 'rotate-180')} />
+            <ChevronDown size={12} className={clsx('text-slate-700 transition-transform duration-200 hidden md:block', dropdownOpen && 'rotate-180')} />
           </button>
 
           {dropdownOpen && (
@@ -121,7 +112,7 @@ export default function DashboardHeader({
               <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-slate-100 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] py-2 z-40 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="px-4 py-2.5 border-b border-slate-50 mb-1">
                   <p className="text-xs font-bold text-slate-800">{user.name}</p>
-                  <p className="text-[10px] font-medium text-slate-400 mt-0.5">{user.role}</p>
+                  <p className="text-[10px] font-medium text-slate-700 mt-0.5">{user.role}</p>
                 </div>
                 {[
                   { icon: User, label: 'My Profile' },
@@ -133,7 +124,7 @@ export default function DashboardHeader({
                     onClick={() => setDropdownOpen(false)}
                     className="w-full text-left px-4 py-2 text-xs text-slate-600 hover:bg-slate-50 flex items-center gap-2.5 font-medium transition-colors"
                   >
-                    <Icon size={13} className="text-slate-400" />
+                    <Icon size={13} className="text-slate-700" />
                     {label}
                   </button>
                 ))}

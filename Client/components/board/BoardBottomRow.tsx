@@ -93,6 +93,15 @@ export default function BoardBottomRow({
     }
   };
 
+  const handlePublish = async (scheduleId: string) => {
+    if (window.confirm("Are you sure you want to publish this schedule? This action will make it live immediately.")) {
+      await onPublish(scheduleId);
+    }
+  };
+
+  const getSeriesTitle = (id: string) => series.find((s) => s.id === id)?.title || id;
+  const approvedSeries = series.filter((s) => s.status === 3 || (s.status as string | number) === 'Approved');
+
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       {/* Create Publication Schedule Form */}
@@ -112,7 +121,7 @@ export default function BoardBottomRow({
           className="w-full border p-2 rounded"
         >
           <option value="">Chọn Series</option>
-          {series.map((item) => (
+          {approvedSeries.map((item) => (
             <option key={item.id} value={item.id}>
               {item.title}
             </option>
@@ -194,7 +203,7 @@ export default function BoardBottomRow({
           <ul className="space-y-3">
             {schedules.map((item) => (
               <li key={item.id} className="border-b pb-2 text-sm">
-                <p>Series: {item.seriesId}</p>
+                <p>Series: {getSeriesTitle(item.seriesId)}</p>
                 <p>
                   Chapter: {item.chapterId} · {typeLabel[item.publicationType]}
                 </p>
@@ -210,7 +219,7 @@ export default function BoardBottomRow({
                   <button
                     type="button"
                     disabled={publishingScheduleId === item.id}
-                    onClick={() => void onPublish(item.id)}
+                    onClick={() => void handlePublish(item.id)}
                     className="mt-2 px-3 py-1 bg-emerald-700 text-white rounded disabled:opacity-50"
                   >
                     {publishingScheduleId === item.id

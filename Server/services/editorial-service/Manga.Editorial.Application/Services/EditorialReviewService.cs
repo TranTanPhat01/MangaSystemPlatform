@@ -52,18 +52,23 @@ public sealed class EditorialReviewService : IEditorialReviewService
 
     public async Task<Result<IReadOnlyList<EditorialReviewResponse>>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var reviews = await _repository.ListAsync<EditorialReview>(cancellationToken: cancellationToken);
+        var allReviews = await _repository.ListAsync<EditorialReview>(cancellationToken: cancellationToken);
+        var activeReviews = allReviews
+            .GroupBy(review => review.ChapterId)
+            .Select(g => g.OrderByDescending(review => review.CreatedAt).First())
+            .ToList();
+
         if (_currentUser.IsInRole("TantouEditor"))
         {
-            reviews = reviews.Where(review => review.ReviewerUserId == _currentUser.UserId || review.Status == EditorialReviewStatus.Pending).ToArray();
+            activeReviews = activeReviews.Where(review => review.ReviewerUserId == _currentUser.UserId || review.Status == EditorialReviewStatus.Pending).ToList();
         }
         else if (!_currentUser.IsInRole("Admin") && !_currentUser.IsInRole("EditorialBoard"))
         {
-            reviews = reviews.Where(review => review.RequestedByUserId == _currentUser.UserId).ToArray();
+            activeReviews = activeReviews.Where(review => review.RequestedByUserId == _currentUser.UserId).ToList();
         }
 
         var responses = new List<EditorialReviewResponse>();
-        foreach (var review in reviews.OrderByDescending(review => review.CreatedAt)) responses.Add(await ToResponseAsync(review, cancellationToken));
+        foreach (var review in activeReviews.OrderByDescending(review => review.CreatedAt)) responses.Add(await ToResponseAsync(review, cancellationToken));
         return Result<IReadOnlyList<EditorialReviewResponse>>.Success(responses);
     }
 
@@ -79,7 +84,14 @@ public sealed class EditorialReviewService : IEditorialReviewService
     {
         var review = await _repository.GetByIdAsync<EditorialReview>(id, cancellationToken);
         if (review is null || !CanReview(review)) return Result<EditorialReviewResponse>.Failure("Review not found.");
-        if (review.Status is not (EditorialReviewStatus.Pending or EditorialReviewStatus.RevisionRequested)) return Result<EditorialReviewResponse>.Failure("Review cannot be started in its current status.");
+        if (review.Status != EditorialReviewStatus.Pending) return Result<EditorialReviewResponse>.Failure("Review cannot be started in its current status.");
+
+        var allReviews = await _repository.ListAsync<EditorialReview>(r => r.ChapterId == review.ChapterId, cancellationToken);
+        var latestReview = allReviews.OrderByDescending(r => r.CreatedAt).FirstOrDefault();
+        if (latestReview is null || latestReview.Id != review.Id)
+        {
+            return Result<EditorialReviewResponse>.Failure("This review round is inactive.");
+        }
 
         review.ReviewerUserId ??= _currentUser.UserId;
         review.Status = EditorialReviewStatus.InReview;
@@ -94,6 +106,32 @@ public sealed class EditorialReviewService : IEditorialReviewService
         if (review is null || !CanReview(review)) return Result<EditorialCommentResponse>.Failure("Review not found.");
         if (review.Status is EditorialReviewStatus.Approved or EditorialReviewStatus.Rejected) return Result<EditorialCommentResponse>.Failure("Comments cannot be added to a completed review.");
         if (string.IsNullOrWhiteSpace(request.CommentText)) return Result<EditorialCommentResponse>.Failure("Comment text is required.");
+
+        var allReviews = await _repository.ListAsync<EditorialReview>(r => r.ChapterId == review.ChapterId, cancellationToken);
+        var latestReview = allReviews.OrderByDescending(r => r.CreatedAt).FirstOrDefault();
+        if (latestReview is null || latestReview.Id != review.Id)
+        {
+            return Result<EditorialCommentResponse>.Failure("This review round is inactive.");
+        }
+
+        if (request.PageId.HasValue || request.AnnotationId.HasValue)
+        {
+            var (pageValid, annotationValid) = await _mangaLookupClient.ValidatePageAndAnnotationAsync(
+                review.ChapterId,
+                request.PageId,
+                request.AnnotationId,
+                cancellationToken);
+
+            if (request.PageId.HasValue && !pageValid)
+            {
+                return Result<EditorialCommentResponse>.Failure("Page does not belong to the chapter under review.");
+            }
+
+            if (request.AnnotationId.HasValue && !annotationValid)
+            {
+                return Result<EditorialCommentResponse>.Failure("Annotation does not belong to the page.");
+            }
+        }
 
         review.ReviewerUserId ??= _currentUser.UserId;
         if (review.Status == EditorialReviewStatus.Pending) review.Status = EditorialReviewStatus.InReview;
@@ -124,6 +162,13 @@ public sealed class EditorialReviewService : IEditorialReviewService
         if (review.Status != EditorialReviewStatus.InReview) return Result<EditorialReviewResponse>.Failure("Review must be in progress before a decision can be made.");
         if (status is EditorialReviewStatus.RevisionRequested or EditorialReviewStatus.Rejected && string.IsNullOrWhiteSpace(note)) return Result<EditorialReviewResponse>.Failure("A decision reason is required.");
 
+        var allReviews = await _repository.ListAsync<EditorialReview>(r => r.ChapterId == review.ChapterId, cancellationToken);
+        var latestReview = allReviews.OrderByDescending(r => r.CreatedAt).FirstOrDefault();
+        if (latestReview is null || latestReview.Id != review.Id)
+        {
+            return Result<EditorialReviewResponse>.Failure("This review round is inactive.");
+        }
+
         review.Status = status;
         review.ReviewerUserId ??= _currentUser.UserId;
         review.DecisionNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
@@ -145,7 +190,27 @@ public sealed class EditorialReviewService : IEditorialReviewService
     private async Task<EditorialReviewResponse> ToResponseAsync(EditorialReview review, CancellationToken cancellationToken)
     {
         var latestComment = (await _repository.ListAsync<EditorialComment>(comment => comment.ReviewId == review.Id, cancellationToken)).OrderByDescending(comment => comment.CreatedAt).FirstOrDefault();
-        return ToResponse(review, latestComment);
+        var response = ToResponse(review, latestComment);
+
+        var allReviews = await _repository.ListAsync<EditorialReview>(r => r.ChapterId == review.ChapterId, cancellationToken);
+        var historicalReviews = allReviews.Where(r => r.Id != review.Id).OrderBy(r => r.CreatedAt).ToList();
+
+        response.History = new List<EditorialReviewHistoryResponse>();
+        foreach (var hist in historicalReviews)
+        {
+            var comments = await _repository.ListAsync<EditorialComment>(c => c.ReviewId == hist.Id, cancellationToken);
+            response.History.Add(new EditorialReviewHistoryResponse
+            {
+                Id = hist.Id,
+                Status = hist.Status,
+                DecisionNote = hist.DecisionNote,
+                CreatedAt = hist.CreatedAt,
+                UpdatedAt = hist.UpdatedAt,
+                Comments = comments.OrderBy(c => c.CreatedAt).Select(ToResponse).ToList()
+            });
+        }
+
+        return response;
     }
 
     private static EditorialReviewResponse ToResponse(EditorialReview review, EditorialComment? latestComment = null) => new() { Id = review.Id, ChapterId = review.ChapterId, SeriesId = review.SeriesId, RequestedByUserId = review.RequestedByUserId, ReviewerUserId = review.ReviewerUserId, Status = review.Status, DecisionNote = review.DecisionNote, CreatedAt = review.CreatedAt, UpdatedAt = review.UpdatedAt, LatestComment = latestComment is null ? null : ToResponse(latestComment) };

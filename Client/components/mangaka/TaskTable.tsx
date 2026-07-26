@@ -35,17 +35,17 @@ export default function TaskTable({ tasks, onAction }: TaskTableProps) {
       <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-50/50">
         <div>
           <h3 className="font-bold text-slate-800 text-lg">Production Task Board</h3>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+          <p className="text-xs text-slate-700 font-medium mt-0.5">
             Monitor and review background work assigned to studio assistants.
           </p>
         </div>
         <div className="flex gap-2">
-          <select className="text-xs font-semibold text-slate-650 bg-white border border-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-burgundy-500">
+          <select aria-label="Filter by page range" className="text-xs font-semibold text-slate-650 bg-white border border-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-burgundy-500">
             <option>All Pages</option>
             <option>P01 - P10</option>
             <option>P11 - P20</option>
           </select>
-          <select className="text-xs font-semibold text-slate-650 bg-white border border-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-burgundy-500">
+          <select aria-label="Filter by status" className="text-xs font-semibold text-slate-650 bg-white border border-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-burgundy-500">
             <option>All Statuses</option>
             <option>Submitted</option>
             <option>In Progress</option>
@@ -55,10 +55,10 @@ export default function TaskTable({ tasks, onAction }: TaskTableProps) {
       </div>
 
       {/* Main Table */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Production task board">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/40 text-slate-500 font-semibold text-xs uppercase tracking-wider">
+            <tr className="border-b border-slate-100 bg-slate-50/40 text-slate-700 font-semibold text-xs uppercase tracking-wider">
               <th className="px-6 py-3.5">Task Description</th>
               <th className="px-6 py-3.5">Page</th>
               <th className="px-6 py-3.5">Assistant</th>
@@ -143,7 +143,7 @@ export default function TaskTable({ tasks, onAction }: TaskTableProps) {
       </div>
       
       {/* Table Footer */}
-      <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold bg-slate-50/20">
+      <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-700 font-semibold bg-slate-50/20">
         <span>Showing {tasks.length} active assignments</span>
         <button className="text-burgundy-800 hover:text-burgundy-950 transition-colors">
           View All Studio Tasks →

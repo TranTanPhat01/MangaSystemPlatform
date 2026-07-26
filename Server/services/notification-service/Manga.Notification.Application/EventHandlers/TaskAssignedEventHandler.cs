@@ -26,6 +26,9 @@ public sealed class TaskAssignedEventHandler : NotificationEventHandlerBase<Task
                 $"You have been assigned task {eventMessage.TaskId}.",
                 NotificationType.TaskAssigned,
                 eventMessage.MessageId,
-                ct);
+                ct,
+                resourceType: "Task",
+                resourceId: eventMessage.TaskId,
+                actionUrl: $"/tasks?taskId={eventMessage.TaskId}");
         }, cancellationToken);
 }

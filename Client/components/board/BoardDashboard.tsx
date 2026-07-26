@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 import BoardSidebar from './BoardSidebar';
 import BoardHeader from './BoardHeader';
@@ -16,22 +17,49 @@ const EMPTY_ROLES: string[] = [];
 
 export function BoardDashboard() {
   const board = useBoardDashboard();
-  const [activeNav, setActiveNav] = useState<ActiveNav>('Dashboard');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const querySeriesId = searchParams.get('seriesId') || '';
+  const queryTab = (searchParams.get('tab') as ActiveNav) || 'Dashboard';
+
+  const [activeNav, setActiveNav] = useState<ActiveNav>(queryTab);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [selectedSeriesId, setSelectedSeriesId] = useState('');
+  const [selectedSeriesId, setSelectedSeriesId] = useState(querySeriesId);
+
   const loadSeriesInsights = board.loadSeriesInsights;
   const clearBoardError = board.clearError;
   const boardError = board.error;
 
+  const updateQuery = (seriesId: string, tab: ActiveNav) => {
+    const params = new URLSearchParams();
+    if (seriesId) params.set('seriesId', seriesId);
+    if (tab) params.set('tab', tab);
+    router.replace(`/board?${params.toString()}`);
+  };
+
+  const handleNavigate = (tab: ActiveNav) => {
+    setActiveNav(tab);
+    updateQuery(selectedSeriesId, tab);
+  };
+
   useEffect(() => {
     if (selectedSeriesId || !board.series[0]) return;
-    const timer = window.setTimeout(() => setSelectedSeriesId(board.series[0].id), 0);
+    const timer = window.setTimeout(() => {
+      setSelectedSeriesId(board.series[0].id);
+      updateQuery(board.series[0].id, activeNav);
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [board.series, selectedSeriesId]);
 
+  const loadVoteSummary = board.loadVoteSummary;
+
   useEffect(() => {
-    void loadSeriesInsights(selectedSeriesId);
-  }, [loadSeriesInsights, selectedSeriesId]);
+    if (selectedSeriesId) {
+      void loadSeriesInsights(selectedSeriesId);
+      void loadVoteSummary(selectedSeriesId);
+    }
+  }, [loadSeriesInsights, loadVoteSummary, selectedSeriesId]);
 
   useEffect(() => {
     if (!boardError) return;
@@ -39,7 +67,14 @@ export function BoardDashboard() {
     return () => clearTimeout(timer);
   }, [boardError, clearBoardError]);
 
-  const selected = board.series.find((item) => item.id === selectedSeriesId) || null;
+  const isDraft = (status: any) => status === 1 || status === 'Draft';
+  const isSubmitted = (status: any) => status === 2 || status === 'Submitted';
+
+  // Proposal queue filtering: Draft must NOT appear in the Board Queue
+  const visibleSeries = board.series.filter((item) => !isDraft(item.status));
+  const submittedSeries = visibleSeries.filter((item) => isSubmitted(item.status));
+
+  const selected = visibleSeries.find((item) => item.id === selectedSeriesId) || null;
   const storedRoles = useAuthStore((state) => state.user?.roles);
   const roles = storedRoles ?? EMPTY_ROLES;
   const canManageIssues = roles.some((role) =>
@@ -52,11 +87,14 @@ export function BoardDashboard() {
       <select
         aria-label="Series to vote"
         value={selectedSeriesId}
-        onChange={(e) => setSelectedSeriesId(e.target.value)}
+        onChange={(e) => {
+          setSelectedSeriesId(e.target.value);
+          updateQuery(e.target.value, activeNav);
+        }}
         className="border rounded p-2 mb-4 w-full"
       >
         <option value="">Chọn Series</option>
-        {board.series.map((item) => (
+        {submittedSeries.map((item) => (
           <option key={item.id} value={item.id}>
             {item.title}
           </option>
@@ -76,7 +114,7 @@ export function BoardDashboard() {
   const rankings = (
     <RankingTable
       issues={board.issues}
-      series={board.series}
+      series={visibleSeries}
       selectedIssueId={board.selectedIssueId}
       rankings={board.rankings}
       isLoading={board.isRankingLoading}
@@ -102,12 +140,15 @@ export function BoardDashboard() {
 
   const cancellation = (
     <CancellationRiskPanel
-      series={board.series}
+      series={visibleSeries}
       selectedSeriesId={selectedSeriesId}
       warnings={board.cancellationWarnings}
       rankingHistory={board.rankingHistory}
       isLoading={board.isSeriesActionLoading}
-      onSeriesChange={setSelectedSeriesId}
+      onSeriesChange={(id) => {
+        setSelectedSeriesId(id);
+        updateQuery(id, activeNav);
+      }}
       onStatusChange={(action) => board.setSeriesStatus(selectedSeriesId, action)}
     />
   );
@@ -141,7 +182,7 @@ export function BoardDashboard() {
 
   return (
     <div className="flex h-screen bg-slate-50">
-      <BoardSidebar active={activeNav} onNavigate={setActiveNav} open={sidebarOpen} />
+      <BoardSidebar active={activeNav} onNavigate={handleNavigate} open={sidebarOpen} />
       <div className="flex-1 min-w-0 overflow-auto">
         <BoardHeader onToggleSidebar={() => setSidebarOpen((value) => !value)} />
         <div className="p-6 space-y-4">
@@ -151,7 +192,7 @@ export function BoardDashboard() {
                 <AlertCircle size={14} className="inline mr-2" />
                 {board.error}
               </span>
-              <button onClick={board.clearError}>
+              <button onClick={board.clearError} aria-label="Dismiss board error">
                 <X size={14} />
               </button>
             </div>
@@ -162,7 +203,7 @@ export function BoardDashboard() {
                 <CheckCircle2 size={14} className="inline mr-2" />
                 {board.successMessage}
               </span>
-              <button onClick={board.clearSuccess}>
+              <button onClick={board.clearSuccess} aria-label="Dismiss board success message">
                 <X size={14} />
               </button>
             </div>

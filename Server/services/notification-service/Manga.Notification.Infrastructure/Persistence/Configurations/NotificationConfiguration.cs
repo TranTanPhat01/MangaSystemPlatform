@@ -17,5 +17,8 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Domai
         builder.Property(notification => notification.Type).HasConversion<string>().HasMaxLength(80).IsRequired();
         builder.Property(notification => notification.Status).HasConversion<string>().HasMaxLength(40).IsRequired();
         builder.Property(notification => notification.SourceEventType).HasMaxLength(200);
+        builder.Property(notification => notification.ResourceType).HasMaxLength(100);
+        builder.Property(notification => notification.ResourceId);
+        builder.Property(notification => notification.ActionUrl).HasMaxLength(500);
     }
 }

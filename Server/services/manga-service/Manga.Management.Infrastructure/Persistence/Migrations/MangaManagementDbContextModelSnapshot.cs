@@ -222,6 +222,10 @@ namespace Manga.Management.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("annotation_id");
 
+                    b.Property<Guid?>("ApprovedSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_submission_id");
+
                     b.Property<Guid>("AssignedToUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("assigned_to_user_id");
@@ -266,6 +270,7 @@ namespace Manga.Management.Infrastructure.Persistence.Migrations
                         .HasColumnName("title");
 
                     b.Property<DateTime?>("UpdatedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
@@ -347,6 +352,10 @@ namespace Manga.Management.Infrastructure.Persistence.Migrations
                     b.HasIndex("ChapterId");
 
                     b.HasIndex("PageId");
+
+                    b.HasIndex("UserId", "ChapterId")
+                        .IsUnique()
+                        .HasFilter("\"page_id\" IS NULL");
 
                     b.HasIndex("UserId", "CreatedAt");
 
@@ -470,6 +479,12 @@ namespace Manga.Management.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ChapterId");
+
+                    b.HasIndex("PageId");
+
+                    b.HasIndex("SeriesId");
+
                     b.HasIndex("UserId", "ChapterId")
                         .IsUnique();
 
@@ -506,6 +521,12 @@ namespace Manga.Management.Infrastructure.Persistence.Migrations
                         .HasColumnName("user_id");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ChapterId");
+
+                    b.HasIndex("PageId");
+
+                    b.HasIndex("SeriesId");
 
                     b.HasIndex("UserId", "LastReadAt");
 
@@ -811,8 +832,61 @@ namespace Manga.Management.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
+            modelBuilder.Entity("Manga.Management.Domain.Entities.ReaderComment", b =>
+                {
+                    b.HasOne("Manga.Management.Domain.Entities.Chapter", null)
+                        .WithMany()
+                        .HasForeignKey("ChapterId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Manga.Management.Domain.Entities.Series", null)
+                        .WithMany()
+                        .HasForeignKey("SeriesId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
             modelBuilder.Entity("Manga.Management.Domain.Entities.ReaderFavorite", b =>
                 {
+                    b.HasOne("Manga.Management.Domain.Entities.Series", null)
+                        .WithMany()
+                        .HasForeignKey("SeriesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Manga.Management.Domain.Entities.ReadingHistory", b =>
+                {
+                    b.HasOne("Manga.Management.Domain.Entities.Chapter", null)
+                        .WithMany()
+                        .HasForeignKey("ChapterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Manga.Management.Domain.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Manga.Management.Domain.Entities.Series", null)
+                        .WithMany()
+                        .HasForeignKey("SeriesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Manga.Management.Domain.Entities.ReadingProgress", b =>
+                {
+                    b.HasOne("Manga.Management.Domain.Entities.Chapter", null)
+                        .WithMany()
+                        .HasForeignKey("ChapterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Manga.Management.Domain.Entities.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Manga.Management.Domain.Entities.Series", null)
                         .WithMany()
                         .HasForeignKey("SeriesId")

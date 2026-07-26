@@ -33,6 +33,10 @@ public sealed class ChapterReviewDecisionEventHandler : IIntegrationEventHandler
             {
                 _logger.LogWarning("ChapterReviewDecisionEvent skipped because chapter {ChapterId} was not found.", eventMessage.ChapterId);
             }
+            else if (chapter.Status != ChapterStatus.SubmittedForReview)
+            {
+                _logger.LogWarning("ChapterReviewDecisionEvent ignored for chapter {ChapterId} because current status is {Status} (expected SubmittedForReview).", chapter.Id, chapter.Status);
+            }
             else if (string.Equals(eventMessage.Decision, "RevisionRequested", StringComparison.Ordinal))
             {
                 chapter.Status = ChapterStatus.RevisionRequired;

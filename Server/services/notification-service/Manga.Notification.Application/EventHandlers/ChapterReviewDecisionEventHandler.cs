@@ -23,6 +23,9 @@ public sealed class ChapterReviewDecisionEventHandler : NotificationEventHandler
                 $"Chapter {eventMessage.ChapterId}: {eventMessage.Reason}",
                 isRevision ? NotificationType.ChapterRevisionRequested : NotificationType.ChapterRejected,
                 eventMessage.MessageId,
-                ct);
+                ct,
+                resourceType: "Chapter",
+                resourceId: eventMessage.ChapterId,
+                actionUrl: isRevision ? $"/series/{eventMessage.SeriesId}/chapters/{eventMessage.ChapterId}" : $"/series/{eventMessage.SeriesId}");
         }, cancellationToken);
 }

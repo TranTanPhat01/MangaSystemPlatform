@@ -5,6 +5,7 @@ public sealed class ReaderVote
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid IssueId { get; set; }
     public Guid SeriesId { get; set; }
+    public Guid ReaderId { get; set; }
     public int VoteCount { get; set; }
     public int? RankPosition { get; set; }
     public Guid ImportedByUserId { get; set; }

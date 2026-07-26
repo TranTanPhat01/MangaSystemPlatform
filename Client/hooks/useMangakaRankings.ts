@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { editorialApi } from '@/services/editorial-api';
+import { mangaApi } from '@/services/manga-api';
 import { IssueResponse, RankingItemResponse, CancellationWarningResponse } from '@/types/editorial';
+import { SeriesResponse } from '@/types/manga';
 
 export interface MangakaSeriesRanking {
   seriesId: string;
@@ -19,6 +21,9 @@ export function useMangakaRankings() {
   const [loading, setLoading] = useState(true);
   const [loadingRanking, setLoadingRanking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Cache series id→title so we only call /manga/series once per session.
+  const [seriesTitleCache, setSeriesTitleCache] = useState<Map<string, string>>(new Map());
 
   const fetchIssues = async () => {
     setLoading(true);
@@ -48,13 +53,29 @@ export function useMangakaRankings() {
     setLoadingRanking(true);
     setError(null);
     try {
-      const res = await editorialApi.getRankings(issueId);
-      if (res.data?.success) {
-        const rankingSnapshots = res.data.data || [];
+      // Fetch rankings and the series list in parallel.
+      // Series list gives us the real titles to display.
+      const [rankingsRes, seriesRes] = await Promise.all([
+        editorialApi.getRankings(issueId),
+        mangaApi.getSeries(),
+      ]);
+
+      // Build seriesId→title map; merge into the persistent cache.
+      const newCache = new Map(seriesTitleCache);
+      if (seriesRes.data?.success) {
+        (seriesRes.data.data || []).forEach((s: SeriesResponse) => {
+          newCache.set(s.id, s.title);
+        });
+        setSeriesTitleCache(newCache);
+      }
+
+      if (rankingsRes.data?.success) {
+        const rankingSnapshots = rankingsRes.data.data || [];
         const mappedRankings: MangakaSeriesRanking[] = (rankingSnapshots[0]?.items || []).map(
           (item: RankingItemResponse, index: number) => ({
             seriesId: item.seriesId,
-            seriesTitle: `Series ${item.seriesId.toString().slice(0, 8)}`,
+            // Use the real title; fall back gracefully only if lookup fails.
+            seriesTitle: newCache.get(item.seriesId) ?? `Series ${item.seriesId.slice(0, 8)}`,
             rank: item.rankPosition || index + 1,
             votes: item.voteCount || 0,
             trend: (item.trend as 'up' | 'down' | 'stable') || 'stable',
@@ -64,7 +85,7 @@ export function useMangakaRankings() {
         setRankings(mappedRankings);
       } else {
         setRankings([]);
-        setError(res.data?.message || 'Could not load rankings.');
+        setError(rankingsRes.data?.message || 'Could not load rankings.');
       }
     } catch (err: any) {
       setRankings([]);

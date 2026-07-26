@@ -54,6 +54,14 @@ builder.Services.AddSingleton<MonitoringAggregator>();
 builder.Services.AddHealthChecks()
     .AddCheck("gateway", () => HealthCheckResult.Healthy("Gateway is running."), tags: ["live", "ready"]);
 builder.Services.AddHsts(options => options.MaxAge = TimeSpan.FromDays(Math.Clamp(builder.Configuration.GetValue("Gateway:TransportSecurity:HstsMaxAgeDays", 365), 1, 730)));
+builder.Services.AddHttpsRedirection(options =>
+{
+    var configuredHttpsPort = builder.Configuration.GetValue<int?>("Gateway:TransportSecurity:HttpsPort");
+    if (configuredHttpsPort is > 0)
+    {
+        options.HttpsPort = configuredHttpsPort.Value;
+    }
+});
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? string.Empty;
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? string.Empty;
 var jwtSecret = GatewaySecurity.GetValidatedJwtSecret(builder.Configuration);

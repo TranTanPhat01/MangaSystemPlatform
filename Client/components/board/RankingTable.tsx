@@ -82,7 +82,7 @@ export default function RankingTable({
             <Trophy size={18} className="text-amber-600" />
             Reader Voting Rankings
           </h2>
-          <p className="text-xs text-slate-500 mt-1">Select an issue to view real ranking data.</p>
+          <p className="text-xs text-slate-700 mt-1">Select an issue to view real ranking data.</p>
         </div>
         <div className="flex gap-2">
           <select
@@ -160,7 +160,7 @@ export default function RankingTable({
       {!selectedIssueId ? (
         <div className="p-8 text-center">
           <Trophy size={32} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-sm text-slate-600 font-semibold">Select an issue to load rankings</p>
+          <p className="text-sm text-slate-700 font-semibold">Select an issue to load rankings</p>
         </div>
       ) : isLoading ? (
         <div className="p-8 flex items-center justify-center gap-3">
@@ -170,8 +170,8 @@ export default function RankingTable({
       ) : rankings.length === 0 ? (
         <div className="p-8 text-center">
           <AlertCircle size={32} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-sm text-slate-600 font-semibold">No ranking data available</p>
-          <p className="text-xs text-slate-500 mt-1">This issue hasn&apos;t been calculated yet.</p>
+          <p className="text-sm text-slate-700 font-semibold">No ranking data available</p>
+          <p className="text-xs text-slate-700 mt-1">This issue hasn&apos;t been calculated yet.</p>
           <button
             onClick={() => void onRetry()}
             className="mt-3 text-xs font-semibold text-indigo-600 hover:text-indigo-700 underline"

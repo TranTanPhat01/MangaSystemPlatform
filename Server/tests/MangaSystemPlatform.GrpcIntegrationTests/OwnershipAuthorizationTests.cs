@@ -2,6 +2,7 @@ using FluentAssertions;
 using Manga.Management.Application.DTOs;
 using Manga.Management.Application.Services;
 using Manga.Management.Domain.Entities;
+using Manga.Management.Domain.Enums;
 using MangaSystemPlatform.GrpcIntegrationTests.TestSupport;
 
 namespace MangaSystemPlatform.GrpcIntegrationTests;
@@ -135,6 +136,7 @@ public sealed class OwnershipAuthorizationTests
         (await service.RequestRevisionAsync(taskId, new RequestRevisionRequest { Reason = "Please fix lettering" }, ownerId)).IsSuccess.Should().BeFalse();
 
         (await repository.GetByIdAsync<MangaTask>(taskId))!.Status = Manga.Management.Domain.Enums.TaskStatus.Submitted;
+        await repository.AddAsync(new Submission { TaskId = taskId, SubmittedByUserId = Guid.NewGuid(), SubmittedAt = DateTime.UtcNow, Status = SubmissionStatus.Submitted });
         (await service.RequestRevisionAsync(taskId, new RequestRevisionRequest { Reason = "Please fix lettering" }, ownerId)).IsSuccess.Should().BeTrue();
         (await service.RequestRevisionAsync(taskId, new RequestRevisionRequest { Reason = "" }, ownerId)).IsSuccess.Should().BeFalse();
     }
@@ -172,10 +174,13 @@ public sealed class OwnershipAuthorizationTests
     {
         var repository = SeedTaskGraph(Guid.NewGuid(), out var taskId, out _);
         (await repository.GetByIdAsync<MangaTask>(taskId))!.Status = Manga.Management.Domain.Enums.TaskStatus.Submitted;
+        var sub = new Submission { TaskId = taskId, SubmittedByUserId = Guid.NewGuid(), SubmittedAt = DateTime.UtcNow, Status = SubmissionStatus.Submitted };
+        await repository.AddAsync(sub);
         var admin = CreateTaskService(repository, new TestCurrentUser(Guid.NewGuid(), true));
 
         (await admin.RequestRevisionAsync(taskId, new RequestRevisionRequest { Reason = "Revise" }, Guid.NewGuid())).IsSuccess.Should().BeTrue();
         (await repository.GetByIdAsync<MangaTask>(taskId))!.Status = Manga.Management.Domain.Enums.TaskStatus.Submitted;
+        sub.Status = SubmissionStatus.Submitted;
         (await admin.ApproveAsync(taskId)).IsSuccess.Should().BeTrue();
     }
 

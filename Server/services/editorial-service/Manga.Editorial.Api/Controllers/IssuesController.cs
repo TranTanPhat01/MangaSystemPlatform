@@ -19,7 +19,6 @@ public sealed class IssuesController : ApiControllerBase
     [HttpGet("{issueId:guid}")] public async Task<IActionResult> Get(Guid issueId, CancellationToken ct) => ToActionResult(await _publicationService.GetIssueAsync(issueId, ct));
     [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPatch("{issueId:guid}/status")] public async Task<IActionResult> Status(Guid issueId, UpdateIssueStatusRequest request, CancellationToken ct) => ToActionResult(await _publicationService.UpdateIssueStatusAsync(issueId, request, ct));
-    [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("{issueId:guid}/reader-votes")] public async Task<IActionResult> AddReaderVote(Guid issueId, ReaderVoteRequest request, CancellationToken ct) => ToActionResult(await _rankingService.AddReaderVoteAsync(issueId, request, ct));
     [HttpGet("{issueId:guid}/reader-votes")] public async Task<IActionResult> ReaderVotes(Guid issueId, CancellationToken ct) => ToActionResult(await _rankingService.GetReaderVotesAsync(issueId, ct));
     [Authorize(Roles = "EditorialBoard,Admin")]

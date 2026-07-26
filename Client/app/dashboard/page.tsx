@@ -19,6 +19,21 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
+  // Handle redirects inside useEffect to avoid updating state during rendering pass
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (!isAuthenticated || !user) {
+      router.replace('/login');
+      return;
+    }
+
+    const roles = (user.roles || []).map(normalizeRole).filter((role): role is NonNullable<typeof role> => Boolean(role));
+    if (roles.includes('reader')) {
+      router.replace('/reader');
+    }
+  }, [mounted, isAuthenticated, user, router]);
+
   if (!mounted) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-400">
@@ -31,17 +46,24 @@ export default function DashboardPage() {
   }
 
   if (!isAuthenticated || !user) {
-    if (typeof window !== 'undefined') {
-      router.replace('/login');
-    }
     return null;
   }
 
   const roles = (user.roles || []).map(normalizeRole).filter((role): role is NonNullable<typeof role> => Boolean(role));
 
   if (roles.includes('admin')) {
-    router.replace('/admin/users');
-    return null;
+    return <AdminDashboard />;
+  }
+
+  if (roles.includes('reader')) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-450">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent"></div>
+          <p className="text-sm font-semibold tracking-wide">Redirecting to Reader Space...</p>
+        </div>
+      </div>
+    );
   }
   
   if (roles.includes('mangaka')) {
@@ -60,10 +82,5 @@ export default function DashboardPage() {
     return <EditorialBoardDashboard />;
   }
 
-  if (roles.includes('reader')) {
-    router.replace('/reader');
-    return null;
-  }
-
-  return <div className="flex h-screen items-center justify-center"><p>Forbidden: no recognized role.</p></div>;
+  return <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-450"><p>Forbidden: no recognized role.</p></div>;
 }

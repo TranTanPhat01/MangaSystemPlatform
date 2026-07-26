@@ -156,15 +156,14 @@ describe('Admin Portal MVP Tests', () => {
 
   // --- Priority 1: Role Routing & Guards ---
   
-  it('redirects Admin role to /admin/users', async () => {
+  it('renders AdminDashboard for Admin role', async () => {
     mockUserStore.user = { fullName: 'Admin User', roles: ['Admin'] };
     mockUserStore.isAuthenticated = true;
 
     render(<DashboardPage />);
     
-    // Redirect check
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/admin/users');
+      expect(screen.getByText('Administrative Workspace')).toBeDefined();
     });
   });
 

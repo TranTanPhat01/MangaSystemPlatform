@@ -9,6 +9,8 @@ service MangaManagementGrpcService {
   rpc GetChapterById (GetChapterByIdRequest) returns (GetChapterByIdResponse);
   rpc CanAccessFile (CanAccessFileRequest) returns (CanAccessFileResponse);
   rpc ApplyProposalDecision (ApplyProposalDecisionRequest) returns (ApplyProposalDecisionResponse);
+  rpc ValidatePageAndAnnotation (ValidatePageAndAnnotationRequest) returns (ValidatePageAndAnnotationResponse);
+  rpc UpdateSeriesStatus (UpdateSeriesStatusRequest) returns (UpdateSeriesStatusResponse);
 }
 
 message GetSeriesByIdRequest {
@@ -52,4 +54,25 @@ message ApplyProposalDecisionRequest {
 
 message ApplyProposalDecisionResponse {
   bool applied = 1;
+}
+
+message ValidatePageAndAnnotationRequest {
+  string chapter_id = 1;
+  string page_id = 2;
+  string annotation_id = 3;
+}
+
+message ValidatePageAndAnnotationResponse {
+  bool page_valid = 1;
+  bool annotation_valid = 2;
+}
+
+message UpdateSeriesStatusRequest {
+  string series_id = 1;
+  string status = 2;
+  string reason = 3;
+}
+
+message UpdateSeriesStatusResponse {
+  bool success = 1;
 }

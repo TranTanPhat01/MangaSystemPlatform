@@ -77,7 +77,7 @@ export default function ChapterDetailPage() {
       if (!u.data?.success || !fileData) throw new Error(u.data?.message || 'Upload failed');
       const r = await mangaApi.createPage(chapterId, {
         pageNumber: pages.length + 1,
-        fileId: fileData.id,
+        fileId: fileData.fileId,
       });
       if (!r.data.success) throw new Error(r.data.message);
       setFile(null);

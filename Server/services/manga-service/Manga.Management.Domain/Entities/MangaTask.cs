@@ -20,6 +20,8 @@ public sealed class MangaTask
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 
+    public Guid? ApprovedSubmissionId { get; set; }
+ 
     public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
     public ICollection<Revision> Revisions { get; set; } = new List<Revision>();
 }

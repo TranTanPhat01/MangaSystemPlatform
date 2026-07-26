@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -40,6 +40,10 @@
     <ProjectReference Include="..\..\services\editorial-service\Manga.Editorial.Application\Manga.Editorial.Application.csproj" />
     <ProjectReference Include="..\..\services\editorial-service\Manga.Editorial.Domain\Manga.Editorial.Domain.csproj" />
     <ProjectReference Include="..\..\services\editorial-service\Manga.Editorial.Infrastructure\Manga.Editorial.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\services\notification-service\Manga.Notification.Application\Manga.Notification.Application.csproj" />
+    <ProjectReference Include="..\..\services\notification-service\Manga.Notification.Domain\Manga.Notification.Domain.csproj" />
+    <ProjectReference Include="..\..\services\notification-service\Manga.Notification.Infrastructure\Manga.Notification.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\services\notification-service\Manga.Notification.Api\Manga.Notification.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>

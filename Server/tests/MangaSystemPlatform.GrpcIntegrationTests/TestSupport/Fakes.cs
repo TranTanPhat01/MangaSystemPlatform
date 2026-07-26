@@ -160,7 +160,8 @@ internal sealed class FakeManagementUnitOfWork : IManagementUnitOfWork
 internal sealed class FakeManagementAccessService : IManagementAccessService
 {
     public bool Allowed { get; set; } = true;
-    public bool IsAdministrator => Allowed;
+    public bool IsAdminOverride { get; set; } = false;
+    public bool IsAdministrator => IsAdminOverride;
     public bool CanViewBoardData => Allowed;
     public Task<bool> CanAccessStudioAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
     public Task<bool> CanManageStudioAsync(Guid id, CancellationToken ct = default) => Task.FromResult(Allowed);
@@ -295,5 +296,21 @@ internal sealed class FakeMangaLookupClient : IMangaLookupClient
     {
         ProposalDecision = decision;
         return Task.FromResult(ProposalDecisionApplied);
+    }
+
+    public bool PageValid { get; set; } = true;
+    public bool AnnotationValid { get; set; } = true;
+
+    public Task<(bool PageValid, bool AnnotationValid)> ValidatePageAndAnnotationAsync(Guid chapterId, Guid? pageId, Guid? annotationId, CancellationToken cancellationToken = default) =>
+        Task.FromResult((PageValid, AnnotationValid));
+
+    public bool UpdateSeriesStatusSuccess { get; set; } = true;
+    public Task<bool> UpdateSeriesStatusAsync(Guid seriesId, string status, string reason, CancellationToken cancellationToken = default)
+    {
+        if (Series is not null)
+        {
+            Series.Status = status;
+        }
+        return Task.FromResult(UpdateSeriesStatusSuccess);
     }
 }

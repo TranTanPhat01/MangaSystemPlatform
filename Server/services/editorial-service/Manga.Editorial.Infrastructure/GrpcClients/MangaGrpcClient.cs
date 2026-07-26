@@ -103,4 +103,43 @@ internal sealed class MangaGrpcClient : IMangaLookupClient
             return false;
         }
     }
+
+    public async Task<(bool PageValid, bool AnnotationValid)> ValidatePageAndAnnotationAsync(Guid chapterId, Guid? pageId, Guid? annotationId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _client.ValidatePageAndAnnotationAsync(
+                new ValidatePageAndAnnotationRequest
+                {
+                    ChapterId = chapterId.ToString(),
+                    PageId = pageId?.ToString() ?? string.Empty,
+                    AnnotationId = annotationId?.ToString() ?? string.Empty
+                },
+                deadline: DateTime.UtcNow.AddSeconds(_timeoutSeconds),
+                cancellationToken: cancellationToken);
+            return (response.PageValid, response.AnnotationValid);
+        }
+        catch (RpcException exception)
+        {
+            _logger.LogWarning(exception, "Manga gRPC page/annotation validation failed for chapter {ChapterId}.", chapterId);
+            return (false, false);
+        }
+    }
+
+    public async Task<bool> UpdateSeriesStatusAsync(Guid seriesId, string status, string reason, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _client.UpdateSeriesStatusAsync(
+                new UpdateSeriesStatusRequest { SeriesId = seriesId.ToString(), Status = status, Reason = reason },
+                deadline: DateTime.UtcNow.AddSeconds(_timeoutSeconds),
+                cancellationToken: cancellationToken);
+            return response.Success;
+        }
+        catch (RpcException exception)
+        {
+            _logger.LogWarning(exception, "Manga gRPC update status failed for series {SeriesId}.", seriesId);
+            return false;
+        }
+    }
 }

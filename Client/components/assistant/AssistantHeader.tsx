@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { useLogoutAction } from '@/lib/logout';
+import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import { 
   Menu, 
   Search, 
@@ -63,12 +64,7 @@ export default function AssistantHeader({ onToggleSidebar }: AssistantHeaderProp
           <HelpCircle size={17} />
         </button>
 
-        <button className="relative p-2 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">
-          <Bell size={17} className="stroke-[2]" />
-          <span className="absolute top-1 right-1 h-4 min-w-4 px-1 rounded-full bg-indigo-600 text-[8px] font-black text-white flex items-center justify-center border-2 border-white">
-            5
-          </span>
-        </button>
+        <NotificationDropdown />
 
         <div className="relative">
           <button

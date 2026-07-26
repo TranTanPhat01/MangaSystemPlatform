@@ -10,8 +10,8 @@ export enum ReviewStatus {
   Rejected = 5,
 }
 
-export enum BoardVoteValue { Approve = 1, Reject = 2, Revision = 3, Abstain = 4 }
-export type VoteDecision = 'Approve' | 'Revise' | 'Reject';
+export enum BoardVoteValue { Approve = 1, Reject = 2, Abstain = 3, Revision = 4 }
+export type VoteDecision = 'Approve' | 'Reject' | 'Abstain' | 'Revision';
 export enum PublicationType { Weekly = 1, Monthly = 2, OneShot = 3, SpecialIssue = 4 }
 export enum PublicationStatus { Scheduled = 1, Published = 2, Hiatus = 3, Cancelled = 4 }
 
@@ -26,6 +26,16 @@ export interface EditorialReviewResponse {
   createdAt: string;
   updatedAt?: string | null;
   latestComment?: EditorialCommentResponse | null;
+  history?: EditorialReviewHistoryResponse[] | null;
+}
+
+export interface EditorialReviewHistoryResponse {
+  id: string;
+  status: ReviewStatus;
+  decisionNote?: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+  comments: EditorialCommentResponse[];
 }
 
 export interface EditorialCommentResponse {

@@ -63,7 +63,10 @@ public abstract class NotificationEventHandlerBase<TEvent>
         string message,
         NotificationType type,
         Guid sourceEventId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? resourceType = null,
+        Guid? resourceId = null,
+        string? actionUrl = null)
     {
         if (userId == Guid.Empty)
         {
@@ -85,6 +88,9 @@ public abstract class NotificationEventHandlerBase<TEvent>
             Type = type,
             SourceEventType = typeof(TEvent).Name,
             SourceEventId = sourceEventId,
+            ResourceType = resourceType,
+            ResourceId = resourceId,
+            ActionUrl = actionUrl,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -126,6 +132,9 @@ public abstract class NotificationEventHandlerBase<TEvent>
         Status = notification.Status,
         SourceEventType = notification.SourceEventType,
         SourceEventId = notification.SourceEventId,
+        ResourceType = notification.ResourceType,
+        ResourceId = notification.ResourceId,
+        ActionUrl = notification.ActionUrl,
         CreatedAt = notification.CreatedAt,
         ReadAt = notification.ReadAt
     };

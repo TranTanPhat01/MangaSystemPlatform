@@ -66,8 +66,9 @@ export function SystemHealth() {
   // Refs for tracking active state in polling timers without invalidating useCallback
   const pollingActiveRef = useRef(isPollingActive);
   const pollingIntervalRef = useRef(pollingInterval);
-  const pollTimeoutRef = useRef<any>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeAbortControllerRef = useRef<AbortController | null>(null);
+  const fetchHealthDataRef = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     pollingActiveRef.current = isPollingActive;
@@ -148,7 +149,7 @@ export function SystemHealth() {
     // Schedule next poll using setTimeout immediately to keep interval timing consistent with start of request
     if (pollingActiveRef.current && pollingIntervalRef.current > 0) {
       pollTimeoutRef.current = setTimeout(() => {
-        void fetchHealthData();
+        fetchHealthDataRef.current();
       }, pollingIntervalRef.current);
     }
 
@@ -168,8 +169,9 @@ export function SystemHealth() {
       } else {
         await tryFallback(requestId, abortController.signal);
       }
-    } catch (err: any) {
-      if (axios.isCancel(err) || err.name === 'CanceledError' || err.name === 'AbortError') {
+    } catch (err: unknown) {
+      const errorName = err && typeof err === 'object' && 'name' in err ? String(err.name) : '';
+      if (axios.isCancel(err) || errorName === 'CanceledError' || errorName === 'AbortError') {
         // Ignored because request was cancelled
         return;
       }
@@ -181,6 +183,12 @@ export function SystemHealth() {
       }
     }
   }, [tryFallback]);
+
+  useEffect(() => {
+    fetchHealthDataRef.current = () => {
+      void fetchHealthData();
+    };
+  }, [fetchHealthData]);
 
   // Start the poll and handle unmounting / configuration changes
   useEffect(() => {
@@ -248,6 +256,7 @@ export function SystemHealth() {
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Auto Poll</label>
             <select
+              aria-label="Auto poll interval"
               value={pollingInterval}
               onChange={(e) => {
                 const val = Number(e.target.value);
@@ -351,7 +360,7 @@ export function SystemHealth() {
                 </div>
 
                 {/* Body - Dependencies Status */}
-                <div className="p-4 flex-1 space-y-3 overflow-y-auto">
+                <div className="p-4 flex-1 space-y-3 overflow-y-auto" tabIndex={0} role="region" aria-label="Service dependencies">
                   <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                     <Database size={10} />
                     Service Dependencies

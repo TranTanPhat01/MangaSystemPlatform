@@ -73,14 +73,77 @@ export default function TaskDetailPanel({
 
         {/* Right: Instructions & Reference Files */}
         <div className="space-y-5">
+          {task.status === TaskStatus.RevisionRequired && task.revisions && task.revisions.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/25 rounded-xl p-4 text-amber-200">
+              <p className="text-[9px] font-black uppercase tracking-widest text-amber-400 mb-1">Revision Requested Reason</p>
+              <p className="text-xs italic font-medium">&quot;{task.revisions[0].reason}&quot;</p>
+            </div>
+          )}
+
           <div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Submission history</p>
-            {task.submissionHistory.length === 0 ? <p className="text-xs text-slate-500">No submissions yet.</p> : <div className="space-y-2">{task.submissionHistory.map((submission) => <div key={submission.id} className="border border-slate-800 rounded p-2 text-xs"><p>File: {submission.fileId ?? '—'}</p><p>Submitted by: {submission.submittedByUserId}</p><p>{new Date(submission.submittedAt).toLocaleString()} · Status {submission.status}</p>{submission.note && <p>{submission.note}</p>}{submission.fileId && <button onClick={() => onDownloadAsset(submission.fileId!, `submission-${submission.id}`)}><Download size={12} /> Download</button>}</div>)}</div>}
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Submission History</p>
+            {task.submissionHistory.length === 0 ? (
+              <p className="text-xs text-slate-500">No submissions yet.</p>
+            ) : (
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                {task.submissionHistory.map((submission, index) => {
+                  const versionNumber = task.submissionHistory.length - index;
+                  const isLatest = index === 0;
+                  return (
+                    <div key={submission.id} className="bg-slate-950/20 border border-slate-850 rounded-xl p-3 text-xs relative space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-indigo-400" aria-label={`Submission version ${versionNumber}`}>Version {versionNumber}</span>
+                        <div className="flex items-center gap-2">
+                          {isLatest && (
+                            <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/35 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider" aria-label="Latest submission">
+                              Latest
+                            </span>
+                          )}
+                          <span className={clsx(
+                            "px-1.5 py-0.5 rounded text-[9px] font-bold",
+                            submission.status === 1 ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                            submission.status === 2 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                            "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          )} aria-label={`Submission status: ${submission.status === 1 ? "Submitted" : submission.status === 2 ? "Approved" : "Revision Required"}`}>
+                            {submission.status === 1 ? "Submitted" : submission.status === 2 ? "Approved" : "Revision Required"}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-slate-400 text-[10px]">
+                        Submitted by Assistant {submission.submittedByUserId.slice(0, 8)} on {new Date(submission.submittedAt).toLocaleString()}
+                      </p>
+                      {submission.note && (
+                        <p className="text-slate-300 italic bg-slate-900/50 border border-slate-850 p-2 rounded mt-1">
+                          Note: &quot;{submission.note}&quot;
+                        </p>
+                      )}
+                      {submission.fileId && (
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[10px] text-slate-500 font-mono">File ID: {submission.fileId.slice(0, 8)}...</span>
+                          <button
+                            onClick={() => onDownloadAsset(submission.fileId!, `submission-v${versionNumber}.png`)}
+                            className="flex items-center gap-1 text-[10px] text-indigo-400 hover:text-indigo-300 font-bold"
+                          >
+                            <Download size={11} /> Download File
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
+
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">Task Instruction</p>
-            <div className="bg-slate-950/40 border border-slate-850 rounded-xl p-4">
+            <div className="bg-slate-950/40 border border-slate-850 rounded-xl p-4 space-y-3">
               <p className="text-[11px] font-bold text-slate-300 mb-1">Annotation Type: <span className="text-indigo-400">{task.annotationType}</span></p>
+              {task.description && (
+                <div className="text-[10px] text-slate-350 bg-slate-900 border border-slate-850 rounded p-2.5 font-medium">
+                  <strong>Description: </strong>{task.description}
+                </div>
+              )}
               {task.annotationType === 'Background' && (
                 <p className="text-[10px] text-slate-400 leading-relaxed">
                   Draw a detailed urban nightscape background for the highlighted panel. Use the reference cityscape provided. Perspective point is upper-center. Avoid covering character silhouettes in panels 1 and 3.
@@ -145,7 +208,17 @@ export default function TaskDetailPanel({
                 {isStarting ? 'Starting...' : 'Start Task'}
               </button>
             )}
-            {(task.status === TaskStatus.InProgress || task.status === TaskStatus.RevisionRequired) && (
+            {task.status === TaskStatus.RevisionRequired && (
+              <button
+                onClick={() => onStart(task.id)}
+                disabled={isStarting}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold bg-indigo-700 hover:bg-indigo-850 text-white transition-colors"
+              >
+                <Play size={13} />
+                {isStarting ? 'Starting...' : 'Start Revision'}
+              </button>
+            )}
+            {task.status === TaskStatus.InProgress && (
               <button
                 onClick={() => onSubmitClick(task)}
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white transition-colors"

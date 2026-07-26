@@ -53,6 +53,48 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+/* WCAG AA contrast hardening for muted text reported by axe on final audit pages. */
+[class~="text-slate-400"],
+[class~="text-slate-500"] {
+  color: #475569;
+}
+
+[class~="text-emerald-600"] {
+  color: #047857;
+}
+
+:is(
+  [class*="bg-slate-950"],
+  [class*="bg-slate-900"],
+  [class*="bg-slate-850"],
+  [class*="bg-slate-800"],
+  [class*="from-slate-950"],
+  [class*="to-slate-900"]
+) :is(
+  [class~="text-slate-400"],
+  [class~="text-slate-500"],
+  [class~="text-slate-550"],
+  [class~="text-slate-600"],
+  [class~="text-white/20"],
+  [class~="text-white/25"],
+  [class~="text-white/30"],
+  [class~="text-white/35"],
+  [class~="text-white/40"]
+) {
+  color: #cbd5e1 !important;
+}
+
+:is(
+  [class*="bg-slate-950"],
+  [class*="bg-slate-900"],
+  [class*="bg-slate-850"],
+  [class*="bg-slate-800"],
+  [class*="from-slate-950"],
+  [class*="to-slate-900"]
+) :is([class~="text-slate-350"]) {
+  color: #e2e8f0 !important;
+}
+
 /* Screentone Dot Matrix Background */
 .manga-screentone-bg {
   background-image: radial-gradient(rgba(107, 29, 47, 0.06) 1.5px, transparent 1.5px);

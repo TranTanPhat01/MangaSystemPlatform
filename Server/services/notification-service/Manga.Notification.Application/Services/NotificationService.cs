@@ -21,9 +21,18 @@ public sealed class NotificationService : INotificationService
         _currentUser = currentUser;
     }
 
-    public async Task<IReadOnlyList<NotificationResponse>> GetMineAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<NotificationResponse>> GetMineAsync(bool? isRead, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        var notifications = await _repository.GetByUserAsync(_currentUser.UserId, cancellationToken);
+        if (pageSize <= 0 || pageSize > 100)
+        {
+            throw new BadRequestException("Invalid page size. Must be between 1 and 100.", "INVALID_PAGE_SIZE");
+        }
+        if (page <= 0)
+        {
+            throw new BadRequestException("Invalid page number. Must be greater than 0.", "INVALID_PAGE_NUMBER");
+        }
+
+        var notifications = await _repository.GetByUserPagedAsync(_currentUser.UserId, isRead, page, pageSize, cancellationToken);
         return notifications.Select(ToResponse).ToArray();
     }
 
@@ -37,6 +46,19 @@ public sealed class NotificationService : INotificationService
         {
             notification.Status = NotificationStatus.Read;
             notification.ReadAt = DateTime.UtcNow;
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        return ToResponse(notification);
+    }
+
+    public async Task<NotificationResponse> MarkAsUnreadAsync(Guid notificationId, CancellationToken cancellationToken = default)
+    {
+        var notification = await GetOwnedNotificationAsync(notificationId, cancellationToken);
+        if (notification.Status == NotificationStatus.Read)
+        {
+            notification.Status = NotificationStatus.Unread;
+            notification.ReadAt = null;
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
@@ -84,6 +106,9 @@ public sealed class NotificationService : INotificationService
         Status = notification.Status,
         SourceEventType = notification.SourceEventType,
         SourceEventId = notification.SourceEventId,
+        ResourceType = notification.ResourceType,
+        ResourceId = notification.ResourceId,
+        ActionUrl = notification.ActionUrl,
         CreatedAt = notification.CreatedAt,
         ReadAt = notification.ReadAt
     };

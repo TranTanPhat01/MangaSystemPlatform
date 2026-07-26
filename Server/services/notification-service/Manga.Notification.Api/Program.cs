@@ -71,6 +71,7 @@ builder.Services.AddRabbitMqConsumer<ChapterSubmittedForReviewEvent, ChapterSubm
 builder.Services.AddRabbitMqConsumer<ChapterApprovedEvent, ChapterApprovedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<ChapterReviewDecisionEvent, ChapterReviewDecisionEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<SeriesProposalDecidedEvent, SeriesProposalDecidedEventHandler>("notification-service");
+builder.Services.AddRabbitMqConsumer<ProposalSubmittedEvent, ProposalSubmittedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<RankingCalculatedEvent, RankingCalculatedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<CancellationWarningCreatedEvent, CancellationWarningCreatedEventHandler>("notification-service");
 builder.Services.AddRabbitMqConsumer<FileUploadedEvent, FileUploadedEventHandler>("notification-service");

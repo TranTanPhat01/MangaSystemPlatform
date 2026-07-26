@@ -69,6 +69,10 @@ namespace Manga.Notification.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ActionUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -79,6 +83,13 @@ namespace Manga.Notification.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("ReadAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResourceType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("SourceEventId")
                         .HasColumnType("uuid");

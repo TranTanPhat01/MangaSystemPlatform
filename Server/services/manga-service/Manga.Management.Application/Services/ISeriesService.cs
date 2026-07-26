@@ -9,7 +9,7 @@ public interface ISeriesService
     Task<Result<IReadOnlyList<SeriesResponse>>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<Result<SeriesResponse>> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<Result<SeriesResponse>> UpdateAsync(Guid id, UpdateSeriesRequest request, CancellationToken cancellationToken = default);
-    Task<Result<SeriesResponse>> SubmitProposalAsync(Guid id, Guid currentUserId, CancellationToken cancellationToken = default);
+    Task<Result<SeriesResponse>> SubmitProposalAsync(Guid id, Guid currentUserId, Guid? boardUserId, CancellationToken cancellationToken = default);
     Task<Result<SeriesResponse>> ApproveProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default);
     Task<Result<SeriesResponse>> RejectProposalAsync(Guid id, SeriesDecisionRequest request, Guid currentUserId, CancellationToken cancellationToken = default);
 }

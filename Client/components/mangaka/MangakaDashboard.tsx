@@ -38,6 +38,7 @@ export function MangakaDashboard() {
             triggerModal={triggerModal}
             handleTaskAction={handleTaskAction}
             filteredTasks={filteredTasks}
+            series={series}
           />
         );
       case 'My Series':

@@ -75,7 +75,7 @@ export function useAssistantDashboard() {
       }
 
       const submitRes = await mangaApi.submitTask(taskId, {
-        fileId: fileData.fileId || fileData.id || '',
+        fileId: fileData.fileId,
         ...(note?.trim() ? { note: note.trim() } : {}),
       });
 

@@ -1,6 +1,7 @@
 using Manga.BuildingBlocks.Messaging;
 using Manga.Contracts.Events;
 using Manga.Notification.Application.Abstractions;
+using Manga.Notification.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace Manga.Notification.Application.EventHandlers;
@@ -19,7 +20,15 @@ public sealed class RankingCalculatedEventHandler : NotificationEventHandlerBase
     public Task HandleAsync(RankingCalculatedEvent eventMessage, CancellationToken cancellationToken = default) =>
         HandleWithInboxAsync(eventMessage.MessageId, eventMessage, ct =>
         {
-            LogOnly("RankingCalculatedEvent received for issue {IssueId}. No target user is available.", eventMessage.IssueId);
-            return Task.CompletedTask;
+            return CreateNotificationIfMissingAsync(
+                eventMessage.GeneratedByUserId,
+                "Ranking calculated",
+                $"Ranking calculation completed for issue.",
+                NotificationType.RankingCalculated,
+                eventMessage.MessageId,
+                ct,
+                resourceType: "Issue",
+                resourceId: eventMessage.IssueId,
+                actionUrl: $"/board?tab=Rankings&issueId={eventMessage.IssueId}");
         }, cancellationToken);
 }

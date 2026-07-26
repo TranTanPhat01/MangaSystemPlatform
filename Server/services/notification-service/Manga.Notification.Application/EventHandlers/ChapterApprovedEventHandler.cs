@@ -26,6 +26,9 @@ public sealed class ChapterApprovedEventHandler : NotificationEventHandlerBase<C
                 $"Chapter {eventMessage.ChapterId} has been approved by editorial.",
                 NotificationType.ChapterApproved,
                 eventMessage.MessageId,
-                ct);
+                ct,
+                resourceType: "Chapter",
+                resourceId: eventMessage.ChapterId,
+                actionUrl: $"/series/{eventMessage.SeriesId}/chapters/{eventMessage.ChapterId}");
         }, cancellationToken);
 }

@@ -90,8 +90,8 @@ export default function TasksPage() {
 
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-100 mb-1">Tasks & Workflow</h1>
-            <p className="text-xs text-slate-500 font-medium">Track your drawing instructions, storyboard submission deadlines, and approvals.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Tasks & Workflow</h1>
+            <p className="text-xs text-slate-700 font-medium">Track your drawing instructions, storyboard submission deadlines, and approvals.</p>
           </div>
           <button 
             onClick={fetchTasks}

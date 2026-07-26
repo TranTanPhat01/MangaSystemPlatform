@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AssistantSidebar from './AssistantSidebar';
 import AssistantHeader from './AssistantHeader';
 import AssistantDashboardContent from './AssistantDashboardContent';
@@ -9,8 +10,25 @@ import AssistantProgressPanel from './AssistantProgressPanel';
 import { ActiveNav } from '@/types/assistant';
 
 export function AssistantDashboard() {
-  const [activeNav, setActiveNav] = useState<ActiveNav>('Dashboard');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeNav = (searchParams?.get('tab') || 'Dashboard') as ActiveNav;
+  const taskId = searchParams?.get('taskId');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (taskId) {
+      router.replace(`/tasks?taskId=${taskId}`);
+    }
+  }, [taskId, router]);
+
+  const handleNavigate = (n: ActiveNav) => {
+    if (n === 'My Tasks') {
+      router.push('/tasks');
+    } else {
+      router.push(`/assistant?tab=${encodeURIComponent(n)}`);
+    }
+  };
 
   const renderContent = () => {
     switch (activeNav) {
@@ -50,7 +68,7 @@ export function AssistantDashboard() {
 
   return (
     <div className="flex h-screen bg-[#F4F6FA] text-slate-800 overflow-hidden font-sans antialiased">
-      <AssistantSidebar active={activeNav} onNavigate={setActiveNav} open={sidebarOpen} />
+      <AssistantSidebar active={activeNav} onNavigate={handleNavigate} open={sidebarOpen} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <AssistantHeader onToggleSidebar={() => setSidebarOpen(s => !s)} />

@@ -8,9 +8,28 @@ const API_RESPONSE = (data: unknown, message = 'OK') => ({
 
 async function authenticate(page: Page, roles: string[]) {
   await page.context().addCookies([
-    { name: 'auth_token', value: 'e2e-access-token', url: 'http://127.0.0.1:3000' },
-    { name: 'user_roles', value: JSON.stringify(roles), url: 'http://127.0.0.1:3000' },
+    { name: 'auth_token', value: 'e2e-access-token', url: 'http://localhost:3000' },
+    { name: 'user_roles', value: JSON.stringify(roles), url: 'http://localhost:3000' },
   ]);
+  await page.route('**/identity/auth/**', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          accessToken: 'e2e-access-token',
+          refreshToken: 'e2e-refresh-token',
+          user: {
+            id: 'e2e-user',
+            email: 'e2e@example.com',
+            fullName: 'E2E User',
+            roles: roles,
+          }
+        }
+      }),
+    });
+  });
   await page.addInitScript(({ persistedRoles }) => {
     window.localStorage.setItem('manga-auth-storage', JSON.stringify({
       state: {
@@ -95,7 +114,7 @@ test('Editorial Board inputs reader votes and calculates ranking for one issue',
 });
 
 test('Editorial page renders cancellation warning risk and reason from Gateway data', async ({ page }) => {
-  await authenticate(page, ['TantouEditor']);
+  await authenticate(page, ['EditorialBoard']);
 
   await page.route('**/editorial/**', async route => {
     const pathname = new URL(route.request().url()).pathname;

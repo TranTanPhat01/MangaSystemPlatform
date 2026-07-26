@@ -463,6 +463,10 @@ namespace Manga.Editorial.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("rank_position");
 
+                    b.Property<Guid>("ReaderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reader_id");
+
                     b.Property<Guid>("SeriesId")
                         .HasColumnType("uuid")
                         .HasColumnName("series_id");
@@ -473,7 +477,13 @@ namespace Manga.Editorial.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("reader_votes", (string)null);
+                    b.HasIndex("IssueId", "SeriesId", "ReaderId")
+                        .IsUnique();
+
+                    b.ToTable("reader_votes", (string)null, t =>
+                        {
+                            t.HasCheckConstraint("CK_reader_votes_reader_id_not_empty", "reader_id <> '00000000-0000-0000-0000-000000000000'::uuid");
+                        });
                 });
 
             modelBuilder.Entity("Manga.Editorial.Domain.Entities.EditorialComment", b =>

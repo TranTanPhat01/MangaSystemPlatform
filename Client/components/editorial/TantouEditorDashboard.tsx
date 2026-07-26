@@ -27,6 +27,7 @@ export function TantouEditorDashboard() {
   const [reviews, setReviews] = useState<EditorialReviewResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [startingReviewId, setStartingReviewId] = useState<string | null>(null);
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -44,6 +45,28 @@ export function TantouEditorDashboard() {
       setError(typeof message === 'string' && message.trim() ? message : 'Could not fetch review queue.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStartReview = async (reviewId: string) => {
+    setStartingReviewId(reviewId);
+    setError(null);
+    try {
+      const res = await editorialApi.startReview(reviewId);
+      if (res.data.success) {
+        // Update the review in-place so the UI reflects the new InReview status immediately
+        setReviews((prev) =>
+          prev.map((r) => (r.id === reviewId ? res.data.data : r))
+        );
+      } else {
+        setError(res.data.message || 'Could not start review.');
+      }
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: unknown } }; message?: unknown };
+      const message = apiError.response?.data?.message ?? apiError.message;
+      setError(typeof message === 'string' && message.trim() ? message : 'Could not start review.');
+    } finally {
+      setStartingReviewId(null);
     }
   };
 
@@ -154,8 +177,24 @@ export function TantouEditorDashboard() {
                   </div>
                   <div className="flex items-center gap-3">
                     <ReviewStatusBadge status={review.status} />
+                    {review.status === ReviewStatus.Pending && (
+                      <button
+                        onClick={() => void handleStartReview(review.id)}
+                        disabled={startingReviewId === review.id}
+                        aria-label={`Start Review for Chapter ${review.chapterId.slice(0, 8)}`}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 rounded border border-amber-500/20 transition-colors disabled:opacity-50"
+                      >
+                        {startingReviewId === review.id ? (
+                          <RefreshCw size={9} className="animate-spin" />
+                        ) : (
+                          <Play size={9} />
+                        )}
+                        Start Review
+                      </button>
+                    )}
                     <Link
-                      href="/editorial"
+                      href={`/editorial?reviewId=${review.id}`}
+                      aria-label={`Manage Review for Chapter ${review.chapterId.slice(0, 8)}`}
                       className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 rounded border border-indigo-500/20 transition-colors"
                     >
                       Manage <ArrowRight size={9} />

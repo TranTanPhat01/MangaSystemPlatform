@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import DashboardLayoutWrapper from '@/components/layout/DashboardLayoutWrapper';
 import {
   AlertCircle, AlertTriangle, ChevronDown, ChevronUp, FileText,
@@ -40,10 +41,10 @@ function reviewStatusLabel(status: ReviewStatus) {
 
 function ReviewStatusBadge({ status }: { status: ReviewStatus }) {
   const classes: Record<ReviewStatus, string> = {
-    [ReviewStatus.Pending]: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    [ReviewStatus.Pending]: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
     [ReviewStatus.InReview]: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     [ReviewStatus.RevisionRequested]: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-    [ReviewStatus.Approved]: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    [ReviewStatus.Approved]: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
     [ReviewStatus.Rejected]: 'bg-red-500/10 text-red-400 border-red-500/20',
   };
   return <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${classes[status]}`}>{reviewStatusLabel(status)}</span>;
@@ -237,6 +238,7 @@ function VisualReviewPanel({ chapterId, canManage }: { chapterId: string; canMan
       <div className="flex items-center justify-between border-b border-slate-850 pb-2">
         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Visual Review Canvas</span>
         <select
+          aria-label="Select page to review"
           value={selectedPageId || ''}
           onChange={(e) => setSelectedPageId(e.target.value)}
           className="bg-slate-900 border border-slate-800 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none"
@@ -329,6 +331,7 @@ function VisualReviewPanel({ chapterId, canManage }: { chapterId: string; canMan
               <div>
                 <label className="text-[9px] font-bold text-slate-500 uppercase font-mono block mb-1">Type</label>
                 <select
+                  aria-label="Annotation type"
                   value={annotationType}
                   onChange={(e) => setAnnotationType(e.target.value as AnnotationType)}
                   className="w-full text-[11px] bg-slate-950 border border-slate-850 rounded px-2 py-1 text-slate-250 focus:outline-none"
@@ -402,10 +405,10 @@ function VisualReviewPanel({ chapterId, canManage }: { chapterId: string; canMan
   );
 }
 
-export function ReviewCard({ review, canManage, onRefresh }: { review: EditorialReviewResponse; canManage: boolean; onRefresh: () => Promise<void> }) {
+export function ReviewCard({ review, canManage, onRefresh, defaultExpanded }: { review: EditorialReviewResponse; canManage: boolean; onRefresh: () => Promise<void>; defaultExpanded?: boolean }) {
   const [loadedDetail, setLoadedDetail] = useState<EditorialReviewResponse | null>(null);
   const [comments, setComments] = useState<EditorialCommentResponse[]>([]);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -413,7 +416,7 @@ export function ReviewCard({ review, canManage, onRefresh }: { review: Editorial
 
   const detail = loadedDetail ?? review;
 
-  const loadDetail = async () => {
+  const loadDetail = useCallback(async () => {
     setDetailLoading(true);
     setActionError(null);
     try {
@@ -430,7 +433,13 @@ export function ReviewCard({ review, canManage, onRefresh }: { review: Editorial
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, [review.id]);
+
+  useEffect(() => {
+    if (defaultExpanded) {
+      void loadDetail();
+    }
+  }, [defaultExpanded, loadDetail]);
 
   const refreshDetailAndQueue = async () => {
     await loadDetail();
@@ -471,15 +480,15 @@ export function ReviewCard({ review, canManage, onRefresh }: { review: Editorial
     if (nextExpanded) await loadDetail();
   };
 
-  return <div className="p-5 hover:bg-slate-900/20 transition-colors">
+  return <div className="p-5 bg-slate-900 transition-colors">
     <div className="flex justify-between items-start mb-3">
       <div>
-        <h4 className="font-bold text-slate-200 text-sm">Series {compactId(detail.seriesId)} — Chapter {compactId(detail.chapterId)}</h4>
-        <p className="text-xs text-slate-500 mt-0.5">Created {new Date(detail.createdAt).toLocaleDateString()}</p>
+        <h4 className="font-bold text-slate-100 text-sm">Series {compactId(detail.seriesId)} — Chapter {compactId(detail.chapterId)}</h4>
+        <p className="text-xs text-slate-300 mt-0.5">Created {new Date(detail.createdAt).toLocaleDateString()}</p>
       </div>
       <ReviewStatusBadge status={detail.status} />
     </div>
-    {detail.decisionNote && <p className="mb-3 text-xs text-slate-400">Decision note: {detail.decisionNote}</p>}
+    {detail.decisionNote && <p className="mb-3 text-xs text-slate-300">Decision note: {detail.decisionNote}</p>}
     {actionError && <div role="alert" className="flex items-center gap-2 p-2 bg-rose-500/10 border border-rose-500/20 rounded-lg mb-3"><AlertTriangle size={12} className="text-rose-400 shrink-0" /><p className="text-xs text-rose-300">{actionError}</p></div>}
     <div className="flex flex-wrap gap-2 mt-3">
       {canManage && detail.status === ReviewStatus.Pending && <button onClick={() => void performAction('start')} disabled={Boolean(actionLoading)} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg disabled:opacity-50"><Play size={11} />{actionLoading === 'start' ? 'Starting…' : 'Start Review'}</button>}
@@ -493,6 +502,41 @@ export function ReviewCard({ review, canManage, onRefresh }: { review: Editorial
     {canManage && detail.status === ReviewStatus.InReview && <textarea aria-label="Decision note" value={decisionNote} onChange={(event) => setDecisionNote(event.target.value)} placeholder="Decision note (required for revision)" rows={2} className="mt-3 w-full bg-slate-800/60 border border-slate-700/60 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500/50 resize-none" />}
     {expanded && <div className="mt-3 border-t border-slate-800/60 pt-3">
       {detailLoading ? <p className="text-xs text-slate-500">Loading review details…</p> : comments.length ? <div className="space-y-2 mb-3">{comments.map((comment) => <div key={comment.id} className="p-2 bg-slate-800/40 rounded-lg"><p className="text-[10px] font-bold text-slate-400 mb-0.5">User {compactId(comment.createdByUserId)} · {new Date(comment.createdAt).toLocaleDateString()}</p><p className="text-xs text-slate-300">{comment.commentText}</p></div>)}</div> : <p className="text-xs text-slate-600 mb-2">No comments yet.</p>}
+
+      {/* Historical review rounds */}
+      {!detailLoading && detail.history && detail.history.length > 0 && (
+        <div className="mt-4 mb-4 p-3 bg-slate-900/50 border border-slate-800 rounded-lg space-y-3">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Previous Review Rounds</p>
+          <div className="space-y-3">
+            {detail.history.map((hist, index) => (
+              <div key={hist.id} className="p-3 bg-slate-800/30 border border-slate-700/30 rounded-lg space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-300">Round {index + 1}</span>
+                  <ReviewStatusBadge status={hist.status} />
+                </div>
+                {hist.decisionNote && (
+                  <p className="text-xs text-slate-400 font-medium">
+                    <span className="font-semibold text-slate-500">Reason:</span> {hist.decisionNote}
+                  </p>
+                )}
+                <p className="text-[10px] text-slate-500">
+                  Reviewed: {new Date(hist.createdAt).toLocaleDateString()}
+                </p>
+                {hist.comments && hist.comments.length > 0 && (
+                  <div className="mt-2 space-y-1 pl-3 border-l-2 border-slate-700">
+                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Comments</p>
+                    {hist.comments.map((c) => (
+                      <div key={c.id} className="text-[11px] text-slate-400">
+                        <span className="font-semibold text-slate-500">{compactId(c.createdByUserId)}:</span> {c.commentText}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       
       {/* Visual Canvas Annotation for Editor */}
       {!detailLoading && (
@@ -535,8 +579,8 @@ export function CancellationWarningsPanel() {
   const riskLevelColor = (level: CancellationRiskLevel) => {
     if (level === CancellationRiskLevel.Critical) return 'bg-rose-500/10 border-rose-500/20 text-rose-400';
     if (level === CancellationRiskLevel.High) return 'bg-orange-500/10 border-orange-500/20 text-orange-400';
-    if (level === CancellationRiskLevel.Medium) return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
-    return 'bg-slate-500/10 border-slate-500/20 text-slate-400';
+    if (level === CancellationRiskLevel.Medium) return 'bg-amber-500/10 border-amber-500/20 text-amber-300';
+    return 'bg-slate-500/10 border-slate-500/20 text-slate-300';
   };
 
   const riskLevelLabel = (level: CancellationRiskLevel) => {
@@ -551,11 +595,12 @@ export function CancellationWarningsPanel() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldAlert size={13} className="text-rose-400" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Cancellation Warnings</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Cancellation Warnings</h3>
         </div>
         <button
           onClick={() => void loadWarnings()}
           disabled={loading}
+          aria-label="Refresh cancellation warnings"
           className="p-1 hover:bg-slate-800 rounded transition-colors disabled:opacity-50"
         >
           <RefreshCw size={11} className={loading ? 'animate-spin text-indigo-400' : 'text-slate-500'} />
@@ -569,36 +614,36 @@ export function CancellationWarningsPanel() {
         </div>
       )}
 
-      <div className="bg-slate-900/40 border border-slate-800/80 rounded-xl overflow-hidden">
+      <div className="bg-slate-900 border border-slate-800/80 rounded-xl overflow-hidden">
         {loading ? (
           <div className="p-6 text-center">
             <RefreshCw size={16} className="animate-spin text-indigo-400 mx-auto mb-2" />
-            <p className="text-xs text-slate-500 font-semibold">Loading warnings…</p>
+            <p className="text-xs text-slate-300 font-semibold">Loading warnings…</p>
           </div>
         ) : error ? (
           <div className="p-6 text-center">
             <AlertCircle size={22} className="text-rose-500/70 mx-auto mb-2" />
-            <p className="text-xs text-slate-500 font-semibold">Warnings unavailable</p>
-            <p className="text-[10px] text-slate-600 mt-1">Use refresh to try again.</p>
+            <p className="text-xs text-slate-300 font-semibold">Warnings unavailable</p>
+            <p className="text-[10px] text-slate-300 mt-1">Use refresh to try again.</p>
           </div>
         ) : warnings.length === 0 ? (
           <div className="p-6 text-center">
             <ShieldAlert size={22} className="text-slate-700 mx-auto mb-2" />
-            <p className="text-xs text-slate-500 font-semibold">No active warnings</p>
-            <p className="text-[10px] text-slate-600 mt-1">All series are performing well!</p>
+            <p className="text-xs text-slate-300 font-semibold">No active warnings</p>
+            <p className="text-[10px] text-slate-300 mt-1">All series are performing well!</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-800/60">
             {warnings.map((warning) => (
-              <div key={warning.id} className="px-4 py-3 hover:bg-slate-900/20 transition-colors">
+              <div key={warning.id} className="px-4 py-3 bg-slate-900 transition-colors">
                 <div className="flex items-start justify-between gap-3 mb-2">
-                  <h4 className="font-bold text-slate-200 text-xs font-mono">{compactId(warning.seriesId)}</h4>
+                  <h4 className="font-bold text-slate-100 text-xs font-mono">{compactId(warning.seriesId)}</h4>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${riskLevelColor(warning.riskLevel)}`}>
                     {riskLevelLabel(warning.riskLevel)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mb-1">{warning.reason}</p>
-                <p className="text-[10px] text-slate-600">Created {new Date(warning.createdAt).toLocaleDateString()}</p>
+                <p className="text-xs text-slate-300 mb-1">{warning.reason}</p>
+                <p className="text-[10px] text-slate-300">Created {new Date(warning.createdAt).toLocaleDateString()}</p>
               </div>
             ))}
           </div>
@@ -695,6 +740,7 @@ function RankingsPanel() {
         <div className="text-xs text-slate-500 font-semibold">Loading issues…</div>
       ) : issues.length > 0 ? (
         <select
+          aria-label="Select issue for weekly rankings"
           value={selectedIssueId}
           onChange={(e) => setSelectedIssueId(e.target.value)}
           className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 font-semibold focus:outline-none focus:border-indigo-500 transition-colors"
@@ -754,7 +800,9 @@ function RankingsPanel() {
   );
 }
 
-export default function EditorialPage() {
+function EditorialPageContent() {
+  const searchParams = useSearchParams();
+  const activeReviewId = searchParams.get('reviewId');
   const storedRoles = useAuthStore((state) => state.user?.roles);
   const roles = storedRoles ?? EMPTY_ROLES;
   const canManage = roles.some((role) => ['tantoueditor', 'admin'].includes(role.toLowerCase()));
@@ -784,13 +832,13 @@ export default function EditorialPage() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-xl font-bold text-slate-100 mb-1">Editorial Operations</h1>
-            <p className="text-xs text-slate-500 font-medium">Review submitted manuscripts and collaborate with creators.</p>
+            <h1 className="text-xl font-bold text-slate-900 mb-1">Editorial Operations</h1>
+            <p className="text-xs text-slate-700 font-medium">Review submitted manuscripts and collaborate with creators.</p>
           </div>
           <button
             onClick={() => void fetchReviews()}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-400 bg-slate-800/40 border border-slate-700/50 rounded-lg disabled:opacity-50 hover:bg-slate-800 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 border border-slate-700/50 rounded-lg disabled:opacity-50 hover:bg-slate-700 transition-colors"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             Refresh
@@ -820,9 +868,9 @@ export default function EditorialPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Review Queue */}
           <div className="lg:col-span-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-4">
               Manuscripts Review Queue
-              <span className="ml-2 text-slate-600 normal-case font-semibold">({reviews.length})</span>
+              <span className="ml-2 text-slate-700 normal-case font-semibold">({reviews.length})</span>
             </h3>
             {loading ? (
               <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-8 text-center">
@@ -831,14 +879,20 @@ export default function EditorialPage() {
               </div>
             ) : !error && reviews.length === 0 ? (
               <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl p-10 text-center">
-                <FileText size={28} className="text-slate-600 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-slate-500">No reviews in queue</p>
-                <p className="text-xs text-slate-600 mt-1">Waiting for Mangaka to submit chapters for review.</p>
+                <FileText size={28} className="text-slate-300 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-slate-300">No reviews in queue</p>
+                <p className="text-xs text-slate-300 mt-1">Waiting for Mangaka to submit chapters for review.</p>
               </div>
             ) : reviews.length > 0 ? (
-              <div className="bg-slate-900/30 border border-slate-800/80 rounded-xl overflow-hidden divide-y divide-slate-800/60">
+              <div className="bg-slate-900 border border-slate-800/80 rounded-xl overflow-hidden divide-y divide-slate-800/60">
                 {reviews.map((review) => (
-                  <ReviewCard key={review.id} review={review} canManage={canManage} onRefresh={fetchReviews} />
+                  <ReviewCard 
+                    key={review.id} 
+                    review={review} 
+                    canManage={canManage} 
+                    onRefresh={fetchReviews} 
+                    defaultExpanded={review.id === activeReviewId}
+                  />
                 ))}
               </div>
             ) : null}
@@ -854,3 +908,18 @@ export default function EditorialPage() {
     </DashboardLayoutWrapper>
   );
 }
+
+export default function EditorialPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayoutWrapper>
+        <div className="p-8 text-center text-slate-700 text-xs">
+          Loading editorial workspace...
+        </div>
+      </DashboardLayoutWrapper>
+    }>
+      <EditorialPageContent />
+    </Suspense>
+  );
+}
+

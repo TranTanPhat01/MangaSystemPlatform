@@ -33,8 +33,6 @@ export default function TaskListTable({
       onStart(task.id);
     } else if (task.status === TaskStatus.InProgress || task.status === TaskStatus.RevisionRequired) {
       onSubmitClick(task);
-    } else if (task.status === TaskStatus.Submitted) {
-      alert('Tác vụ đã nộp, vui lòng chờ Mangaka phê duyệt.');
     }
   };
 
@@ -113,14 +111,15 @@ export default function TaskListTable({
                   {task.status !== TaskStatus.Approved && task.status !== TaskStatus.Cancelled && (
                     <button
                       onClick={(e) => handleActionButton(e, task)}
-                      disabled={isStarting || isSubmitting}
+                      disabled={isStarting || isSubmitting || task.status === TaskStatus.Submitted}
                       className={clsx(
                         'px-2.5 py-1 text-[10px] font-bold rounded-lg border uppercase transition-all shadow-sm',
                         task.status === TaskStatus.Todo && 'bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border-indigo-500/20 hover:border-indigo-600',
-                        (task.status === TaskStatus.InProgress || task.status === TaskStatus.RevisionRequired) && 'bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border-emerald-500/20 hover:border-emerald-600'
+                        (task.status === TaskStatus.InProgress || task.status === TaskStatus.RevisionRequired) && 'bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white border-emerald-500/20 hover:border-emerald-600',
+                        task.status === TaskStatus.Submitted && 'bg-slate-800/40 text-slate-500 border-slate-700/30 cursor-not-allowed'
                       )}
                     >
-                      {task.status === TaskStatus.Todo ? 'Start' : 'Submit'}
+                      {task.status === TaskStatus.Todo ? 'Start' : task.status === TaskStatus.Submitted ? 'Submitted' : 'Submit'}
                     </button>
                   )}
                 </td>

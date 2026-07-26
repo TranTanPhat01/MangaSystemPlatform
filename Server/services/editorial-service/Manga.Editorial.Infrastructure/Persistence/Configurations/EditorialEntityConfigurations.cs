@@ -62,7 +62,21 @@ internal sealed class PublicationScheduleConfiguration : IEntityTypeConfiguratio
 }
 internal sealed class ReaderVoteConfiguration : IEntityTypeConfiguration<ReaderVote>
 {
-    public void Configure(EntityTypeBuilder<ReaderVote> b) { b.ToTable("reader_votes"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id"); b.Property(x => x.IssueId).HasColumnName("issue_id"); b.Property(x => x.SeriesId).HasColumnName("series_id"); b.Property(x => x.VoteCount).HasColumnName("vote_count"); b.Property(x => x.RankPosition).HasColumnName("rank_position"); b.Property(x => x.ImportedByUserId).HasColumnName("imported_by_user_id"); b.Property(x => x.CreatedAt).HasColumnName("created_at"); }
+    public void Configure(EntityTypeBuilder<ReaderVote> b)
+    {
+        b.ToTable("reader_votes");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id");
+        b.Property(x => x.IssueId).HasColumnName("issue_id");
+        b.Property(x => x.SeriesId).HasColumnName("series_id");
+        b.Property(x => x.ReaderId).HasColumnName("reader_id");
+        b.Property(x => x.VoteCount).HasColumnName("vote_count");
+        b.Property(x => x.RankPosition).HasColumnName("rank_position");
+        b.Property(x => x.ImportedByUserId).HasColumnName("imported_by_user_id");
+        b.Property(x => x.CreatedAt).HasColumnName("created_at");
+        b.HasIndex(x => new { x.IssueId, x.SeriesId, x.ReaderId }).IsUnique();
+        b.ToTable(t => t.HasCheckConstraint("CK_reader_votes_reader_id_not_empty", "reader_id <> '00000000-0000-0000-0000-000000000000'::uuid"));
+    }
 }
 internal sealed class RankingSnapshotConfiguration : IEntityTypeConfiguration<RankingSnapshot>
 {

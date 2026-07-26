@@ -18,7 +18,24 @@ internal sealed class NotificationRepository : INotificationRepository
         await _dbContext.Notifications
             .Where(notification => notification.UserId == userId)
             .OrderByDescending(notification => notification.CreatedAt)
+            .ThenByDescending(notification => notification.Id)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Domain.Entities.Notification>> GetByUserPagedAsync(Guid userId, bool? isRead, int page, int pageSize, CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Notifications.Where(notification => notification.UserId == userId);
+        if (isRead.HasValue)
+        {
+            var targetStatus = isRead.Value ? NotificationStatus.Read : NotificationStatus.Unread;
+            query = query.Where(notification => notification.Status == targetStatus);
+        }
+        return await query
+            .OrderByDescending(notification => notification.CreatedAt)
+            .ThenByDescending(notification => notification.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+    }
 
     public Task<int> CountUnreadAsync(Guid userId, CancellationToken cancellationToken = default) =>
         _dbContext.Notifications.CountAsync(

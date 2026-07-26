@@ -80,7 +80,13 @@ export function UserManagement() {
       
       const res = await adminApi.listUsers(query);
       if (res.data.success) {
-        setUsers(res.data.data.items);
+        const checkedAt = Date.now();
+        setUsers(res.data.data.items.map((user) => ({
+          ...user,
+          status: user.status === 3 || (user.lockoutUntil ? new Date(user.lockoutUntil).getTime() > checkedAt : false)
+            ? 3
+            : user.status,
+        })));
         setTotalItems(res.data.data.totalItems);
         setTotalPages(res.data.data.totalPages);
       } else {
@@ -405,7 +411,7 @@ export function UserManagement() {
               ) : (
                 users.map((u) => {
                   const isSuspended = u.status === 2;
-                  const isLocked = u.status === 3 || (u.lockoutUntil ? new Date(u.lockoutUntil).getTime() > Date.now() : false);
+                  const isLocked = u.status === 3;
                   const statusLabel = isLocked ? 'Locked' : isSuspended ? 'Disabled' : 'Active';
                   return (
                     <tr key={u.id} className="hover:bg-slate-850/10 transition-colors">

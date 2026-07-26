@@ -49,6 +49,15 @@ const loginTranslations = {
   }
 };
 
+const getErrorMessage = (errObj: any): string | null => {
+  if (!errObj) return null;
+  if (typeof errObj === 'string') return errObj;
+  if (typeof errObj === 'object') {
+    return errObj.message || errObj.code || JSON.stringify(errObj);
+  }
+  return null;
+};
+
 interface LoginFormProps {
   t: typeof loginTranslations.VI;
 }
@@ -115,12 +124,14 @@ function LoginForm({ t }: LoginFormProps) {
           router.replace(destination);
         }
       } else {
-        setError(response.data.error || t.invalidCredentials);
+        const errorMsg = getErrorMessage(response.data.error) || t.invalidCredentials;
+        setError(errorMsg);
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      const backendError = err.response?.data?.error || err.response?.data?.message;
-      setError(backendError || t.connectionError);
+      const rawError = err.response?.data?.error || err.response?.data?.message;
+      const errorMsg = getErrorMessage(rawError) || t.connectionError;
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -135,7 +146,7 @@ function LoginForm({ t }: LoginFormProps) {
       )}
 
       <div className="space-y-1.5">
-        <label htmlFor="email" className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+        <label htmlFor="email" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
           {t.emailLabel}
         </label>
         <div className="relative group">
@@ -154,7 +165,7 @@ function LoginForm({ t }: LoginFormProps) {
 
       <div className="space-y-1.5">
         <div className="flex justify-between items-center">
-          <label htmlFor="password" className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          <label htmlFor="password" className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
             {t.passLabel}
           </label>
           <Link href="#" className="text-[10px] font-semibold text-burgundy-800 hover:text-burgundy-950 hover:underline">
@@ -214,7 +225,7 @@ export default function LoginPage() {
 
       <div className="absolute top-5 right-5 z-30">
         <div className="relative group">
-          <button className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 px-2 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold transition-colors">
+          <button className="flex items-center gap-1.5 text-slate-700 hover:text-slate-800 px-2 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold transition-colors">
             <Globe size={14} className="stroke-[2]" />
             <span>{lang === 'VI' ? 'Tiếng Việt (VI)' : 'English (EN)'}</span>
             <ChevronDown size={12} className="stroke-[2.5]" />
@@ -238,10 +249,10 @@ export default function LoginPage() {
           <h1 className="text-4xl font-extrabold tracking-tight text-white mb-4 uppercase">
             MangaFlow
           </h1>
-          <p className="text-slate-400 leading-relaxed text-sm font-semibold">
+          <p className="text-slate-200 leading-relaxed text-sm font-semibold">
             {t.visualText}
           </p>
-          <div className="mt-12 flex justify-center gap-6 text-[10px] text-slate-500 font-mono font-bold uppercase tracking-wider">
+          <div className="mt-12 flex justify-center gap-6 text-[10px] text-slate-300 font-mono font-bold uppercase tracking-wider">
             <span>App Router</span>
             <span>•</span>
             <span>Gateway Ready</span>
@@ -262,7 +273,7 @@ export default function LoginPage() {
             <h2 className="text-xl font-black tracking-tight text-slate-800">
               {t.title}
             </h2>
-            <p className="mt-1.5 text-xs text-slate-500 font-semibold leading-relaxed">
+            <p className="mt-1.5 text-xs text-slate-700 font-semibold leading-relaxed">
               {t.subtitle}
             </p>
           </div>

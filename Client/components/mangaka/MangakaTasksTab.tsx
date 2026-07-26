@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { authApi, AssistantDirectoryItem } from '@/services/auth-api';
 import { mangaApi } from '@/services/manga-api';
+import { fileApi } from '@/services/file-api';
 import {
   ChapterResponse,
   CreateTaskRequest,
@@ -93,7 +94,6 @@ export default function MangakaTasksTab({ triggerModal }: MangakaTasksTabProps) 
         await refresh();
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Load failed'));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const create = async () => {
@@ -410,16 +410,55 @@ export default function MangakaTasksTab({ triggerModal }: MangakaTasksTabProps) 
                         </span>
                       </div>
 
-                      {/* Latest submission */}
-                      {task.latestSubmission && (
-                        <div className="mt-2 p-2 bg-slate-950/50 rounded-lg border border-slate-800/50">
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Latest Submission</p>
-                          <p className="text-xs text-slate-400 font-medium">
-                            {task.latestSubmission.note || 'No note provided'}
-                          </p>
-                          {task.submissionHistory && task.submissionHistory.length > 1 && (
-                            <p className="text-[9px] text-slate-600 mt-0.5">{task.submissionHistory.length} submission(s) total</p>
-                          )}
+                      {/* Submission History */}
+                      {task.submissionHistory && task.submissionHistory.length > 0 && (
+                        <div className="mt-3 space-y-2 border border-slate-800/60 rounded-xl p-3 bg-slate-950/40">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Submission History</p>
+                          <div className="space-y-2 divide-y divide-slate-850">
+                            {task.submissionHistory.map((sub, sIdx) => {
+                              const versionNum = (task.submissionHistory?.length ?? 0) - sIdx;
+                              const isLatest = sIdx === 0;
+                              return (
+                                <div key={sub.id} className="pt-2 first:pt-0 space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-indigo-400">Version {versionNum}</span>
+                                    {isLatest && <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1 py-0.5 rounded text-[8px] font-black uppercase">Latest</span>}
+                                    <span className="text-[9px] text-slate-600 font-semibold">
+                                      {new Date(sub.submittedAt).toLocaleString()}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-slate-500">
+                                      by Assistant {sub.submittedByUserId.slice(0, 8)}
+                                    </span>
+                                  </div>
+                                  {sub.note && <p className="text-xs text-slate-300 italic bg-slate-900/40 p-1.5 rounded border border-slate-850">&quot;{sub.note}&quot;</p>}
+                                  {sub.fileId && (
+                                    <div className="flex items-center justify-between pt-1">
+                                      <span className="text-[9px] text-slate-600 font-mono">File: {sub.fileId.slice(0, 8)}...</span>
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            const dl = await fileApi.downloadFile(sub.fileId!);
+                                            if (!(dl.data instanceof Blob)) throw new Error('Download failed');
+                                            const url = window.URL.createObjectURL(dl.data);
+                                            const link = document.createElement('a');
+                                            link.href = url;
+                                            link.download = `submission-v${versionNum}.png`;
+                                            link.click();
+                                            window.URL.revokeObjectURL(url);
+                                          } catch (err) {
+                                            triggerModal('Download Error', 'Could not download the submission file.');
+                                          }
+                                        }}
+                                        className="inline-flex items-center gap-1 text-[9px] text-indigo-450 hover:text-indigo-400 font-bold"
+                                      >
+                                        Download File
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>

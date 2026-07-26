@@ -156,4 +156,68 @@ public sealed class MangaManagementGrpcServiceImpl : MangaManagementGrpcService.
         var studio = await _repository.GetByIdAsync<Studio>(series.StudioId, cancellationToken);
         return studio?.OwnerId == userId;
     }
+
+    public override async Task<ValidatePageAndAnnotationResponse> ValidatePageAndAnnotation(
+        ValidatePageAndAnnotationRequest request,
+        ServerCallContext context)
+    {
+        var response = new ValidatePageAndAnnotationResponse
+        {
+            PageValid = true,
+            AnnotationValid = true
+        };
+
+        if (!Guid.TryParse(request.ChapterId, out var chapterId))
+        {
+            response.PageValid = false;
+            response.AnnotationValid = false;
+            return response;
+        }
+
+        Guid? parsedPageId = null;
+        if (!string.IsNullOrWhiteSpace(request.PageId) && Guid.TryParse(request.PageId, out var pageId))
+        {
+            parsedPageId = pageId;
+            var page = await _repository.GetByIdAsync<Page>(pageId, context.CancellationToken);
+            if (page is null || page.ChapterId != chapterId)
+            {
+                response.PageValid = false;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AnnotationId) && Guid.TryParse(request.AnnotationId, out var annotationId))
+        {
+            var annotation = await _repository.GetByIdAsync<Annotation>(annotationId, context.CancellationToken);
+            if (annotation is null || !parsedPageId.HasValue || annotation.PageId != parsedPageId.Value)
+            {
+                response.AnnotationValid = false;
+            }
+        }
+
+        return response;
+    }
+
+    public override async Task<UpdateSeriesStatusResponse> UpdateSeriesStatus(UpdateSeriesStatusRequest request, ServerCallContext context)
+    {
+        if (!Guid.TryParse(request.SeriesId, out var seriesId)) return new UpdateSeriesStatusResponse { Success = false };
+        var series = await _repository.GetByIdAsync<Series>(seriesId, context.CancellationToken);
+        if (series is null) return new UpdateSeriesStatusResponse { Success = false };
+
+        if (!Enum.TryParse<SeriesStatus>(request.Status, true, out var newStatus))
+        {
+            return new UpdateSeriesStatusResponse { Success = false };
+        }
+
+        if (series.Status == SeriesStatus.Cancelled)
+        {
+            return new UpdateSeriesStatusResponse { Success = false };
+        }
+
+        series.Status = newStatus;
+        series.UpdatedAt = DateTime.UtcNow;
+        await _unitOfWork.SaveChangesAsync(context.CancellationToken);
+        
+        _logger.LogInformation("Series {SeriesId} status updated to {Status} via gRPC.", series.Id, series.Status);
+        return new UpdateSeriesStatusResponse { Success = true };
+    }
 }

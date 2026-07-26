@@ -134,7 +134,7 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
             {sidebarOpen && (
               <div className="overflow-hidden text-left">
                 <p className="text-[13px] font-extrabold text-white tracking-wide leading-none">MangaFlow</p>
-                <p className="text-[10px] font-semibold text-white/35 tracking-widest mt-0.5 uppercase font-mono">
+                <p className="text-[10px] font-semibold text-white/75 tracking-widest mt-0.5 uppercase font-mono">
                   {user?.roles?.[0] || 'Admin'}
                 </p>
               </div>
@@ -142,9 +142,11 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
           </div>
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 rounded-md hover:bg-white/[0.04] text-white/40 hover:text-white/80 transition-colors"
+            aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+            aria-expanded={sidebarOpen}
+            className="p-1.5 rounded-md hover:bg-white/[0.04] text-white/75 hover:text-white transition-colors"
           >
-            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+            {sidebarOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
           </button>
         </div>
 
@@ -156,11 +158,11 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="text-xs font-bold text-white truncate">{user?.fullName || 'User Profile'}</p>
-              <p className="text-[10px] text-white/40 font-medium truncate capitalize font-mono">
+              <p className="text-[10px] text-white/60 font-medium truncate capitalize font-mono">
                 {user?.roles?.join(', ')}
               </p>
             </div>
-            <ChevronRight size={12} className="text-white/20 shrink-0" />
+            <ChevronRight size={12} className="text-white/50 shrink-0" />
           </div>
         )}
 
@@ -177,7 +179,7 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 group relative',
                   isActive 
                     ? 'bg-white/[0.08] text-white' 
-                    : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'
+                    : 'text-white/75 hover:text-white hover:bg-white/[0.04]'
                 )}
               >
                 {/* Active left glow bar */}
@@ -189,7 +191,7 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
                   size={17} 
                   className={clsx(
                     'shrink-0 transition-colors',
-                    isActive ? 'text-burgundy-400' : 'text-white/30 group-hover:text-white/60'
+                    isActive ? 'text-burgundy-400' : 'text-white/70 group-hover:text-white'
                   )} 
                 />
                 {sidebarOpen && <span className="truncate">{link.name}</span>}
@@ -204,7 +206,7 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
         {/* Header */}
         <header className="h-16 bg-white/95 backdrop-blur-md border-b border-slate-100 px-5 flex items-center justify-between shrink-0 sticky top-0 z-20 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
           <div className="flex flex-col shrink-0 text-left">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none">Workspace</p>
+            <p className="text-[10px] font-semibold text-slate-700 uppercase tracking-widest leading-none">Workspace</p>
             <h2 className="text-sm font-black text-slate-800 leading-snug mt-0.5">
               Xin chào, {user?.fullName || 'User'}! 👋
             </h2>
@@ -219,7 +221,7 @@ export default function DashboardLayoutWrapper({ children }: DashboardLayoutWrap
               <button
                 onClick={logout}
                 disabled={isLoggingOut}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-200 disabled:opacity-50"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-700 hover:text-rose-800 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all duration-200 disabled:opacity-50"
               >
                 <LogOut size={13} />
                 <span>{isLoggingOut ? 'Signing Out…' : 'Sign Out'}</span>

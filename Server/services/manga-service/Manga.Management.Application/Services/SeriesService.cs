@@ -3,6 +3,8 @@ using Manga.Management.Application.Common;
 using Manga.Management.Application.DTOs;
 using Manga.Management.Domain.Entities;
 using Manga.Management.Domain.Enums;
+using Manga.BuildingBlocks.Messaging;
+using Manga.Contracts.Events;
 
 namespace Manga.Management.Application.Services;
 
@@ -11,12 +13,14 @@ public sealed class SeriesService : ISeriesService
     private readonly IManagementRepository _repository;
     private readonly IManagementUnitOfWork _unitOfWork;
     private readonly IManagementAccessService _access;
+    private readonly IEventBus _eventBus;
 
-    public SeriesService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IManagementAccessService access)
+    public SeriesService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IManagementAccessService access, IEventBus eventBus)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
         _access = access;
+        _eventBus = eventBus;
     }
 
     public async Task<Result<SeriesResponse>> CreateAsync(CreateSeriesRequest request, Guid currentUserId, CancellationToken cancellationToken = default)
@@ -57,13 +61,20 @@ public sealed class SeriesService : ISeriesService
         series.Title = string.IsNullOrWhiteSpace(request.Title) ? series.Title : request.Title.Trim();
         series.Description = request.Description ?? series.Description;
         series.Genre = request.Genre ?? series.Genre;
-        series.Status = request.Status ?? series.Status;
+        if (request.Status.HasValue && request.Status.Value != series.Status)
+        {
+            if (request.Status.Value is SeriesStatus.Approved or SeriesStatus.Rejected or SeriesStatus.RevisionRequested or SeriesStatus.Submitted or SeriesStatus.Hiatus or SeriesStatus.Cancelled)
+            {
+                return Result<SeriesResponse>.Failure("Status updates must be processed via specific editorial commands.");
+            }
+            series.Status = request.Status.Value;
+        }
         series.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<SeriesResponse>.Success(ToResponse(series));
     }
 
-    public async Task<Result<SeriesResponse>> SubmitProposalAsync(Guid id, Guid currentUserId, CancellationToken cancellationToken = default)
+    public async Task<Result<SeriesResponse>> SubmitProposalAsync(Guid id, Guid currentUserId, Guid? boardUserId, CancellationToken cancellationToken = default)
     {
         var series = await _repository.GetByIdAsync<Series>(id, cancellationToken);
         if (series is null) return Result<SeriesResponse>.Failure("Series not found.");
@@ -73,6 +84,17 @@ public sealed class SeriesService : ISeriesService
         series.Status = SeriesStatus.Submitted;
         series.UpdatedAt = DateTime.UtcNow;
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (boardUserId.HasValue)
+        {
+            await _eventBus.PublishAsync(new ProposalSubmittedEvent(
+                Guid.NewGuid(),
+                series.Id,
+                currentUserId,
+                boardUserId.Value,
+                DateTime.UtcNow), cancellationToken);
+        }
+
         return Result<SeriesResponse>.Success(ToResponse(series));
     }
 

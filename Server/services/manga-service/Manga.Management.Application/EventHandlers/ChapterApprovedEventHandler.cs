@@ -33,6 +33,10 @@ public sealed class ChapterApprovedEventHandler : IIntegrationEventHandler<Chapt
             {
                 _logger.LogWarning("ChapterApprovedEvent skipped because chapter {ChapterId} was not found.", eventMessage.ChapterId);
             }
+            else if (chapter.Status != ChapterStatus.SubmittedForReview)
+            {
+                _logger.LogWarning("ChapterApprovedEvent ignored for chapter {ChapterId} because current status is {Status} (expected SubmittedForReview).", chapter.Id, chapter.Status);
+            }
             else
             {
                 chapter.Status = ChapterStatus.Approved;

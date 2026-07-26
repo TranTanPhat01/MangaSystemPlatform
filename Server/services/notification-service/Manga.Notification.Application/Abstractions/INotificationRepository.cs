@@ -6,6 +6,7 @@ namespace Manga.Notification.Application.Abstractions;
 public interface INotificationRepository
 {
     Task<IReadOnlyList<Domain.Entities.Notification>> GetByUserAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Domain.Entities.Notification>> GetByUserPagedAsync(Guid userId, bool? isRead, int page, int pageSize, CancellationToken cancellationToken = default);
 
     Task<int> CountUnreadAsync(Guid userId, CancellationToken cancellationToken = default);
 

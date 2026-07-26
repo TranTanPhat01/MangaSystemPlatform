@@ -308,12 +308,11 @@ export default function MangakaSeriesTab({
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-10 text-center">
           <BookOpen size={28} className="text-slate-700 mx-auto mb-3" />
           <p className="text-sm font-semibold text-slate-600">No series yet.</p>
-          <p className="text-xs text-slate-700 mt-1">Click "New Series" to create your first manga series.</p>
+          <p className="text-xs text-slate-700 mt-1">Click &quot;New Series&quot; to create your first manga series.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {series.map((item) => {
-            const statusKey = typeof item.status === 'number' ? item.status : String(item.status);
             const statusStr = typeof item.status === 'number'
               ? ['','Draft','Submitted','Approved','Ongoing','Hiatus','Cancelled','Completed','RevisionRequested','Rejected'][item.status] ?? String(item.status)
               : String(item.status);

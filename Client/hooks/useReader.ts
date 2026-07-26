@@ -95,13 +95,14 @@ export const useReader = () => {
   });
 
   // Ratings
-  const getRatingSummary = (seriesId: string) => {
+  const useRatingSummary = (seriesId: string) => {
     return useQuery({
       queryKey: ['rating-summary', seriesId],
       queryFn: async () => {
         const res = await readerApi.getRatingSummary(seriesId);
         return res.data.data || null;
       },
+      enabled: Boolean(seriesId),
     });
   };
 
@@ -123,23 +124,25 @@ export const useReader = () => {
   });
 
   // Comments
-  const getSeriesComments = (seriesId: string) => {
+  const useSeriesComments = (seriesId: string) => {
     return useQuery({
       queryKey: ['series-comments', seriesId],
       queryFn: async () => {
         const res = await readerApi.getSeriesComments(seriesId, 1, 100);
         return res.data.data || [];
       },
+      enabled: Boolean(seriesId),
     });
   };
 
-  const getChapterComments = (chapterId: string) => {
+  const useChapterComments = (chapterId: string) => {
     return useQuery({
       queryKey: ['chapter-comments', chapterId],
       queryFn: async () => {
         const res = await readerApi.getChapterComments(chapterId, 1, 100);
         return res.data.data || [];
       },
+      enabled: Boolean(chapterId),
     });
   };
 
@@ -210,13 +213,13 @@ export const useReader = () => {
     clearHistory,
 
     // Ratings
-    getRatingSummary,
+    useRatingSummary,
     rateSeriesMutation,
     removeRating,
 
     // Comments
-    getSeriesComments,
-    getChapterComments,
+    useSeriesComments,
+    useChapterComments,
     addSeriesComment,
     addChapterComment,
     updateComment,

@@ -26,6 +26,9 @@ public sealed class ChapterSubmittedForReviewEventHandler : NotificationEventHan
                 $"Chapter {eventMessage.ChapterId} has been submitted for editorial review.",
                 NotificationType.ChapterSubmittedForReview,
                 eventMessage.MessageId,
-                ct);
+                ct,
+                resourceType: "Chapter",
+                resourceId: eventMessage.ChapterId,
+                actionUrl: $"/series/{eventMessage.SeriesId}/chapters/{eventMessage.ChapterId}");
         }, cancellationToken);
 }

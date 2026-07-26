@@ -54,7 +54,7 @@ export default function BoardSidebar({ active, onNavigate, open }: BoardSidebarP
         {open && (
           <div>
             <p className="text-[13px] font-extrabold text-white tracking-wide leading-none">MangaFlow</p>
-            <p className="text-[9px] font-bold text-white/30 tracking-widest mt-0.5 uppercase font-mono">Editorial Board</p>
+            <p className="text-[9px] font-bold text-white/75 tracking-widest mt-0.5 uppercase font-mono">Editorial Board</p>
           </div>
         )}
       </div>
@@ -67,9 +67,9 @@ export default function BoardSidebar({ active, onNavigate, open }: BoardSidebarP
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] font-bold text-white truncate">Hiroshi Tanaka</p>
-            <p className="text-[9px] text-white/35 font-medium truncate">Editorial Board</p>
+            <p className="text-[9px] text-white/75 font-medium truncate">Editorial Board</p>
           </div>
-          <ChevronRight size={11} className="text-white/20 shrink-0" />
+          <ChevronRight size={11} className="text-white/70 shrink-0" />
         </div>
       )}
 
@@ -86,7 +86,7 @@ export default function BoardSidebar({ active, onNavigate, open }: BoardSidebarP
                 'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all duration-150 group relative',
                 isActive
                   ? 'bg-white/[0.08] text-white'
-                  : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'
+                  : 'text-white/75 hover:text-white hover:bg-white/[0.04]'
               )}
             >
               {isActive && (
@@ -96,7 +96,7 @@ export default function BoardSidebar({ active, onNavigate, open }: BoardSidebarP
                 size={17}
                 className={clsx(
                   'shrink-0 transition-colors',
-                  isActive ? 'text-plum-400' : 'text-white/30 group-hover:text-white/60'
+                  isActive ? 'text-plum-400' : 'text-white/70 group-hover:text-white'
                 )}
               />
               {open && <span className="flex-1 text-left truncate">{name}</span>}
@@ -116,17 +116,17 @@ export default function BoardSidebar({ active, onNavigate, open }: BoardSidebarP
         <div className="mx-3 mb-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <HardDrive size={11} className="text-white/30" />
-              <span className="text-[9px] font-semibold text-white/30 uppercase tracking-wider">Storage</span>
+              <HardDrive size={11} className="text-white/70" />
+              <span className="text-[9px] font-semibold text-white/75 uppercase tracking-wider">Storage</span>
             </div>
-            <span className="text-[9px] font-bold text-white/40">64%</span>
+            <span className="text-[9px] font-bold text-white/75">64%</span>
           </div>
           <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
             <div className="h-full w-[64%] rounded-full bg-gradient-to-r from-plum-700 to-plum-400" />
           </div>
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-[9px] font-bold text-white/50">128 GB</span>
-            <span className="text-[9px] text-white/20">/ 200 GB</span>
+            <span className="text-[9px] text-white/75">/ 200 GB</span>
           </div>
         </div>
       )}

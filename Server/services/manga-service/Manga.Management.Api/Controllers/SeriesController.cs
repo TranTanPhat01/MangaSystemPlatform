@@ -39,8 +39,8 @@ public sealed class SeriesController : ApiControllerBase
 
     [Authorize(Roles = "Mangaka,Admin")]
     [HttpPost("{id:guid}/submit-proposal")]
-    public async Task<IActionResult> SubmitProposal(Guid id, CancellationToken cancellationToken) =>
-        ToActionResult(await _seriesService.SubmitProposalAsync(id, CurrentUserId, cancellationToken));
+    public async Task<IActionResult> SubmitProposal(Guid id, [FromQuery] Guid? boardUserId, CancellationToken cancellationToken) =>
+        ToActionResult(await _seriesService.SubmitProposalAsync(id, CurrentUserId, boardUserId, cancellationToken));
 
     [Authorize(Roles = "EditorialBoard,Admin")]
     [HttpPost("{id:guid}/approve-proposal")]

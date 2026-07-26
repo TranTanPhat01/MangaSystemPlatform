@@ -34,15 +34,6 @@ export const fileApi = {
     return api.post<ApiResponse<FileUploadResponse>>('/files/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress,
-    }).then((response) => {
-      const dataObj = response.data?.data;
-      return {
-        ...response,
-        data: {
-          ...response.data,
-          data: dataObj ? { ...dataObj, id: dataObj.fileId } : undefined,
-        },
-      };
     });
   },
 

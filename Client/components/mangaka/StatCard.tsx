@@ -104,7 +104,7 @@ export default function StatCard({
 
       {/* Value */}
       <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+        <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-1">
           {title}
         </p>
         <p className={clsx('text-3xl font-black tabular-nums tracking-tight', c.valueFg)}>
@@ -114,7 +114,7 @@ export default function StatCard({
 
       {/* Description */}
       {description && (
-        <p className="text-[10px] font-semibold text-slate-400 mt-2 leading-snug">
+        <p className="text-[10px] font-semibold text-slate-700 mt-2 leading-snug">
           {description}
         </p>
       )}

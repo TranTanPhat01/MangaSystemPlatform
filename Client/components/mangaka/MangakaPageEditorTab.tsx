@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Layers, Plus, X, AlertCircle, Loader2, MessageSquare, Highlighter, Eye, MousePointerClick } from 'lucide-react';
 import { mangaApi } from '@/services/manga-api';
 import { fileApi } from '@/services/file-api';
@@ -37,13 +37,31 @@ export default function MangakaPageEditorTab({ triggerModal }: MangakaPageEditor
   const { annotations, loading: annotationsLoading, createAnnotation, deleteAnnotation } =
     usePageAnnotations(selectedPageId);
 
+  const loadPages = useCallback(async (currentChapterId: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await mangaApi.getPages(currentChapterId);
+      if (res.data?.success) {
+        setPages(res.data.data || []);
+      } else {
+        setError(res.data?.message || 'Unable to load pages.');
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string; error?: string } } };
+      setError(error.response?.data?.message || error.response?.data?.error || 'Could not reach manga service.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const storedChapterId = window.localStorage.getItem('manga-current-chapter-id');
     if (storedChapterId) {
       setChapterId(storedChapterId);
       void loadPages(storedChapterId);
     }
-  }, []);
+  }, [loadPages]);
 
   // Fetch page image url when selected page changes
   useEffect(() => {
@@ -68,24 +86,6 @@ export default function MangakaPageEditorTab({ triggerModal }: MangakaPageEditor
         });
     }
   }, [selectedPageId, pages]);
-
-  const loadPages = async (currentChapterId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await mangaApi.getPages(currentChapterId);
-      if (res.data?.success) {
-        setPages(res.data.data || []);
-      } else {
-        setError(res.data?.message || 'Unable to load pages.');
-      }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string; error?: string } } };
-      setError(error.response?.data?.message || error.response?.data?.error || 'Could not reach manga service.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCreatePage = async () => {
     if (!chapterId) {
@@ -379,7 +379,7 @@ export default function MangakaPageEditorTab({ triggerModal }: MangakaPageEditor
                       <Layers className="text-slate-300" size={32} />
                       <p className="text-xs font-bold text-slate-700">No Image Uploaded</p>
                       <p className="text-[11px] text-slate-500 max-w-xs leading-relaxed font-semibold">
-                        This page has no attached canvas file. Upload an asset under the "Files" tab or attach a file to begin visual editing.
+                        This page has no attached canvas file. Upload an asset under the &quot;Files&quot; tab or attach a file to begin visual editing.
                       </p>
                     </div>
                   )}

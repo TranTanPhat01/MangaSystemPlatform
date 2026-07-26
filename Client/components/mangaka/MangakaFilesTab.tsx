@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Upload, FolderKanban } from 'lucide-react';
 import { fileApi } from '@/services/file-api';
 import { FileAssetResponse } from '@/types/file';
@@ -12,11 +12,7 @@ export default function MangakaFilesTab({ triggerModal }: MangakaFilesTabProps) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    void loadFiles();
-  }, []);
-
-  const loadFiles = async () => {
+  const loadFiles = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -31,7 +27,11 @@ export default function MangakaFilesTab({ triggerModal }: MangakaFilesTabProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadFiles();
+  }, [loadFiles]);
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

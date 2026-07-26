@@ -20,6 +20,12 @@ public sealed class Notification
 
     public Guid? SourceEventId { get; set; }
 
+    public string? ResourceType { get; set; }
+
+    public Guid? ResourceId { get; set; }
+
+    public string? ActionUrl { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? ReadAt { get; set; }

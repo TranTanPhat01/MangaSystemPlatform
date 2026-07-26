@@ -194,7 +194,7 @@ export function ChapterManagement({ seriesId, seriesTitle, onChapterPublished }:
         const pageNumber = pages.length + 1;
         const pageRes = await adminApi.createPage(selectedChapter.id, {
           pageNumber,
-          fileId: fileAsset.fileId || fileAsset.id || ''
+          fileId: fileAsset.fileId
         });
         
         if (pageRes.data.success) {
@@ -359,9 +359,9 @@ export function ChapterManagement({ seriesId, seriesTitle, onChapterPublished }:
                             <div key={page.id} className="relative bg-slate-950 border border-slate-850 p-2 rounded flex flex-col items-center justify-between text-center group">
                               <FileText size={18} className="text-slate-500 mb-1" />
                               <span className="font-bold text-[9px] text-slate-400 font-mono">Page {page.pageNumber}</span>
-                              {page.fileAssetId && (
+                              {(page.fileId || page.fileAssetId) && (
                                 <a 
-                                  href={`http://localhost:5200/files/${page.fileAssetId}/download`}
+                                  href={`http://localhost:5200/files/${page.fileId || page.fileAssetId}/download`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   title="Download Page Asset"

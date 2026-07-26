@@ -1,0 +1,76 @@
+Production Runtime BEFORE Snapshot
+Checked: 2026-07-26 Asia/Saigon
+
+Scope:
+- Local/staging Docker runtime only.
+- Secrets/tokens/passwords are not printed.
+
+Command: docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+Exit code: 0
+
+Containers:
+- server-gateway-1: server-gateway, Up 3 hours (healthy), 0.0.0.0:5200->8080/tcp
+- server-manga-api-1: server-manga-api, Up 3 hours (healthy), 8080-8081/tcp
+- server-editorial-api-1: server-editorial-api, Up 3 hours (healthy), 8080-8081/tcp
+- server-file-api-1: server-file-api, Up 3 hours (healthy), 8080-8081/tcp
+- server-identity-api-1: server-identity-api, Up 3 hours (healthy), 8080-8081/tcp
+- server-notification-api-1: server-notification-api, Up 3 hours (healthy), 8080-8081/tcp
+- manga-postgres: postgres:16, Up 3 hours (healthy), 0.0.0.0:5433->5432/tcp
+- manga-redis: redis:7, Up 3 hours (healthy), 0.0.0.0:6379->6379/tcp
+- manga-rabbitmq: rabbitmq:3-management, Up 3 hours (healthy), 0.0.0.0:5672->5672/tcp, 0.0.0.0:15672->15672/tcp
+- manga-seq: datalust/seq:latest, Up 3 hours, 0.0.0.0:5341->80/tcp
+- manga-minio: minio/minio, Up 3 hours (healthy), 0.0.0.0:9000-9001->9000-9001/tcp
+
+Command: docker inspect server-gateway-1 --format metadata only
+Exit code: 0
+
+Gateway metadata:
+- Name: /server-gateway-1
+- Image: server-gateway
+- Status: running
+- Health: healthy
+- RestartPolicy: unless-stopped
+- NetworkMode: server_manga-network
+
+Command: docker compose ps
+Exit code: 1
+
+Result:
+error while interpolating services.gateway.environment.Gateway__Cors__AllowedOrigins__0:
+required variable GATEWAY__CORS__ALLOWEDORIGINS__0 is missing a value
+
+Command: docker compose config
+Exit code: 1
+
+Result:
+error while interpolating services.file-api.environment.Storage__Minio__PublicBaseUrl:
+required variable MINIO_PUBLIC_BASE_URL is missing a value
+
+Note:
+- Raw resolved compose config was not printed because it can expose secret values.
+- This fail-fast behavior confirms the current source compose requires production env values.
+
+Gateway runtime environment allowlist:
+- ASPNETCORE_ENVIRONMENT = Production
+- Gateway__TransportSecurity__EnableHttpsRedirection = false
+- Gateway__TransportSecurity__EnableHsts = false
+- ForwardedHeaders__Enabled = false
+- Gateway__Cors__AllowedOrigins__0 = http://localhost:3000
+- Gateway__Cors__AllowedOrigins__1 = http://localhost:3001
+- Storage__Minio__PublicBaseUrl = <not set>
+- FileStorage__Minio__PublicBaseUrl = <not set>
+- MINIO_PUBLIC_BASE_URL = <not set>
+- SIGNALR_PUBLIC_URL = <not set>
+- PUBLIC_APP_URL = <not set>
+- PUBLIC_API_URL = <not set>
+- ASPNETCORE_URLS = http://+:8080
+
+Confirmed old runtime state:
+- localhost CORS: YES
+- HTTPS redirection disabled: YES
+- HSTS disabled: YES
+- Forwarded headers disabled: YES
+
+Before verdict:
+- Runtime is healthy but not production-ready.
+- Production Readiness Gate remains FAIL before recreation.

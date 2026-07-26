@@ -42,6 +42,76 @@ public sealed class MangaFileAccessGrpcTests
         unrelated.Allowed.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task AssistantCannotDownloadAnotherAssistantsSubmission()
+    {
+        var assistantAId = Guid.NewGuid();
+        var assistantBId = Guid.NewGuid();
+        var submissionFileId = Guid.NewGuid();
+        
+        var repository = CreateGraph(Guid.NewGuid(), assistantAId, out _, out var taskId);
+        repository.Seed(Guid.NewGuid(), new Submission { TaskId = taskId, SubmittedByUserId = assistantAId, FileId = submissionFileId });
+        
+        using var host = CreateHost(repository);
+        var client = host.CreateClient(channel => new MangaManagementGrpcService.MangaManagementGrpcServiceClient(channel));
+
+        var result = await client.CanAccessFileAsync(new CanAccessFileRequest { UserId = assistantBId.ToString(), FileId = submissionFileId.ToString(), AccessType = "Read" }, GrpcTestHost.ValidMetadata());
+
+        result.Allowed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task MangakaOwnerCanDownloadSubmission()
+    {
+        var assistantId = Guid.NewGuid();
+        var submissionFileId = Guid.NewGuid();
+        
+        var repository = CreateGraph(Guid.NewGuid(), assistantId, out var ownerId, out var taskId);
+        repository.Seed(Guid.NewGuid(), new Submission { TaskId = taskId, SubmittedByUserId = assistantId, FileId = submissionFileId });
+        
+        using var host = CreateHost(repository);
+        var client = host.CreateClient(channel => new MangaManagementGrpcService.MangaManagementGrpcServiceClient(channel));
+
+        var result = await client.CanAccessFileAsync(new CanAccessFileRequest { UserId = ownerId.ToString(), FileId = submissionFileId.ToString(), AccessType = "Read" }, GrpcTestHost.ValidMetadata());
+
+        result.Allowed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UnrelatedUserCannotGetSubmissionFileUrl()
+    {
+        var assistantId = Guid.NewGuid();
+        var submissionFileId = Guid.NewGuid();
+        
+        var repository = CreateGraph(Guid.NewGuid(), assistantId, out _, out var taskId);
+        repository.Seed(Guid.NewGuid(), new Submission { TaskId = taskId, SubmittedByUserId = assistantId, FileId = submissionFileId });
+        
+        using var host = CreateHost(repository);
+        var client = host.CreateClient(channel => new MangaManagementGrpcService.MangaManagementGrpcServiceClient(channel));
+
+        var result = await client.CanAccessFileAsync(new CanAccessFileRequest { UserId = Guid.NewGuid().ToString(), FileId = submissionFileId.ToString(), AccessType = "Read" }, GrpcTestHost.ValidMetadata());
+
+        result.Allowed.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AssistantCannotSubmitAnotherUsersPrivateFile()
+    {
+        var assistantId = Guid.NewGuid();
+        var privateFileId = Guid.NewGuid();
+        
+        // Setup graph but the file does not belong to any page/task assigned to assistantId
+        var repository = CreateGraph(Guid.NewGuid(), assistantId, out _, out _);
+        
+        using var host = CreateHost(repository);
+        var client = host.CreateClient(channel => new MangaManagementGrpcService.MangaManagementGrpcServiceClient(channel));
+
+        // AssistantId tries to access a private file uploaded by someone else
+        var result = await client.CanAccessFileAsync(new CanAccessFileRequest { UserId = assistantId.ToString(), FileId = privateFileId.ToString(), AccessType = "Read" }, GrpcTestHost.ValidMetadata());
+
+        result.Allowed.Should().BeFalse();
+    }
+
     private static GrpcTestHost CreateHost(FakeManagementRepository repository) => new(
         services => { services.AddSingleton<IManagementRepository>(repository); services.AddSingleton<IManagementUnitOfWork, FakeManagementUnitOfWork>(); },
         endpoints => endpoints.MapGrpcService<MangaManagementGrpcServiceImpl>());

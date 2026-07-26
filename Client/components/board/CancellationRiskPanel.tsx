@@ -62,7 +62,7 @@ const RankingLineChart = ({ data }: { data: RankingItemResponse[] }) => {
 
   return (
     <div className="bg-slate-950 border border-slate-850 rounded-xl p-4 my-4 select-none">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 font-mono">Ranking History Trend Line</p>
+      <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-3 font-mono">Ranking History Trend Line</p>
       <div className="relative w-full">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible">
           {/* Horizontal lines */}
@@ -105,7 +105,7 @@ const RankingLineChart = ({ data }: { data: RankingItemResponse[] }) => {
                 x={p.x}
                 y={height - 4}
                 textAnchor="middle"
-                className="text-[9px] font-bold fill-slate-500 font-mono"
+                className="text-[9px] font-bold fill-slate-300 font-mono"
               >
                 {p.label}
               </text>
@@ -130,13 +130,30 @@ export default function CancellationRiskPanel({
   onSeriesChange,
   onStatusChange,
 }: Props) {
+  const [confirmAction, setConfirmAction] = React.useState<'hiatus' | 'cancel' | null>(null);
+  const [confirmReason, setConfirmReason] = React.useState('');
+  const [confirmError, setConfirmError] = React.useState<string | null>(null);
+
   const selectedSeries = series.find((item) => item.id === selectedSeriesId);
   const activeWarnings = warnings.filter((item) => !item.isResolved);
+  const isCancelled = selectedSeries?.status === 6 || String(selectedSeries?.status) === 'Cancelled';
+  const isHiatus = selectedSeries?.status === 5 || String(selectedSeries?.status) === 'Hiatus';
 
-  const handleStatusChange = async (action: 'hiatus' | 'cancel') => {
-    if (!selectedSeriesId) return;
-    if (action === 'cancel' && !window.confirm('Are you sure you want to cancel this series?')) return;
-    await onStatusChange(action);
+  const handleStatusChange = (action: 'hiatus' | 'cancel') => {
+    setConfirmAction(action);
+    setConfirmReason('');
+    setConfirmError(null);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!confirmReason.trim()) {
+      setConfirmError('Lý do thực hiện hành động không được để trống.');
+      return;
+    }
+    if (confirmAction) {
+      await onStatusChange(confirmAction);
+      setConfirmAction(null);
+    }
   };
 
   return (
@@ -147,7 +164,7 @@ export default function CancellationRiskPanel({
             <AlertTriangle size={18} className="text-amber-600" />
             Cancellation Risk Review
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-slate-700 mt-1">
             Monitor warnings, ranking history, and publication status of series.
           </p>
         </div>
@@ -174,27 +191,45 @@ export default function CancellationRiskPanel({
       ) : isLoading ? (
         <div className="p-8 flex items-center justify-center gap-3">
           <Loader2 className="animate-spin text-slate-400" size={20} />
-          <p className="text-sm text-slate-500">Loading data...</p>
+          <p className="text-sm text-slate-700">Loading data...</p>
         </div>
       ) : (
         <div className="p-5 space-y-6">
           {/* Series info & actions */}
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
             <div>
-              <p className="text-xs uppercase text-slate-500 font-semibold mb-1">Series</p>
-              <h3 className="font-bold text-lg text-slate-800">{selectedSeries?.title || selectedSeriesId}</h3>
+              <p className="text-xs uppercase text-slate-700 font-semibold mb-1">Series</p>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-lg text-slate-800">{selectedSeries?.title || selectedSeriesId}</h3>
+                {isCancelled && (
+                  <span className="bg-rose-105 text-rose-700 text-xs px-2 py-0.5 rounded-full font-bold border border-rose-200">
+                    Cancelled
+                  </span>
+                )}
+                {isHiatus && (
+                  <span className="bg-amber-105 text-amber-700 text-xs px-2 py-0.5 rounded-full font-bold border border-amber-200">
+                    Hiatus
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <button
+                disabled={isCancelled || isHiatus}
                 onClick={() => void handleStatusChange('hiatus')}
-                className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-800 transition-colors"
+                className={`inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-800 transition-colors ${
+                  (isCancelled || isHiatus) ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
                 <Pause size={14} />
                 Set Hiatus
               </button>
               <button
+                disabled={isCancelled}
                 onClick={() => void handleStatusChange('cancel')}
-                className="inline-flex items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-800 transition-colors"
+                className={`inline-flex items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 px-4 py-2 text-sm font-semibold text-rose-800 transition-colors ${
+                  isCancelled ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               >
                 <XCircle size={14} />
                 Cancel Series
@@ -211,7 +246,7 @@ export default function CancellationRiskPanel({
             {activeWarnings.length === 0 ? (
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-center">
                 <p className="text-sm text-emerald-700 font-semibold">No active warnings</p>
-                <p className="text-xs text-emerald-600 mt-1">This series is performing well.</p>
+                <p className="text-xs text-emerald-700 mt-1">This series is performing well.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -274,6 +309,58 @@ export default function CancellationRiskPanel({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 text-slate-200">
+            <h3 className="text-sm font-bold text-slate-250">
+              Xác nhận thay đổi trạng thái Series
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed font-semibold">
+              Bạn có chắc chắn muốn chuyển series sang trạng thái{' '}
+              <span className="text-amber-500 font-extrabold">
+                {confirmAction === 'hiatus' ? 'Tạm ngưng (Hiatus)' : 'Hủy bỏ (Cancel)'}
+              </span>
+              ? Hành động này sẽ tạm dừng hoặc hủy các tác vụ liên quan.
+            </p>
+            
+            <div className="space-y-1.5 text-left">
+              <label htmlFor="confirm-reason" className="text-[10px] font-bold uppercase tracking-wider text-slate-300">
+                Lý do thực hiện hành động:
+              </label>
+              <textarea
+                id="confirm-reason"
+                rows={3}
+                value={confirmReason}
+                onChange={(e) => {
+                  setConfirmReason(e.target.value);
+                  setConfirmError(null);
+                }}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium"
+                placeholder="Nhập lý do chi tiết..."
+              />
+              {confirmError && (
+                <p className="text-[10px] text-rose-500 font-medium">{confirmError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setConfirmAction(null)}
+                className="px-3.5 py-2 border border-slate-800 text-slate-300 hover:text-slate-100 hover:bg-slate-800/40 rounded-lg text-xs font-bold transition-all"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmSubmit}
+                className="px-3.5 py-2 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-indigo-700/10"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>

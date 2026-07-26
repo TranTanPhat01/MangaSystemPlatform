@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { 
   Layers, Plus, RefreshCw, Send, AlertCircle, CheckCircle2, 
   XCircle, Clock, BarChart3, ChevronRight
@@ -44,15 +44,7 @@ export default function MangakaChaptersTab({ series, triggerModal }: MangakaChap
     setTimeout(() => setSuccess(null), 4000);
   };
 
-  useEffect(() => {
-    if (series.length > 0) {
-      const firstId = series[0].id;
-      setSelectedSeriesId(firstId);
-      void loadChapters(firstId);
-    }
-  }, [series]);
-
-  const loadChapters = async (seriesId: string) => {
+  const loadChapters = useCallback(async (seriesId: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -68,7 +60,15 @@ export default function MangakaChaptersTab({ series, triggerModal }: MangakaChap
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (series.length > 0) {
+      const firstId = series[0].id;
+      setSelectedSeriesId(firstId);
+      void loadChapters(firstId);
+    }
+  }, [series, loadChapters]);
 
   const handleCreateChapter = async () => {
     if (!selectedSeriesId || !chapterNumber) return;
@@ -250,7 +250,7 @@ export default function MangakaChaptersTab({ series, triggerModal }: MangakaChap
           <div className="p-8 text-center">
             <Layers size={24} className="text-slate-700 mx-auto mb-3" />
             <p className="text-sm font-semibold text-slate-600">No chapters yet.</p>
-            <p className="text-xs text-slate-700 mt-1">Click "New Chapter" to add the first chapter to this series.</p>
+            <p className="text-xs text-slate-700 mt-1">Click &quot;New Chapter&quot; to add the first chapter to this series.</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-800/60">

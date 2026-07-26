@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fileApi } from '@/services/file-api';
 import { mangaApi } from '@/services/manga-api';
-import { TaskPriority, TaskResponse, TaskStatus, TaskSubmissionResponse } from '@/types/manga';
+import { TaskPriority, TaskResponse, TaskStatus, TaskSubmissionResponse, TaskRevisionResponse } from '@/types/manga';
 
 export interface TaskItemUI {
   id: string;
@@ -20,6 +20,8 @@ export interface TaskItemUI {
   notes?: string;
   latestSubmission?: TaskSubmissionResponse | null;
   submissionHistory: TaskSubmissionResponse[];
+  description?: string;
+  revisions: TaskRevisionResponse[];
   isMock: false;
 }
 
@@ -57,6 +59,8 @@ function toTaskItem(task: TaskResponse): TaskItemUI {
     notes: task.latestSubmission?.note ?? undefined,
     latestSubmission: task.latestSubmission,
     submissionHistory: task.submissionHistory ?? (task.latestSubmission ? [task.latestSubmission] : []),
+    description: task.description ?? undefined,
+    revisions: task.revisions ?? [],
     isMock: false,
   };
 }
@@ -70,14 +74,21 @@ export function useTasks() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (overrideSelectedTaskId?: string) => {
     setIsLoading(true); setError(null);
     try {
       const response = await mangaApi.getMyTasks();
       if (!response.data.success) throw new Error(response.data.message || 'Failed to fetch tasks.');
       const mapped = response.data.data.map(toTaskItem);
       setTasks(mapped);
-      setSelectedTask((current) => mapped.find((task) => task.id === current?.id) ?? mapped[0] ?? null);
+      
+      const targetId = overrideSelectedTaskId || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('taskId') : null);
+      if (targetId && !mapped.some(t => t.id === targetId)) {
+        setError("Task not found or you do not have permission to access it.");
+      }
+      setSelectedTask((current) => 
+        mapped.find((task) => task.id === (targetId ?? current?.id)) ?? mapped[0] ?? null
+      );
     } catch (error: unknown) {
       setTasks([]); setSelectedTask(null); setError(toErrorMessage(error, 'load'));
     } finally { setIsLoading(false); }
@@ -102,7 +113,7 @@ export function useTasks() {
       const trimmedNote = note?.trim();
       const response = await mangaApi.submitTask(
         id,
-        trimmedNote ? { fileId: fileData.fileId || fileData.id, note: trimmedNote } : { fileId: fileData.fileId || fileData.id }
+        trimmedNote ? { fileId: fileData.fileId, note: trimmedNote } : { fileId: fileData.fileId }
       );
       if (!response.data.success) throw new Error(response.data.message || 'Unable to submit task.');
       await fetchTasks(); setSuccessMessage('Task submission sent.');
@@ -121,9 +132,12 @@ export function useTasks() {
   };
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void fetchTasks(); }, 0);
+    const timer = window.setTimeout(() => {
+      const targetId = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('taskId') : undefined;
+      void fetchTasks(targetId ?? undefined);
+    }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
-  return { tasks, selectedTask, isLoading, isStarting, isSubmitting, error, successMessage, fetchTasks, selectTask: setSelectedTask, startTask, submitTask, downloadPageAsset, clearError: () => setError(null), clearSuccess: () => setSuccessMessage(null) };
+  return { tasks, selectedTask, isLoading, isStarting, isSubmitting, error, successMessage, fetchTasks: () => void fetchTasks(), selectTask: setSelectedTask, startTask, submitTask, downloadPageAsset, clearError: () => setError(null), clearSuccess: () => setSuccessMessage(null) };
 }

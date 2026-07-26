@@ -34,4 +34,44 @@ describe('Editorial review UI', () => {
     await waitFor(() => expect(api.getReviewComments).toHaveBeenCalledWith('review-1'));
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
+
+  it('renders history rounds when expanded by default', async () => {
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const reviewWithHistory: EditorialReviewResponse = {
+      ...review,
+      history: [
+        {
+          id: 'old-round-1',
+          status: ReviewStatus.RevisionRequested,
+          decisionNote: 'Dialogue fix needed',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T01:00:00Z',
+          comments: [
+            {
+              id: 'c-1',
+              reviewId: 'old-round-1',
+              commentText: 'First comment text',
+              createdByUserId: 'editor-1',
+              isResolved: false,
+              createdAt: '2026-01-01T00:10:00Z',
+            }
+          ]
+        }
+      ]
+    };
+
+    api.getReview.mockResolvedValue({ data: { success: true, data: reviewWithHistory } });
+
+    render(<ReviewCard review={review} canManage onRefresh={onRefresh} defaultExpanded={true} />);
+
+    await waitFor(() => expect(api.getReview).toHaveBeenCalledWith('review-1'));
+    
+    // Check that history header and reason are rendered
+    await waitFor(() => {
+      expect(screen.getByText('Previous Review Rounds')).toBeDefined();
+      expect(screen.getByText('Round 1')).toBeDefined();
+      expect(screen.getByText(/Dialogue fix needed/)).toBeDefined();
+      expect(screen.getByText(/First comment text/)).toBeDefined();
+    });
+  });
 });

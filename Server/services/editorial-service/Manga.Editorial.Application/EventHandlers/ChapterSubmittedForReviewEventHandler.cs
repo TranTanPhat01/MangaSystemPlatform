@@ -31,11 +31,12 @@ public sealed class ChapterSubmittedForReviewEventHandler : IIntegrationEventHan
 
         try
         {
-            var existingReview = (await _repository.ListAsync<EditorialReview>(
+            var reviews = await _repository.ListAsync<EditorialReview>(
                 review => review.ChapterId == eventMessage.ChapterId,
-                cancellationToken)).FirstOrDefault();
+                cancellationToken);
+            var latestReview = reviews.OrderByDescending(r => r.CreatedAt).FirstOrDefault();
 
-            if (existingReview is null)
+            if (latestReview is null)
             {
                 await _repository.AddAsync(new EditorialReview
                 {
@@ -48,14 +49,24 @@ public sealed class ChapterSubmittedForReviewEventHandler : IIntegrationEventHan
 
                 _logger.LogInformation("EditorialReview created from ChapterSubmittedForReviewEvent for chapter {ChapterId}.", eventMessage.ChapterId);
             }
+            else if (latestReview.Status is EditorialReviewStatus.Approved or EditorialReviewStatus.RevisionRequested or EditorialReviewStatus.Rejected)
+            {
+                await _repository.AddAsync(new EditorialReview
+                {
+                    ChapterId = eventMessage.ChapterId,
+                    SeriesId = eventMessage.SeriesId,
+                    RequestedByUserId = eventMessage.SubmittedByUserId,
+                    Status = EditorialReviewStatus.Pending,
+                    CreatedAt = DateTime.UtcNow
+                }, cancellationToken);
+
+                _logger.LogInformation("Next round EditorialReview created from ChapterSubmittedForReviewEvent for chapter {ChapterId}.", eventMessage.ChapterId);
+            }
             else
             {
-                existingReview.RequestedByUserId = eventMessage.SubmittedByUserId;
-                existingReview.ReviewerUserId = null;
-                existingReview.Status = EditorialReviewStatus.Pending;
-                existingReview.DecisionNote = null;
-                existingReview.UpdatedAt = DateTime.UtcNow;
-                _logger.LogInformation("EditorialReview reopened from ChapterSubmittedForReviewEvent for chapter {ChapterId}.", eventMessage.ChapterId);
+                latestReview.RequestedByUserId = eventMessage.SubmittedByUserId;
+                latestReview.UpdatedAt = DateTime.UtcNow;
+                _logger.LogInformation("Active EditorialReview updated from ChapterSubmittedForReviewEvent for chapter {ChapterId}.", eventMessage.ChapterId);
             }
 
             inbox.Status = InboxMessageStatus.Processed;

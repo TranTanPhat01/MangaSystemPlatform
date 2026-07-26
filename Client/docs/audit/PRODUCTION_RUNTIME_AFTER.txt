@@ -1,0 +1,67 @@
+Production Runtime AFTER Snapshot
+Checked: 2026-07-26 Asia/Saigon
+
+Scope:
+- Local/staging production-like Docker runtime.
+- Compose project: manga-prodlike.
+- Fresh project-scoped volumes were used to avoid mutating the previous server_* named volumes.
+- Secrets/tokens/passwords are not printed.
+
+Commands:
+- docker compose --env-file .env.production.local config --quiet
+- docker compose --env-file .env.production.local down
+- docker compose -p manga-prodlike --env-file .env.production.local up -d --build --force-recreate
+- docker compose -p manga-prodlike --env-file .env.production.local ps
+
+Results:
+- config --quiet exit code: 0
+- default-project down exit code: 0
+- first default-project up exit code: 1 because old Postgres named volume retained the previous password.
+- final manga-prodlike project up exit code: 0.
+
+Container recreate result:
+- manga-prodlike-gateway-1: healthy, port 5200->8080
+- manga-prodlike-identity-api-1: healthy
+- manga-prodlike-manga-api-1: healthy
+- manga-prodlike-editorial-api-1: healthy
+- manga-prodlike-file-api-1: healthy
+- manga-prodlike-notification-api-1: healthy
+- manga-postgres: healthy
+- manga-rabbitmq: healthy
+- manga-redis: healthy
+- manga-minio: healthy
+- manga-seq: running
+
+Gateway runtime environment allowlist:
+- ASPNETCORE_ENVIRONMENT = Production
+- Gateway__TransportSecurity__EnableHttpsRedirection = true
+- Gateway__TransportSecurity__EnableHsts = true
+- ForwardedHeaders__Enabled = true
+- Gateway__Cors__AllowedOrigins__0 = https://app.manga.local
+- Gateway__Cors__AllowedOrigins__1 = <empty>
+- ASPNETCORE_URLS = http://+:8080
+
+File service MinIO public URL allowlist:
+- ASPNETCORE_ENVIRONMENT = Production
+- Storage__Provider = Minio
+- FileStorage__Provider = Minio
+- Storage__Minio__PublicBaseUrl = https://api.manga.local/minio
+- FileStorage__Minio__PublicBaseUrl = https://api.manga.local/minio
+
+Health smoke:
+- curl http://localhost:5200/health/live
+- Exit code: 0
+- HTTP status: 200
+- X-Correlation-Id present: yes
+
+Confirmed production-like runtime state:
+- ASPNETCORE_ENVIRONMENT=Production: YES
+- localhost CORS removed from gateway runtime: YES
+- HTTPS redirection enabled in gateway runtime: YES
+- HSTS enabled in gateway runtime: YES
+- Forwarded headers enabled in gateway runtime: YES
+- MinIO public URL is non-localhost HTTPS in file service runtime: YES
+
+After verdict:
+- Container recreate and production-like environment configuration: PASS.
+- TLS/reverse proxy, HTTPS redirect, HSTS header, WSS, CORS, migration, backup/restore, partial failure, observability, and full Playwright clean-exit still require separate evidence before ACCEPTED.

@@ -19,6 +19,8 @@ import {
   RefreshCw,
   X
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { resolveNotificationRoute } from '@/lib/notification-router';
 import { NotificationResponse, NotificationType } from '@/types/notification';
 
 export default function NotificationDropdown() {
@@ -37,11 +39,21 @@ export default function NotificationDropdown() {
     reconcileAfterReconnect,
   } = useNotificationStore();
   const accessToken = useAuthStore((state) => state.accessToken);
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('disconnected');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const connectionRef = useRef<HubConnection | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const handleNotificationClick = async (notification: NotificationResponse) => {
+    if (notification.status === 1) {
+      await markAsRead(notification.id);
+    }
+    setIsOpen(false);
+    const targetRoute = resolveNotificationRoute(notification);
+    router.push(targetRoute);
+  };
 
   // Fetch notifications on mount
   useEffect(() => {
@@ -53,7 +65,7 @@ export default function NotificationDropdown() {
   useEffect(() => {
     if (!accessToken) return;
 
-    const connection = createSignalRConnection(accessToken);
+    const connection = createSignalRConnection(() => useAuthStore.getState().accessToken || '');
     connectionRef.current = connection;
 
     // Backend may emit either name – register both to be safe
@@ -70,8 +82,8 @@ export default function NotificationDropdown() {
       reconnectTimeoutRef.current = setTimeout(() => {
         if (accessToken) {
         console.log('[SignalR] Attempting manual reconnect...');
-        startSignalRConnection(connection).then(() => {
-          setConnectionStatus('connected');
+        startSignalRConnection(connection).then((success) => {
+          setConnectionStatus(success ? 'connected' : 'disconnected');
           });
         }
       }, 5000); // 5 second retry
@@ -115,8 +127,8 @@ export default function NotificationDropdown() {
       scheduleReconnect(connection);
     });
 
-    startSignalRConnection(connection).then(() => {
-      setConnectionStatus('connected');
+    startSignalRConnection(connection).then((success) => {
+      setConnectionStatus(success ? 'connected' : 'disconnected');
     });
 
     // Cleanup function
@@ -133,15 +145,31 @@ export default function NotificationDropdown() {
 
  
 
+  // Polling fallback when SignalR is unavailable
+  useEffect(() => {
+    if (connectionStatus === 'connected') return;
+
+    const interval = setInterval(() => {
+      console.log('[Notification] SignalR not connected. Fallback polling...');
+      void fetchNotifications();
+      void fetchUnreadCount();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [connectionStatus, fetchNotifications, fetchUnreadCount]);
+
   // Click outside listener
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        console.log('[DEBUG] Click outside detected. Target:', event.target);
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const getIcon = (type: NotificationType) => {
@@ -186,17 +214,24 @@ export default function NotificationDropdown() {
     <div className="relative" ref={dropdownRef}>
       {/* Bell Button with connection indicator */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        id="bell-notification-btn"
+        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
+        onClick={() => {
+          console.log('[DEBUG] Bell button clicked! Current isOpen state:', isOpen);
+          setIsOpen(!isOpen);
+        }}
         className="relative p-2 text-slate-400 hover:text-slate-200 rounded-lg hover:bg-slate-800/80 border border-transparent hover:border-slate-800/40 transition-all duration-200"
       >
-        <Bell size={20} />
+        <Bell size={20} aria-hidden="true" />
         {unreadCount > 0 && (
-          <span className="absolute top-0.5 right-0.5 h-4 min-w-4 px-1 flex items-center justify-center bg-indigo-600 text-[9px] font-bold text-white rounded-full border border-slate-900 shadow-md">
+          <span className="absolute top-0.5 right-0.5 h-4 min-w-4 px-1 flex items-center justify-center bg-indigo-600 text-[9px] font-bold text-white rounded-full border border-slate-900 shadow-md" aria-hidden="true">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
         {/* Connection status indicator */}
-        <span className={`absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full border border-slate-900 ${
+        <span aria-hidden="true" className={`absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full border border-slate-900 ${
           connectionStatus === 'connected' ? 'bg-emerald-500' : 
           connectionStatus === 'reconnecting' ? 'bg-yellow-500 animate-pulse' : 
           'bg-slate-600'
@@ -205,7 +240,7 @@ export default function NotificationDropdown() {
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 md:w-96 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/80 overflow-hidden z-50 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
+        <div id="notification-dropdown-container" role="dialog" aria-label="Notifications" className="absolute right-0 mt-2 w-80 md:w-96 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl shadow-black/80 overflow-hidden z-50 transition-all animate-in fade-in slide-in-from-top-2 duration-200">
           {/* Header */}
           <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
             <span className="font-semibold text-sm text-slate-200">Notifications</span>
@@ -273,7 +308,16 @@ export default function NotificationDropdown() {
                 notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 transition-colors flex gap-3 ${
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleNotificationClick(notification)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleNotificationClick(notification);
+                      }
+                    }}
+                    className={`p-4 transition-colors flex gap-3 cursor-pointer outline-none focus:bg-slate-800/60 ${
                       notification.status === 1 ? 'bg-indigo-600/5 hover:bg-indigo-600/10' : 'hover:bg-slate-800/30'
                     }`}
                   >
@@ -305,7 +349,10 @@ export default function NotificationDropdown() {
                     <div className="flex flex-col gap-1 self-center">
                       {notification.status === 1 && (
                         <button
-                          onClick={() => markAsRead(notification.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                          }}
                           className="p-1 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 rounded-md transition-all duration-150"
                           title="Mark as read"
                         >
@@ -313,7 +360,10 @@ export default function NotificationDropdown() {
                         </button>
                       )}
                       <button
-                        onClick={() => deleteNotification(notification.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteNotification(notification.id);
+                        }}
                         className="p-1 text-slate-600 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all duration-150"
                         title="Delete notification"
                       >

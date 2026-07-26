@@ -4,14 +4,14 @@ services:
     container_name: manga-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     ports: ["5433:5432"]
     volumes:
       - manga_postgres_data:/var/lib/postgresql/data
       - ./infrastructure/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER is required}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -23,8 +23,8 @@ services:
     container_name: manga-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
     ports: ["5672:5672", "15672:15672"]
     volumes: [manga_rabbitmq_data:/var/lib/rabbitmq]
     healthcheck:
@@ -56,8 +56,8 @@ services:
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
     ports: ["9000:9000", "9001:9001"]
     volumes: [manga_minio_data:/data]
     healthcheck:
@@ -74,7 +74,7 @@ services:
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
-      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD:-admin123}
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD:?SEQ_ADMIN_PASSWORD is required}
     ports: ["5341:80"]
     volumes: [manga_seq_data:/data]
     networks: [manga-network]
@@ -86,20 +86,20 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
-      Jwt__Issuer: ${JWT_ISSUER}
-      Jwt__Audience: ${JWT_AUDIENCE}
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
-      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY:?INTERNAL_GRPC_API_KEY is required}
       Kestrel__Endpoints__Rest__Url: http://+:8080
       Kestrel__Endpoints__Grpc__Url: http://+:8081
-      ConnectionStrings__IdentityDb: Host=postgres;Port=5432;Database=IdentityDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      ConnectionStrings__IdentityDb: Host=postgres;Port=5432;Database=IdentityDB;Username=${POSTGRES_USER:?POSTGRES_USER is required};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       RabbitMQ__HostName: rabbitmq
-      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
-      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
       Redis__ConnectionString: redis:6379
       MinIO__Endpoint: minio:9000
-      MinIO__AccessKey: ${MINIO_ROOT_USER:-admin}
-      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      MinIO__AccessKey: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
       Serilog__WriteTo__1__Args__serverUrl: http://seq
       IdentityBootstrap__Enabled: ${IDENTITY_BOOTSTRAP_ENABLED:-false}
       IdentityBootstrap__RecoveryEnabled: ${IDENTITY_BOOTSTRAP_RECOVERY_ENABLED:-false}
@@ -125,20 +125,20 @@ services:
       dockerfile: services/manga-service/Manga.Management.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      Jwt__Issuer: ${JWT_ISSUER}
-      Jwt__Audience: ${JWT_AUDIENCE}
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
-      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY:?INTERNAL_GRPC_API_KEY is required}
       Kestrel__Endpoints__Rest__Url: http://+:8080
       Kestrel__Endpoints__Grpc__Url: http://+:8081
-      ConnectionStrings__MangaDb: Host=postgres;Port=5432;Database=MangaManagementDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      ConnectionStrings__MangaDb: Host=postgres;Port=5432;Database=MangaManagementDB;Username=${POSTGRES_USER:?POSTGRES_USER is required};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       RabbitMQ__HostName: rabbitmq
-      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
-      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
       Redis__ConnectionString: redis:6379
       MinIO__Endpoint: minio:9000
-      MinIO__AccessKey: ${MINIO_ROOT_USER:-admin}
-      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      MinIO__AccessKey: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
       Grpc__Identity__Address: http://identity-api:8081
       Grpc__File__Address: http://file-api:8081
       Serilog__WriteTo__1__Args__serverUrl: http://seq
@@ -150,31 +150,31 @@ services:
       dockerfile: services/file-service/Manga.File.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      Jwt__Issuer: ${JWT_ISSUER}
-      Jwt__Audience: ${JWT_AUDIENCE}
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
-      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY:?INTERNAL_GRPC_API_KEY is required}
       Kestrel__Endpoints__Rest__Url: http://+:8080
       Kestrel__Endpoints__Grpc__Url: http://+:8081
-      ConnectionStrings__FileDb: Host=postgres;Port=5432;Database=FileServiceDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      ConnectionStrings__FileDb: Host=postgres;Port=5432;Database=FileServiceDB;Username=${POSTGRES_USER:?POSTGRES_USER is required};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       RabbitMQ__HostName: rabbitmq
-      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
-      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
       Redis__ConnectionString: redis:6379
       MinIO__Endpoint: minio:9000
-      MinIO__AccessKey: ${MINIO_ROOT_USER:-admin}
-      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      MinIO__AccessKey: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      MinIO__SecretKey: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
       Storage__Provider: Minio
       Storage__Minio__Endpoint: minio:9000
-      Storage__Minio__AccessKey: ${MINIO_ROOT_USER:-admin}
-      Storage__Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
-      Storage__Minio__PublicBaseUrl: http://localhost:9000
+      Storage__Minio__AccessKey: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      Storage__Minio__SecretKey: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+      Storage__Minio__PublicBaseUrl: ${MINIO_PUBLIC_BASE_URL:?MINIO_PUBLIC_BASE_URL is required}
       FileStorage__Provider: Minio
       FileStorage__Minio__Endpoint: minio:9000
-      FileStorage__Minio__AccessKey: ${MINIO_ROOT_USER:-admin}
-      FileStorage__Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-password123}
+      FileStorage__Minio__AccessKey: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+      FileStorage__Minio__SecretKey: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
       FileStorage__Minio__BucketName: manga-files
-      FileStorage__Minio__PublicBaseUrl: http://localhost:9000
+      FileStorage__Minio__PublicBaseUrl: ${MINIO_PUBLIC_BASE_URL:?MINIO_PUBLIC_BASE_URL is required}
       Grpc__Manga__Address: http://manga-api:8081
       Serilog__WriteTo__1__Args__serverUrl: http://seq
 
@@ -185,15 +185,15 @@ services:
       dockerfile: services/editorial-service/Manga.Editorial.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      Jwt__Issuer: ${JWT_ISSUER}
-      Jwt__Audience: ${JWT_AUDIENCE}
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
-      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY:?INTERNAL_GRPC_API_KEY is required}
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__EditorialDb: Host=postgres;Port=5432;Database=EditorialDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      ConnectionStrings__EditorialDb: Host=postgres;Port=5432;Database=EditorialDB;Username=${POSTGRES_USER:?POSTGRES_USER is required};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       RabbitMQ__HostName: rabbitmq
-      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
-      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
       Redis__ConnectionString: redis:6379
       Grpc__Manga__Address: http://manga-api:8081
       Serilog__WriteTo__1__Args__serverUrl: http://seq
@@ -205,15 +205,15 @@ services:
       dockerfile: services/notification-service/Manga.Notification.Api/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      Jwt__Issuer: ${JWT_ISSUER}
-      Jwt__Audience: ${JWT_AUDIENCE}
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
-      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      InternalGrpc__ApiKey: ${INTERNAL_GRPC_API_KEY:?INTERNAL_GRPC_API_KEY is required}
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__NotificationDb: Host=postgres;Port=5432;Database=NotificationDB;Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-123456}
+      ConnectionStrings__NotificationDb: Host=postgres;Port=5432;Database=NotificationDB;Username=${POSTGRES_USER:?POSTGRES_USER is required};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       RabbitMQ__HostName: rabbitmq
-      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:-guest}
-      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RabbitMQ__UserName: ${RABBITMQ_DEFAULT_USER:?RABBITMQ_DEFAULT_USER is required}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
       Redis__ConnectionString: redis:6379
       Serilog__WriteTo__1__Args__serverUrl: http://seq
 
@@ -224,11 +224,11 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      Jwt__Issuer: ${JWT_ISSUER}
-      Jwt__Audience: ${JWT_AUDIENCE}
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
-      Gateway__Cors__AllowedOrigins__0: ${GATEWAY__CORS__ALLOWEDORIGINS__0:-http://localhost:3000}
-      Gateway__Cors__AllowedOrigins__1: ${GATEWAY__CORS__ALLOWEDORIGINS__1:-http://localhost:3001}
+      Jwt__Issuer: ${JWT_ISSUER:?JWT_ISSUER is required}
+      Jwt__Audience: ${JWT_AUDIENCE:?JWT_AUDIENCE is required}
+      Jwt__SecretKey: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      Gateway__Cors__AllowedOrigins__0: ${GATEWAY__CORS__ALLOWEDORIGINS__0:?GATEWAY__CORS__ALLOWEDORIGINS__0 is required}
+      Gateway__Cors__AllowedOrigins__1: ${GATEWAY__CORS__ALLOWEDORIGINS__1:-}
       Gateway__HealthCheckTimeoutSeconds: ${GATEWAY__HEALTHCHECKTIMEOUTSECONDS:-3}
       Gateway__RateLimiting__PermitLimit: ${GATEWAY__RATELIMITING__PERMITLIMIT:-300}
       Gateway__RateLimiting__WindowSeconds: ${GATEWAY__RATELIMITING__WINDOWSECONDS:-60}
@@ -236,10 +236,11 @@ services:
       Gateway__FileProxyTimeoutSeconds: ${GATEWAY__FILEPROXYTIMEOUTSECONDS:-600}
       Gateway__MaxFileUploadBytes: ${GATEWAY__MAXFILEUPLOADBYTES:-52428800}
       Gateway__Health__ExposeServiceDetails: ${GATEWAY__HEALTH__EXPOSESERVICEDETAILS:-false}
-      Gateway__TransportSecurity__EnableHttpsRedirection: ${GATEWAY__TRANSPORTSECURITY__ENABLEHTTPSREDIRECTION:-false}
-      Gateway__TransportSecurity__EnableHsts: ${GATEWAY__TRANSPORTSECURITY__ENABLEHSTS:-false}
+      Gateway__TransportSecurity__EnableHttpsRedirection: ${GATEWAY__TRANSPORTSECURITY__ENABLEHTTPSREDIRECTION:-true}
+      Gateway__TransportSecurity__EnableHsts: ${GATEWAY__TRANSPORTSECURITY__ENABLEHSTS:-true}
       Gateway__TransportSecurity__HstsMaxAgeDays: ${GATEWAY__TRANSPORTSECURITY__HSTSMAXAGEDAYS:-365}
-      ForwardedHeaders__Enabled: ${FORWARDEDHEADERS__ENABLED:-false}
+      Gateway__TransportSecurity__HttpsPort: ${GATEWAY__TRANSPORTSECURITY__HTTPSPORT:-443}
+      ForwardedHeaders__Enabled: ${FORWARDEDHEADERS__ENABLED:-true}
       ForwardedHeaders__KnownProxies__0: ${FORWARDEDHEADERS__KNOWNPROXIES__0:-}
       ForwardedHeaders__KnownNetworks__0: ${FORWARDEDHEADERS__KNOWNNETWORKS__0:-}
       OpenTelemetry__OtlpEndpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}

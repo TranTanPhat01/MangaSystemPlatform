@@ -16,6 +16,7 @@ obj
 .env.local
 .env.*
 !.env.example
+!.env.production.example
 
 # IDE
 .vscode
@@ -23,6 +24,10 @@ obj
 
 # Logs
 *.log
+*.pfx
+*.pem
+*.key
+*.crt
 
 # OS
 .DS_Store

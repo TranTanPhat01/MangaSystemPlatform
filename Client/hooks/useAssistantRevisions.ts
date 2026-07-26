@@ -34,7 +34,7 @@ export function useAssistantRevisions() {
           return {
             taskId: task.id,
             pageNumber: task.pageNumber,
-            chapterInfo: `Chapter ${task.pageNumber}`,
+            chapterInfo: `Ch.${task.pageNumber}`,
             reason: latestRevision?.reason || 'Revisions requested',
             requestedDate: latestRevision?.createdAt
               ? new Date(latestRevision.createdAt).toLocaleDateString()

@@ -23,7 +23,8 @@ internal sealed class MangaTaskConfiguration : IEntityTypeConfiguration<MangaTas
         builder.Property(task => task.Priority).HasColumnName("priority").HasConversion(priority => priority.ToString(), value => Enum.Parse<TaskPriority>(value)).HasMaxLength(64).IsRequired();
         builder.Property(task => task.Deadline).HasColumnName("deadline");
         builder.Property(task => task.CreatedAt).HasColumnName("created_at").IsRequired();
-        builder.Property(task => task.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(task => task.UpdatedAt).HasColumnName("updated_at").IsConcurrencyToken();
+        builder.Property(task => task.ApprovedSubmissionId).HasColumnName("approved_submission_id");
         builder.HasOne(task => task.Annotation).WithMany(annotation => annotation.Tasks).HasForeignKey(task => task.AnnotationId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne(task => task.Page).WithMany(page => page.Tasks).HasForeignKey(task => task.PageId).OnDelete(DeleteBehavior.Cascade);
     }

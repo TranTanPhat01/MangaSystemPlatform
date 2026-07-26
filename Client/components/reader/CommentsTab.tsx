@@ -5,12 +5,12 @@ import { useReader } from '@/hooks/useReader';
 import { MessageCircle, Loader2, Trash2 } from 'lucide-react';
 
 export default function CommentsTab() {
-  const { addSeriesComment, getSeriesComments, updateComment, deleteComment } = useReader();
+  const { addSeriesComment, useSeriesComments, updateComment, deleteComment } = useReader();
   const [selectedSeriesId, setSelectedSeriesId] = useState('');
   const [commentContent, setCommentContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: comments = [] } = selectedSeriesId ? getSeriesComments(selectedSeriesId) : { data: [] };
+  const { data: comments = [] } = useSeriesComments(selectedSeriesId);
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();

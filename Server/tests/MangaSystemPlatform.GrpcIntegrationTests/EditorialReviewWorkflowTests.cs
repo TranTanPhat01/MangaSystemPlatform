@@ -22,6 +22,7 @@ public sealed class EditorialReviewWorkflowTests
         var chapterId = Guid.NewGuid();
         var repository = new FakeManagementRepository();
         repository.Seed(chapterId, new Chapter { Id = chapterId, SeriesId = Guid.NewGuid(), Title = "Chapter", Status = ChapterStatus.InProduction });
+        repository.Seed(Guid.NewGuid(), new Page { Id = Guid.NewGuid(), ChapterId = chapterId, PageNumber = 1, FileId = Guid.NewGuid() });
         var events = new FakeEventBus();
         var allowed = new FakeManagementAccessService { Allowed = true };
         var service = new ChapterService(repository, new FakeManagementUnitOfWork(), events, allowed);
@@ -34,12 +35,13 @@ public sealed class EditorialReviewWorkflowTests
 
         var otherChapterId = Guid.NewGuid();
         repository.Seed(otherChapterId, new Chapter { Id = otherChapterId, SeriesId = Guid.NewGuid(), Title = "Other", Status = ChapterStatus.InProduction });
+        repository.Seed(Guid.NewGuid(), new Page { Id = Guid.NewGuid(), ChapterId = otherChapterId, PageNumber = 1, FileId = Guid.NewGuid() });
         var denied = new ChapterService(repository, new FakeManagementUnitOfWork(), new FakeEventBus(), new FakeManagementAccessService { Allowed = false });
         (await denied.SubmitChapterForReviewAsync(otherChapterId, Guid.NewGuid())).IsSuccess.Should().BeFalse();
     }
 
     [Fact]
-    public async Task SubmitEvent_CreatesPendingReview_AndResubmissionReopensIt()
+    public async Task SubmitEvent_CreatesPendingReview_AndResubmissionCreatesNewRound()
     {
         var repository = new FakeEditorialRepository();
         var handler = new ChapterSubmittedForReviewEventHandler(repository, new FakeEditorialUnitOfWork(), NullLogger<ChapterSubmittedForReviewEventHandler>.Instance);
@@ -57,9 +59,17 @@ public sealed class EditorialReviewWorkflowTests
 
         await handler.HandleAsync(new ChapterSubmittedForReviewEvent(Guid.NewGuid(), chapterId, review.SeriesId, requesterId, DateTime.UtcNow));
 
-        review.Status.Should().Be(EditorialReviewStatus.Pending);
-        review.ReviewerUserId.Should().BeNull();
-        review.DecisionNote.Should().BeNull();
+        var allReviews = await repository.ListAsync<EditorialReview>();
+        allReviews.Count.Should().Be(2);
+
+        var oldReview = allReviews.First(r => r.Id == review.Id);
+        oldReview.Status.Should().Be(EditorialReviewStatus.RevisionRequested);
+        oldReview.DecisionNote.Should().Be("Fix dialogue");
+
+        var newReview = allReviews.First(r => r.Id != review.Id);
+        newReview.Status.Should().Be(EditorialReviewStatus.Pending);
+        newReview.ReviewerUserId.Should().BeNull();
+        newReview.DecisionNote.Should().BeNull();
     }
 
     [Fact]
@@ -131,9 +141,72 @@ public sealed class EditorialReviewWorkflowTests
         await decisionHandler.HandleAsync(new ChapterReviewDecisionEvent(Guid.NewGuid(), chapterId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "RevisionRequested", "Fix", DateTime.UtcNow));
         (await repository.GetByIdAsync<Chapter>(chapterId))!.Status.Should().Be(ChapterStatus.RevisionRequired);
 
+        (await repository.GetByIdAsync<Chapter>(chapterId))!.Status = ChapterStatus.SubmittedForReview;
+
         var approvalHandler = new ChapterApprovedEventHandler(repository, new FakeManagementUnitOfWork(), NullLogger<ChapterApprovedEventHandler>.Instance);
         await approvalHandler.HandleAsync(new ChapterApprovedEvent(Guid.NewGuid(), chapterId, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), DateTime.UtcNow));
         (await repository.GetByIdAsync<Chapter>(chapterId))!.Status.Should().Be(ChapterStatus.Approved);
+    }
+
+    [Fact]
+    public async Task StartReview_FromInReview_Fails()
+    {
+        var editorId = Guid.NewGuid();
+        var review = CreateReview(reviewerId: editorId, status: EditorialReviewStatus.InReview);
+        var context = CreateEditorialService(editorId, "TantouEditor", review);
+
+        var result = await context.Service.StartReviewAsync(review.Id);
+        result.IsSuccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ApproveReview_CalledTwice_Fails()
+    {
+        var editorId = Guid.NewGuid();
+        var review = CreateReview(reviewerId: editorId, status: EditorialReviewStatus.InReview);
+        var context = CreateEditorialService(editorId, "TantouEditor", review);
+
+        var first = await context.Service.ApproveAsync(review.Id, new DecisionRequest { DecisionNote = "Looks good" });
+        first.IsSuccess.Should().BeTrue();
+
+        var second = await context.Service.ApproveAsync(review.Id, new DecisionRequest { DecisionNote = "Again" });
+        second.IsSuccess.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AddComment_WithPageFromAnotherChapter_Fails()
+    {
+        var editorId = Guid.NewGuid();
+        var review = CreateReview(reviewerId: editorId, status: EditorialReviewStatus.InReview);
+        var context = CreateEditorialService(editorId, "TantouEditor", review);
+
+        // Configure fake lookup client to report page invalid
+        var fakeLookup = (FakeMangaLookupClient)typeof(EditorialReviewService)
+            .GetField("_mangaLookupClient", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(context.Service)!;
+        fakeLookup.PageValid = false;
+
+        var result = await context.Service.AddCommentAsync(review.Id, new CreateEditorialCommentRequest
+        {
+            CommentText = "Nice drawing",
+            PageId = Guid.NewGuid()
+        });
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().Contain("Page does not belong");
+    }
+
+    [Fact]
+    public async Task OtherEditorCannotModifyClaimedReview()
+    {
+        var review = CreateReview(reviewerId: Guid.NewGuid(), status: EditorialReviewStatus.InReview);
+        var context = CreateEditorialService(Guid.NewGuid(), "TantouEditor", review);
+
+        var commentResult = await context.Service.AddCommentAsync(review.Id, new CreateEditorialCommentRequest { CommentText = "Hi" });
+        commentResult.IsSuccess.Should().BeFalse();
+
+        var approveResult = await context.Service.ApproveAsync(review.Id, new DecisionRequest { DecisionNote = "OK" });
+        approveResult.IsSuccess.Should().BeFalse();
     }
 
     private static EditorialReview CreateReview(Guid? reviewerId = null, EditorialReviewStatus status = EditorialReviewStatus.Pending) => new()

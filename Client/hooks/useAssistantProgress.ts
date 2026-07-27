@@ -10,7 +10,6 @@ export interface AssistantProgress {
   pendingTasks: number;
   approvedPages: number;
   completionPercentage: number;
-  estimatedEarnings: number;
 }
 
 export function useAssistantProgress() {
@@ -22,7 +21,6 @@ export function useAssistantProgress() {
     pendingTasks: 0,
     approvedPages: 0,
     completionPercentage: 0,
-    estimatedEarnings: 0,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +56,6 @@ export function useAssistantProgress() {
           ? Math.round((approved / tasks.length) * 100)
           : 0;
 
-        // Estimate: ~5000 yen per approved page
-        const estimatedEarnings = approved * 5000;
-
         setProgress({
           totalTasks: tasks.length,
           approvedTasks: approved,
@@ -69,7 +64,6 @@ export function useAssistantProgress() {
           pendingTasks: pending,
           approvedPages,
           completionPercentage,
-          estimatedEarnings,
         });
       } else {
         setError(res.data?.message || 'Failed to load progress.');

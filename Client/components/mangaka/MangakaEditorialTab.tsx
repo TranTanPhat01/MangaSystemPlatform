@@ -60,7 +60,7 @@ export default function MangakaEditorialTab({ triggerModal }: MangakaEditorialTa
             <EditorialFeedbackCard
               key={feedback.reviewId}
               chapter={feedback.chapterTitle}
-              editorName={feedback.editorName || 'Editor'}
+              editorName={feedback.editorName || 'Unassigned'}
               status={feedback.status}
               note={feedback.note}
               onViewFeedback={() =>

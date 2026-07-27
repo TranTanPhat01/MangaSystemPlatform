@@ -98,7 +98,6 @@ export function useAssistantDashboard() {
 
   const mapApiPriority = (priority: ApiTaskPriority): TaskPriority => ApiTaskPriority[priority] as TaskPriority;
 
-  const useMockFallback = false;
   const displayTasks: Task[] = apiTasks.length > 0
     ? apiTasks.map((t) => ({
         id: t.id,
@@ -140,12 +139,12 @@ export function useAssistantDashboard() {
     displayTasks,
     tasksLoading,
     tasksError,
-    useMockFallback,
     apiTasksLength: apiTasks.length,
     fetchMyTasks,
     startTask,
     submitTask,
     isSubmitting,
     submissionMessage,
+    apiTasks,
   };
 }

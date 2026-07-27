@@ -12,11 +12,11 @@ import {
   History, 
   PieChart, 
   Settings, 
-  ShieldCheck, 
-  ChevronRight, 
-  HardDrive 
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react';
 import { ActiveNav } from '@/types/board';
+import { useAuthStore } from '@/store/auth-store';
 
 const NAV_ITEMS: { name: ActiveNav; icon: React.ComponentType<{ className?: string; size?: number }> }[] = [
   { name: 'Dashboard', icon: LayoutDashboard },
@@ -36,9 +36,14 @@ interface BoardSidebarProps {
   active: ActiveNav;
   onNavigate: (n: ActiveNav) => void;
   open: boolean;
+  proposalCount: number;
+  warningCount: number;
 }
 
-export default function BoardSidebar({ active, onNavigate, open }: BoardSidebarProps) {
+export default function BoardSidebar({ active, onNavigate, open, proposalCount, warningCount }: BoardSidebarProps) {
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.fullName || 'Editorial user';
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   return (
     <aside
       className={clsx(
@@ -63,10 +68,10 @@ export default function BoardSidebar({ active, onNavigate, open }: BoardSidebarP
       {open && (
         <div className="mx-3 mt-4 mb-1 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-plum-600 to-burgundy-800 flex items-center justify-center text-white text-[10px] font-black shrink-0 ring-2 ring-plum-600/30">
-            HT
+            {initials || 'ED'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold text-white truncate">Hiroshi Tanaka</p>
+            <p className="text-[11px] font-bold text-white truncate">{displayName}</p>
             <p className="text-[9px] text-white/75 font-medium truncate">Editorial Board</p>
           </div>
           <ChevronRight size={11} className="text-white/70 shrink-0" />
@@ -101,35 +106,16 @@ export default function BoardSidebar({ active, onNavigate, open }: BoardSidebarP
               />
               {open && <span className="flex-1 text-left truncate">{name}</span>}
               {open && name === 'Series Proposals' && (
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-plum-500/20 text-plum-300 border border-plum-500/30">7</span>
+                proposalCount > 0 && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-plum-500/20 text-plum-300 border border-plum-500/30">{proposalCount}</span>
               )}
               {open && name === 'Cancellation Review' && (
-                <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">3</span>
+                warningCount > 0 && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">{warningCount}</span>
               )}
             </button>
           );
         })}
       </nav>
 
-      {/* Storage bar */}
-      {open && (
-        <div className="mx-3 mb-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <HardDrive size={11} className="text-white/70" />
-              <span className="text-[9px] font-semibold text-white/75 uppercase tracking-wider">Storage</span>
-            </div>
-            <span className="text-[9px] font-bold text-white/75">64%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-            <div className="h-full w-[64%] rounded-full bg-gradient-to-r from-plum-700 to-plum-400" />
-          </div>
-          <div className="flex items-center justify-between mt-1.5">
-            <span className="text-[9px] font-bold text-white/50">128 GB</span>
-            <span className="text-[9px] text-white/75">/ 200 GB</span>
-          </div>
-        </div>
-      )}
     </aside>
   );
 }

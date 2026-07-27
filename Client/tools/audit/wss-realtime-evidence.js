@@ -1,7 +1,7 @@
-const https = require('https');
-const dns = require('dns');
-const { execFileSync } = require('child_process');
-const signalR = require('@microsoft/signalr');
+import https from 'node:https';
+import dns from 'node:dns';
+import { execFileSync } from 'node:child_process';
+import * as signalR from '@microsoft/signalr';
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 

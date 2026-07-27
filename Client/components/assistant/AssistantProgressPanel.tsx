@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { DollarSign, ArrowUp, BookOpen, CheckCircle2, Loader2 } from 'lucide-react';
+import { DollarSign, BookOpen, CheckCircle2, Loader2 } from 'lucide-react';
 import { useAssistantProgress } from '@/hooks/useAssistantProgress';
 
 export default function AssistantProgressPanel() {
@@ -15,11 +15,6 @@ export default function AssistantProgressPanel() {
       </div>
     );
   }
-
-  const lastMonthEarnings = progress.estimatedEarnings * 0.85; // Assume 15% increase this month
-  const earningsGrowth = progress.estimatedEarnings - lastMonthEarnings;
-  const monthlyGoal = 50; // Tasks per month
-  const tasksToGo = Math.max(0, monthlyGoal - progress.approvedTasks);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6">
@@ -37,18 +32,9 @@ export default function AssistantProgressPanel() {
 
       {/* Earning highlight */}
       <div className="bg-gradient-to-r from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-4 mb-5">
-        <p className="text-[9px] font-black text-indigo-500 uppercase tracking-wider mb-1">Estimated Earnings</p>
-        <p className="text-3xl font-black text-indigo-900">
-          ¥{progress.estimatedEarnings.toLocaleString()}
-        </p>
-        {earningsGrowth > 0 && (
-          <div className="flex items-center gap-1 mt-1">
-            <ArrowUp size={11} className="text-emerald-600" />
-            <span className="text-[10px] font-bold text-emerald-600">
-              +¥{earningsGrowth.toLocaleString()} vs last month
-            </span>
-          </div>
-        )}
+        <p className="text-[9px] font-black text-indigo-500 uppercase tracking-wider mb-1">Earnings</p>
+        <p className="text-lg font-black text-indigo-900">Chưa có số liệu cụ thể</p>
+        <p className="text-[10px] font-medium text-indigo-700 mt-1">Không hiển thị số liệu ước tính</p>
       </div>
 
       {/* Stats grid */}
@@ -73,9 +59,9 @@ export default function AssistantProgressPanel() {
       {/* Progress to goal */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-bold text-slate-600">Progress to monthly goal</span>
+          <span className="text-[10px] font-bold text-slate-600">Approved task progress</span>
           <span className="text-[10px] font-black text-indigo-700">
-            {progress.approvedTasks} / {monthlyGoal} tasks
+            {progress.approvedTasks} / {progress.totalTasks} tasks
           </span>
         </div>
         <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
@@ -88,9 +74,7 @@ export default function AssistantProgressPanel() {
           <span className="text-[9px] font-medium text-slate-400">
             {progress.completionPercentage}% completed
           </span>
-          <span className="text-[9px] font-bold text-indigo-600">
-            {tasksToGo} tasks to go
-          </span>
+          <span className="text-[9px] font-bold text-indigo-600">Theo dữ liệu API</span>
         </div>
       </div>
 

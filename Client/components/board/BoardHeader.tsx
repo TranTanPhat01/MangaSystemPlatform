@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { useLogoutAction } from '@/lib/logout';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
+import { useAuthStore } from '@/store/auth-store';
 import { 
   Menu, 
   Search, 
@@ -24,6 +25,9 @@ interface BoardHeaderProps {
 export default function BoardHeader({ onToggleSidebar }: BoardHeaderProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const { logout, isLoggingOut } = useLogoutAction();
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.fullName || 'Editorial user';
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <header className="h-16 bg-white/95 backdrop-blur-md border-b border-slate-100 px-5 flex items-center gap-4 shrink-0 sticky top-0 z-20 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
@@ -37,7 +41,7 @@ export default function BoardHeader({ onToggleSidebar }: BoardHeaderProps) {
 
       <div className="hidden sm:flex flex-col shrink-0">
         <p className="text-[9px] font-bold text-slate-700 uppercase tracking-widest">Editorial Board</p>
-        <h2 className="text-sm font-black text-slate-800 leading-snug mt-0.5">Xin chào, Hiroshi! 👋</h2>
+        <h2 className="text-sm font-black text-slate-800 leading-snug mt-0.5">Xin chào, {displayName}! 👋</h2>
       </div>
 
       <div className="flex-1 max-w-sm mx-auto">
@@ -89,10 +93,10 @@ export default function BoardHeader({ onToggleSidebar }: BoardHeaderProps) {
             className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all duration-150"
           >
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-plum-600 to-burgundy-800 flex items-center justify-center text-white text-[11px] font-black ring-2 ring-plum-200 shrink-0">
-              HT
+              {initials || 'ED'}
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-xs font-bold text-slate-800 leading-none">Hiroshi Tanaka</p>
+              <p className="text-xs font-bold text-slate-800 leading-none">{displayName}</p>
               <p className="text-[9px] font-semibold text-slate-700 mt-0.5">Editorial Board</p>
             </div>
             <ChevronDown size={12} className={clsx('text-slate-700 transition-transform duration-200 hidden md:block', profileOpen && 'rotate-180')} />
@@ -102,7 +106,7 @@ export default function BoardHeader({ onToggleSidebar }: BoardHeaderProps) {
               <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
               <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-slate-100 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] py-2 z-40 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="px-4 py-2.5 border-b border-slate-50 mb-1">
-                  <p className="text-xs font-bold text-slate-800">Hiroshi Tanaka</p>
+                  <p className="text-xs font-bold text-slate-800">{displayName}</p>
                   <p className="text-[10px] font-medium text-slate-700 mt-0.5">Editorial Board</p>
                 </div>
                 {[

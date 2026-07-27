@@ -28,6 +28,7 @@ export function MangakaDashboard() {
     seriesLoading,
     seriesError,
     fetchSeries,
+    tasks,
   } = useMangakaDashboard();
 
   const renderTabContent = () => {
@@ -75,14 +76,19 @@ export function MangakaDashboard() {
       case 'Notifications':
         return <MangakaNotificationsTab />;
       case 'Settings':
-        return <MangakaSettingsTab triggerModal={triggerModal} />;
+        return <MangakaSettingsTab />;
       default:
         return <div className="text-slate-800 text-xs font-bold">Module loaded.</div>;
     }
   };
 
   return (
-    <MangakaAppShell activeSidebarItem={activeTab} onSidebarNavigate={setActiveTab}>
+    <MangakaAppShell
+      activeSidebarItem={activeTab}
+      onSidebarNavigate={setActiveTab}
+      seriesCount={series.length}
+      taskCount={tasks.length}
+    >
       {renderTabContent()}
 
       {/* Dynamic Interaction Modal */}

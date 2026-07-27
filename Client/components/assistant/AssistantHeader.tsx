@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { useLogoutAction } from '@/lib/logout';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
+import { useAuthStore } from '@/store/auth-store';
 import { 
   Menu, 
   Search, 
@@ -21,6 +22,9 @@ interface AssistantHeaderProps {
 
 export default function AssistantHeader({ onToggleSidebar }: AssistantHeaderProps) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.fullName || 'Assistant';
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   const { logout, isLoggingOut } = useLogoutAction();
 
   return (
@@ -34,7 +38,7 @@ export default function AssistantHeader({ onToggleSidebar }: AssistantHeaderProp
 
       <div className="hidden sm:flex flex-col shrink-0">
         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Assistant Dashboard</p>
-        <h2 className="text-sm font-black text-slate-800 leading-snug mt-0.5">Chào ngày mới, Kenji! 👋</h2>
+        <h2 className="text-sm font-black text-slate-800 leading-snug mt-0.5">Chào ngày mới, {displayName}! 👋</h2>
       </div>
 
       <div className="flex-1 max-w-sm mx-auto">
@@ -72,10 +76,10 @@ export default function AssistantHeader({ onToggleSidebar }: AssistantHeaderProp
             className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all"
           >
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-700 flex items-center justify-center text-white text-[11px] font-black ring-2 ring-indigo-200 shrink-0">
-              KT
+              {initials || 'AS'}
             </div>
             <div className="hidden md:block text-left">
-              <p className="text-xs font-bold text-slate-800 leading-none">Kenji Tanaka</p>
+              <p className="text-xs font-bold text-slate-800 leading-none">{displayName}</p>
               <p className="text-[9px] font-semibold text-slate-400 mt-0.5">Assistant</p>
             </div>
             <ChevronDown
@@ -92,7 +96,7 @@ export default function AssistantHeader({ onToggleSidebar }: AssistantHeaderProp
               <div className="fixed inset-0 z-30" onClick={() => setProfileOpen(false)} />
               <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-slate-100 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] py-2 z-40 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="px-4 py-2.5 border-b border-slate-50 mb-1">
-                  <p className="text-xs font-bold text-slate-800">Kenji Tanaka</p>
+                  <p className="text-xs font-bold text-slate-800">{displayName}</p>
                   <p className="text-[10px] font-medium text-slate-400 mt-0.5">Assistant</p>
                 </div>
                 {[

@@ -46,7 +46,6 @@ interface AssistantTaskTableProps {
   onSelectTask: (t: Task) => void;
   tasksLoading: boolean;
   tasksError: string | null;
-  useMockFallback: boolean;
   apiTasksLength: number;
   onRetry: () => void;
   onAction?: (task: Task) => void | Promise<void>;
@@ -58,7 +57,6 @@ export default function AssistantTaskTable({
   onSelectTask,
   tasksLoading,
   tasksError,
-  useMockFallback,
   apiTasksLength,
   onRetry,
   onAction,
@@ -74,9 +72,6 @@ export default function AssistantTaskTable({
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-slate-800">My Active Tasks</h2>
               {tasksLoading && <span className="text-[9px] text-indigo-500 font-bold animate-pulse">Loading…</span>}
-              {useMockFallback && !tasksLoading && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-700 border border-amber-200">⚠ Mock Data</span>
-              )}
             </div>
             {tasksError && (
               <p className="text-[9px] text-rose-500 font-medium mt-0.5">
@@ -85,7 +80,7 @@ export default function AssistantTaskTable({
             )}
             {!tasksError && (
               <p className="text-[10px] text-slate-400 font-medium">
-                {apiTasksLength > 0 ? `${apiTasksLength} task đang được giao` : '5 task đang được giao'} — click để xem chi tiết
+                {apiTasksLength > 0 ? `${apiTasksLength} task đang được giao` : 'Chưa có task được giao từ API'} — click để xem chi tiết
               </p>
             )}
           </div>

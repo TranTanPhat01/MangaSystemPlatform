@@ -430,12 +430,12 @@ function HomepageHeader({
         >
           {t.navLogin}
         </Link>
-        <Link 
+        {/* <Link 
           href="/register"
           className="px-4 py-2 text-white bg-[#6B1D2F] hover:bg-[#5A1827] rounded-lg transition-colors shadow-sm shadow-burgundy-900/10"
         >
           {t.navRegister}
-        </Link>
+        </Link> */}
       </div>
 
       {/* Mobile Drawer Trigger Menu Icon */}
@@ -1208,8 +1208,11 @@ export default function Homepage() {
       {/* === Full-bleed homepage background image === */}
       <div className="fixed inset-0 -z-10 pointer-events-none" aria-hidden="true">
         {/* Base image layer — slightly blurred to soften */}
-        <div
-          className="absolute inset-0 bg-[url('/assets/homepage_bg.png')] bg-cover bg-center bg-no-repeat"
+        <img
+          src="/assets/homepage_bg.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
           style={{ filter: 'blur(2px) brightness(0.7)', transform: 'scale(1.04)' }}
         />
         {/* Overlay for text readability */}

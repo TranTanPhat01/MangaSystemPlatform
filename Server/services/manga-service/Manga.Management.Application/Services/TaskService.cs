@@ -18,9 +18,10 @@ public sealed class TaskService : ITaskService
     private readonly IIdentityLookupClient _identityLookupClient;
     private readonly IFileLookupClient _fileLookupClient;
     private readonly IManagementAccessService _access;
+    private readonly ICurrentUserService? _currentUser;
 
-    public TaskService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IEventBus eventBus, IIdentityLookupClient identityLookupClient, IFileLookupClient fileLookupClient, IManagementAccessService access)
-    { _repository = repository; _unitOfWork = unitOfWork; _eventBus = eventBus; _identityLookupClient = identityLookupClient; _fileLookupClient = fileLookupClient; _access = access; }
+    public TaskService(IManagementRepository repository, IManagementUnitOfWork unitOfWork, IEventBus eventBus, IIdentityLookupClient identityLookupClient, IFileLookupClient fileLookupClient, IManagementAccessService access, ICurrentUserService? currentUser = null)
+    { _repository = repository; _unitOfWork = unitOfWork; _eventBus = eventBus; _identityLookupClient = identityLookupClient; _fileLookupClient = fileLookupClient; _access = access; _currentUser = currentUser; }
 
     public async Task<Result<TaskResponse>> CreateAsync(CreateTaskRequest request, Guid currentUserId, CancellationToken cancellationToken = default)
     {
@@ -41,7 +42,9 @@ public sealed class TaskService : ITaskService
 
     public async Task<Result<IReadOnlyList<TaskResponse>>> GetMineAsync(Guid currentUserId, CancellationToken cancellationToken = default)
     {
-        var tasks = await _repository.ListAsync<MangaTask>(task => task.AssignedToUserId == currentUserId || task.CreatedByUserId == currentUserId, cancellationToken);
+        var tasks = _currentUser?.IsInRole("Assistant") == true
+            ? await _repository.ListAsync<MangaTask>(task => task.AssignedToUserId == currentUserId, cancellationToken)
+            : await _repository.ListAsync<MangaTask>(task => task.AssignedToUserId == currentUserId || task.CreatedByUserId == currentUserId, cancellationToken);
         return Result<IReadOnlyList<TaskResponse>>.Success(await Task.WhenAll(tasks.Select(task => ToResponseAsync(task, cancellationToken))));
     }
 

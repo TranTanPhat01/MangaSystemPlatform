@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { mangaApi } from '@/services/manga-api';
+import { authApi } from '@/services/auth-api';
 import { SeriesResponse, TaskResponse } from '@/types/manga';
 import { TaskItem } from '@/components/mangaka/TaskTable';
 
@@ -40,13 +41,18 @@ export function useMangakaDashboard() {
     setTasksLoading(true);
     setTasksError(null);
     try {
-      const res = await mangaApi.getMyTasks();
+      const [res, assistantsRes] = await Promise.all([mangaApi.getMyTasks(), authApi.getAssistants()]);
       if (res.data?.success && Array.isArray(res.data.data)) {
+        const assistantNames = new Map(
+          assistantsRes.data?.success
+            ? assistantsRes.data.data.map((assistant) => [assistant.id, assistant.fullName])
+            : []
+        );
         const mapped = res.data.data.map((task: TaskResponse) => ({
           id: task.id,
           taskName: task.title || task.description || 'Studio task',
           page: `P${task.pageNumber ?? '?'}`,
-          assistant: task.assignedToUserId.slice(0, 8),
+          assistant: assistantNames.get(task.assignedToUserId) || `User ${task.assignedToUserId.slice(0, 8)}`,
           status: task.status === 3 ? 'Submitted' : task.status === 4 ? 'Revision Required' : task.status === 1 ? 'Pending' : 'In Progress',
           priority: String(task.priority),
           deadline: task.deadline ? new Date(task.deadline).toLocaleDateString() : 'TBD',
@@ -73,19 +79,31 @@ export function useMangakaDashboard() {
     setModalInfo({ isOpen: true, title, content });
   };
 
-  const handleTaskAction = (taskId: string, actionType: string) => {
+  const handleTaskAction = async (taskId: string, actionType: string) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
 
-    if (actionType === 'Review') {
+    try {
+      const response = await mangaApi.getTaskById(taskId);
+      if (!response.data.success) throw new Error(response.data.message || 'Could not load task details.');
+      const detail = response.data.data;
+
+      if (actionType === 'Review') {
+        triggerModal(
+          `Editorial Review: ${detail.title}`,
+          `Page ${detail.pageNumber} · Status: ${task.status} · Priority: ${task.priority}\n\n${detail.description || 'No description provided by the API.'}`
+        );
+      } else {
+        triggerModal(
+          `Task Detail: ${detail.title}`,
+          `Page ${detail.pageNumber} · Assigned assistant: ${task.assistant}\nStatus: ${task.status}\nDeadline: ${task.deadline}\n\n${detail.description || 'No description provided by the API.'}`
+        );
+      }
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { message?: string; error?: string } }; message?: string };
       triggerModal(
-        `Editorial Review: ${task.taskName}`,
-        `Reviewing page asset ${task.page} created by ${task.assistant}. Current status is "${task.status}" with ${task.priority} priority. Action required: Approve, request revisions, or add layout feedback.`
-      );
-    } else {
-      triggerModal(
-        `Open Task Detail`,
-        `Opening detail board for "${task.taskName}" (${task.page}) assigned to ${task.assistant}. Deadline set for ${task.deadline}. You can edit guidelines or chat with the assistant here.`
+        'Task unavailable',
+        apiError.response?.data?.message || apiError.response?.data?.error || apiError.message || 'Could not load task details from the API.'
       );
     }
   };

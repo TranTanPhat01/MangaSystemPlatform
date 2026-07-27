@@ -8,6 +8,8 @@ import AssistantRevisionPanel from './AssistantRevisionPanel';
 import AssistantProgressPanel from './AssistantProgressPanel';
 import AssistantActivityPanel from './AssistantActivityPanel';
 import AssistantRightPanel from './AssistantRightPanel';
+import { useAuthStore } from '@/store/auth-store';
+import { TaskStatus } from '@/types/manga';
 
 export default function AssistantDashboardContent() {
   const {
@@ -16,14 +18,18 @@ export default function AssistantDashboardContent() {
     displayTasks,
     tasksLoading,
     tasksError,
-    useMockFallback,
     apiTasksLength,
     fetchMyTasks,
     startTask,
     submitTask,
     isSubmitting,
     submissionMessage,
+    apiTasks,
   } = useAssistantDashboard();
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.fullName || 'Assistant';
+  const revisionCount = apiTasks.filter((task) => task.status === TaskStatus.RevisionRequired).length;
+  const inProgressCount = apiTasks.filter((task) => task.status === TaskStatus.InProgress).length;
 
   return (
     <div className="space-y-7">
@@ -37,10 +43,10 @@ export default function AssistantDashboardContent() {
             Assistant Workspace · June 2026
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight">
-            Workspace của Kenji — tổng quan task và tiến độ tháng.
+            Workspace của {displayName} — tổng quan task và tiến độ tháng.
           </h1>
           <p className="text-sm text-slate-400 font-medium mt-1 max-w-xl">
-            2 task cần sửa gấp · 12 task đang xử lý · Deadline hôm nay lúc 23:59
+            {revisionCount} task cần sửa · {inProgressCount} task đang xử lý · dữ liệu đồng bộ từ API
           </p>
         </div>
         <div className="relative flex flex-wrap gap-2.5 shrink-0">
@@ -54,7 +60,7 @@ export default function AssistantDashboardContent() {
       </div>
 
       {/* ── KPI Cards ── */}
-      <AssistantStatCards />
+      <AssistantStatCards tasks={apiTasks} />
 
       {/* ── Two-column: Main + Right Sidebar ── */}
       <div className="flex gap-6">
@@ -66,7 +72,6 @@ export default function AssistantDashboardContent() {
             onSelectTask={setSelectedTask}
             tasksLoading={tasksLoading}
             tasksError={tasksError}
-            useMockFallback={useMockFallback}
             apiTasksLength={apiTasksLength}
             onRetry={fetchMyTasks}
             onAction={async (task) => {

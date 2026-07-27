@@ -1,44 +1,50 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuthStore } from '@/store/auth-store';
+import { authApi } from '@/services/auth-api';
+import { UserProfile } from '@/types/auth';
 
-interface MangakaSettingsTabProps {
-  triggerModal: (title: string, content: string) => void;
-}
+export default function MangakaSettingsTab() {
+  const storedUser = useAuthStore((state) => state.user);
+  const [user, setUser] = useState<UserProfile | null>(storedUser);
+  const [loading, setLoading] = useState(true);
 
-export default function MangakaSettingsTab({ triggerModal }: MangakaSettingsTabProps) {
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await authApi.getMe();
+        if (response.data.success) setUser(response.data.data);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadProfile();
+  }, []);
   return (
     <div className="space-y-6 animate-in fade-in duration-350">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Studio Profile & Integration Settings</h1>
-        <p className="text-sm text-slate-500 font-semibold mt-1">Configure workspace parameters, notification thresholds, and publisher credentials.</p>
+        <p className="text-sm text-slate-500 font-semibold mt-1">Account information loaded from the Identity API.</p>
       </div>
 
       <div className="bg-white border border-slate-150 rounded-xl p-6 shadow-sm max-w-2xl">
-        <h3 className="font-bold text-slate-800 text-sm mb-4 pb-1 border-b border-slate-100">Studio Preferences</h3>
+        <h3 className="font-bold text-slate-800 text-sm mb-4 pb-1 border-b border-slate-100">Current Account</h3>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-655 mb-1">Manga Creator Nickname</label>
-            <input type="text" defaultValue="Akira" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-burgundy-500" />
+            <label className="block text-xs font-bold text-slate-655 mb-1">Full name</label>
+            <input type="text" value={loading ? 'Loading…' : user?.fullName || '—'} readOnly className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:outline-none" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-655 mb-1">Serialization Publisher ID</label>
-            <input type="text" defaultValue="PUB-SHONEN-9021" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-750 focus:outline-none focus:border-burgundy-500 font-mono" />
+            <label className="block text-xs font-bold text-slate-655 mb-1">Email</label>
+            <input type="email" value={loading ? 'Loading…' : user?.email || '—'} readOnly className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-750 focus:outline-none font-mono" />
           </div>
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
             <div>
-              <h4 className="text-xs font-bold text-slate-755">SMS Notification Alert</h4>
-              <p className="text-[10px] text-slate-450 mt-0.5">Receive immediate notifications on your phone for urgent editor reviews.</p>
+              <h4 className="text-xs font-bold text-slate-755">Roles</h4>
+              <p className="text-[10px] text-slate-450 mt-0.5">Roles are managed by the Identity service.</p>
+              <p className="text-xs font-bold text-slate-700 mt-1">{user?.roles?.join(', ') || '—'}</p>
             </div>
-            <input type="checkbox" defaultChecked className="accent-burgundy-800" />
           </div>
-
-          <div className="flex justify-end pt-3">
-            <button 
-              onClick={() => triggerModal("Save Settings", "Manga studio preferences successfully stored in workspace storage profile.")}
-              className="px-4 py-2 text-xs font-bold text-white bg-burgundy-800 hover:bg-burgundy-900 rounded-lg transition-colors"
-            >
-              Save Configuration
-            </button>
-          </div>
+          <p className="text-[10px] text-slate-500 font-medium pt-2">Profile values are read-only in this workspace.</p>
         </div>
       </div>
     </div>

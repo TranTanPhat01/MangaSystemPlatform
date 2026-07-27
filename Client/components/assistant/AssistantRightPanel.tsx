@@ -2,16 +2,20 @@
 
 import React from 'react';
 import { Shield, BookOpen, AlertCircle, Sparkles } from 'lucide-react';
+import { useAuthStore } from '@/store/auth-store';
 
 export default function AssistantRightPanel() {
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.fullName || 'Assistant';
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   return (
     <aside className="w-72 bg-white rounded-xl border border-slate-150 p-5 shrink-0 hidden lg:block space-y-5">
       {/* Profile info card */}
       <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 text-center">
         <div className="h-12 w-12 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center text-sm font-bold text-indigo-700 mx-auto uppercase">
-          KJ
+          {initials || 'AS'}
         </div>
-        <h4 className="font-extrabold text-slate-800 text-sm mt-3.5">Kenji Sasaki</h4>
+        <h4 className="font-extrabold text-slate-800 text-sm mt-3.5">{displayName}</h4>
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
           Assistant Artist
         </p>

@@ -27,14 +27,28 @@ function KpiCard({ label, value, icon: Icon, color, sub, pulse }: KpiCardProps) 
   );
 }
 
-export default function BoardKpiCards() {
+interface BoardKpiCardsProps {
+  proposalCount: number;
+  totalVotes: number;
+  publishedScheduleCount: number;
+  rankingWarningCount: number;
+  cancellationWarningCount: number;
+}
+
+export default function BoardKpiCards({
+  proposalCount,
+  totalVotes,
+  publishedScheduleCount,
+  rankingWarningCount,
+  cancellationWarningCount,
+}: BoardKpiCardsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-      <KpiCard label="Đề xuất chờ duyệt" value={7} icon={FileText} color="bg-plum-700" sub="Tăng 2 so với tuần trước" />
-      <KpiCard label="Phiếu cần bỏ" value={12} icon={Vote} color="bg-indigo-600" sub="Phiên họp 18/06" />
-      <KpiCard label="Series đang xuất bản" value={24} icon={BookOpen} color="bg-emerald-600" sub="↑ 1 series mới" />
-      <KpiCard label="Cảnh báo xếp hạng" value={5} icon={AlertTriangle} color="bg-amber-500" sub="3 kỳ thấp liên tiếp" pulse />
-      <KpiCard label="Cần xem xét hủy" value={3} icon={XCircle} color="bg-rose-600" sub="Crimson, Silent, Black" pulse />
+      <KpiCard label="Đề xuất chờ duyệt" value={proposalCount} icon={FileText} color="bg-plum-700" sub="Dữ liệu API series" />
+      <KpiCard label="Tổng phiếu" value={totalVotes} icon={Vote} color="bg-indigo-600" sub="Dữ liệu API vote summary" />
+      <KpiCard label="Lịch đã xuất bản" value={publishedScheduleCount} icon={BookOpen} color="bg-emerald-600" sub="Dữ liệu API publication" />
+      <KpiCard label="Cảnh báo xếp hạng" value={rankingWarningCount} icon={AlertTriangle} color="bg-amber-500" sub="Dữ liệu API ranking" pulse={rankingWarningCount > 0} />
+      <KpiCard label="Cần xem xét hủy" value={cancellationWarningCount} icon={XCircle} color="bg-rose-600" sub="Dữ liệu API cancellation" pulse={cancellationWarningCount > 0} />
     </div>
   );
 }

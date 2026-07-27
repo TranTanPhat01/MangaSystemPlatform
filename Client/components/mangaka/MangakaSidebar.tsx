@@ -11,11 +11,11 @@ import {
   Trophy, 
   Bell, 
   Settings,
-  ChevronRight,
-  HardDrive
+  ChevronRight
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import Logo from './Logo';
+import { useAuthStore } from '@/store/auth-store';
 
 interface SidebarItem {
   name: string;
@@ -28,27 +28,32 @@ interface MangakaSidebarProps {
   activeItem: string;
   onNavigate: (item: string) => void;
   sidebarOpen?: boolean;
+  seriesCount: number;
+  taskCount: number;
+  notificationCount: number;
 }
-
-const STORAGE_USED_GB = 128.4;
-const STORAGE_TOTAL_GB = 200;
-const storagePercent = Math.round((STORAGE_USED_GB / STORAGE_TOTAL_GB) * 100);
 
 export default function MangakaSidebar({
   activeItem,
   onNavigate,
   sidebarOpen = true,
+  seriesCount,
+  taskCount,
+  notificationCount,
 }: MangakaSidebarProps) {
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.fullName || 'Mangaka';
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   const menuItems: SidebarItem[] = [
     { name: 'Dashboard',         icon: LayoutDashboard },
-    { name: 'My Series',         icon: BookOpen,      badge: 4,       badgeType: 'count' },
-    { name: 'Chapters',          icon: Layers,        badge: 3,       badgeType: 'count' },
+    { name: 'My Series',         icon: BookOpen,      badge: seriesCount,       badgeType: 'count' },
+    { name: 'Chapters',          icon: Layers,        badge: seriesCount,       badgeType: 'count' },
     { name: 'Page Editor',       icon: Feather },
-    { name: 'Tasks',             icon: CheckSquare,   badge: 18,      badgeType: 'count' },
+    { name: 'Tasks',             icon: CheckSquare,   badge: taskCount,      badgeType: 'count' },
     { name: 'Files',             icon: FolderKanban },
-    { name: 'Editorial Reviews', icon: FileText,      badge: 'Alert', badgeType: 'alert' },
-    { name: 'Rankings',          icon: Trophy,        badge: 'Risk',  badgeType: 'risk' },
-    { name: 'Notifications',     icon: Bell,          badge: 5,       badgeType: 'count' },
+    { name: 'Editorial Reviews', icon: FileText },
+    { name: 'Rankings',          icon: Trophy },
+    { name: 'Notifications',     icon: Bell,          badge: notificationCount,       badgeType: 'count' },
     { name: 'Settings',          icon: Settings },
   ];
 
@@ -77,11 +82,11 @@ export default function MangakaSidebar({
       {sidebarOpen && (
         <div className="mx-3 mt-4 mb-1 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-burgundy-700 to-plum-900 flex items-center justify-center text-white text-xs font-black shrink-0 ring-2 ring-burgundy-600/30">
-            AS
+            {initials || 'MA'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">Akira Sato</p>
-            <p className="text-[10px] text-white/75 font-medium truncate">Chief Artist</p>
+            <p className="text-xs font-bold text-white truncate">{displayName}</p>
+            <p className="text-[10px] text-white/75 font-medium truncate">Current account</p>
           </div>
           <ChevronRight size={12} className="text-white/70 shrink-0" />
         </div>
@@ -139,33 +144,6 @@ export default function MangakaSidebar({
         })}
       </nav>
 
-      {/* ── Storage Bar ── */}
-      {sidebarOpen && (
-        <div className="mx-3 mb-4 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <HardDrive size={12} className="text-white/70" />
-              <span className="text-[10px] font-semibold text-white/75 uppercase tracking-wider">Storage</span>
-            </div>
-            <span className="text-[10px] font-bold text-white/50">{storagePercent}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-            <div
-              className={clsx(
-                'h-full rounded-full transition-all duration-700',
-                storagePercent > 85
-                  ? 'bg-gradient-to-r from-rose-600 to-rose-400'
-                  : 'bg-gradient-to-r from-burgundy-700 to-burgundy-400'
-              )}
-              style={{ width: `${storagePercent}%` }}
-            />
-          </div>
-          <div className="flex items-center justify-between mt-1.5">
-            <span className="text-[10px] font-bold text-white/60">{STORAGE_USED_GB} GB</span>
-            <span className="text-[10px] text-white/75">/ {STORAGE_TOTAL_GB} GB</span>
-          </div>
-        </div>
-      )}
     </aside>
   );
 }

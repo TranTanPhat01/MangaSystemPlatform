@@ -15,6 +15,7 @@ import {
   HardDrive 
 } from 'lucide-react';
 import { ActiveNav } from '@/types/assistant';
+import { useAuthStore } from '@/store/auth-store';
 
 const NAV_ITEMS: { name: ActiveNav; icon: React.ComponentType<{ className?: string; size?: number }> }[] = [
   { name: 'Dashboard', icon: LayoutDashboard },
@@ -35,6 +36,9 @@ interface AssistantSidebarProps {
 }
 
 export default function AssistantSidebar({ active, onNavigate, open }: AssistantSidebarProps) {
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.fullName || 'Assistant';
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
   return (
     <aside
       className={clsx(
@@ -59,10 +63,10 @@ export default function AssistantSidebar({ active, onNavigate, open }: Assistant
       {open && (
         <div className="mx-3 mt-4 mb-1 flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
           <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-750 flex items-center justify-center text-white text-[10px] font-black shrink-0 ring-2 ring-indigo-550/30">
-            KT
+            {initials || 'AS'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-bold text-white truncate">Kenji Tanaka</p>
+            <p className="text-[11px] font-bold text-white truncate">{displayName}</p>
             <p className="text-[9px] text-white/35 font-medium truncate">Assistant</p>
           </div>
           <ChevronRight size={11} className="text-white/20 shrink-0" />
@@ -115,14 +119,13 @@ export default function AssistantSidebar({ active, onNavigate, open }: Assistant
               <HardDrive size={11} className="text-white/30" />
               <span className="text-[9px] font-semibold text-white/30 uppercase tracking-wider">Storage</span>
             </div>
-            <span className="text-[9px] font-bold text-white/40">35%</span>
+            <span className="text-[9px] font-bold text-white/40">—</span>
           </div>
           <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden">
-            <div className="h-full w-[35%] rounded-full bg-gradient-to-r from-indigo-700 to-indigo-400" />
+            <div className="h-full w-0 rounded-full bg-gradient-to-r from-indigo-700 to-indigo-400" />
           </div>
           <div className="flex items-center justify-between mt-1.5">
-            <span className="text-[9px] font-bold text-white/50">70 GB</span>
-            <span className="text-[9px] text-white/20">/ 200 GB</span>
+            <span className="text-[9px] font-bold text-white/50">Storage API unavailable</span>
           </div>
         </div>
       )}

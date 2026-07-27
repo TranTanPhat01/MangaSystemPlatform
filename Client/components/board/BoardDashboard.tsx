@@ -9,6 +9,7 @@ import RankingTable from './RankingTable';
 import BoardBottomRow from './BoardBottomRow';
 import IssueManagement from './IssueManagement';
 import CancellationRiskPanel from './CancellationRiskPanel';
+import BoardKpiCards from './BoardKpiCards';
 import { ActiveNav } from '@/types/board';
 import { useBoardDashboard } from '@/hooks/useBoardDashboard';
 import { useAuthStore } from '@/store/auth-store';
@@ -173,6 +174,13 @@ export function BoardDashboard() {
       schedules
     ) : (
       <div className="space-y-6">
+        <BoardKpiCards
+          proposalCount={submittedSeries.length}
+          totalVotes={Object.values(board.voteSummaries).reduce((total, summary) => total + summary.total, 0)}
+          publishedScheduleCount={board.schedules.filter((schedule) => schedule.status === 2).length}
+          rankingWarningCount={board.rankings.filter((item) => ['High', 'Critical'].includes(item.riskLevel)).length}
+          cancellationWarningCount={board.cancellationWarnings.filter((warning) => !warning.isResolved).length}
+        />
         {voting}
         {rankings}
         {cancellation}
@@ -182,7 +190,13 @@ export function BoardDashboard() {
 
   return (
     <div className="flex h-screen bg-slate-50">
-      <BoardSidebar active={activeNav} onNavigate={handleNavigate} open={sidebarOpen} />
+      <BoardSidebar
+        active={activeNav}
+        onNavigate={handleNavigate}
+        open={sidebarOpen}
+        proposalCount={submittedSeries.length}
+        warningCount={board.cancellationWarnings.filter((warning) => !warning.isResolved).length}
+      />
       <div className="flex-1 min-w-0 overflow-auto">
         <BoardHeader onToggleSidebar={() => setSidebarOpen((value) => !value)} />
         <div className="p-6 space-y-4">

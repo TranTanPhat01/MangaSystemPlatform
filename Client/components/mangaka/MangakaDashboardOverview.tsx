@@ -18,6 +18,10 @@ export default function MangakaDashboardOverview({
   filteredTasks,
   series,
 }: Props) {
+  const seriesStatusLabel = (status: SeriesResponse['status']) => {
+    const labels = ['', 'Draft', 'Submitted', 'Approved', 'Ongoing', 'Hiatus', 'Cancelled', 'Completed', 'Revision Requested', 'Rejected'];
+    return typeof status === 'number' ? labels[status] || String(status) : String(status);
+  };
   // Compute counts
   const totalSeries = series.length;
   const activeTasks = filteredTasks.filter(t => ['In Progress', 'Pending'].includes(t.status)).length;
@@ -120,7 +124,7 @@ export default function MangakaDashboardOverview({
                       </div>
                     </div>
                     <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
-                      Ongoing
+                      {seriesStatusLabel(s.status)}
                     </span>
                   </div>
                 ))}

@@ -2,20 +2,26 @@ import React, { useState } from 'react';
 import MangakaSidebar from './MangakaSidebar';
 import DashboardHeader from './DashboardHeader';
 import { useAuthStore } from '@/store/auth-store';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface MangakaAppShellProps {
   children: React.ReactNode;
   activeSidebarItem: string;
   onSidebarNavigate: (item: string) => void;
+  seriesCount: number;
+  taskCount: number;
 }
 
 export default function MangakaAppShell({
   children,
   activeSidebarItem,
   onSidebarNavigate,
+  seriesCount,
+  taskCount,
 }: MangakaAppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user } = useAuthStore();
+  const { unreadCount } = useNotifications();
 
   const displayUser = {
     name: user?.fullName || 'Mangaka',
@@ -30,6 +36,9 @@ export default function MangakaAppShell({
         activeItem={activeSidebarItem}
         onNavigate={onSidebarNavigate}
         sidebarOpen={sidebarOpen}
+        seriesCount={seriesCount}
+        taskCount={taskCount}
+        notificationCount={unreadCount}
       />
 
       {/* Main Content Column */}

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { useRouter } from 'next/navigation';
 import { MangakaDashboard } from '@/components/mangaka/MangakaDashboard';
@@ -9,6 +9,17 @@ import { EditorialBoardDashboard } from '@/components/board/EditorialBoardDashbo
 import { TantouEditorDashboard } from '@/components/editorial/TantouEditorDashboard';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { normalizeRole } from '@/lib/roles';
+
+function DashboardLoadingState() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-700">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+        <p className="text-sm font-semibold tracking-wide">Loading workspace…</p>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -71,7 +82,11 @@ export default function DashboardPage() {
   }
 
   if (roles.includes('assistant')) {
-    return <AssistantDashboard />;
+    return (
+      <Suspense fallback={<DashboardLoadingState />}>
+        <AssistantDashboard />
+      </Suspense>
+    );
   }
 
   if (roles.includes('tantoueditor')) {

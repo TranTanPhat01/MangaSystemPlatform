@@ -40,7 +40,7 @@ export function useMangakaEditorial() {
                   ? new Date(lastComment.createdAt).toLocaleDateString()
                   : 'No comments',
                 comments,
-                editorName: review.reviewerUserId ? `Editor ${review.reviewerUserId.toString().slice(0, 8)}` : 'Unassigned',
+                editorName: review.reviewerUserId ? `Reviewer ID ${review.reviewerUserId}` : 'Unassigned',
                 note: lastComment?.commentText || review.decisionNote || 'No notes',
               };
             } catch {
@@ -69,11 +69,11 @@ export function useMangakaEditorial() {
 
   const mapReviewStatus = (status: number | string): string => {
     const statusMap: Record<string | number, string> = {
-      '0': 'Pending',
-      '1': 'In Review',
-      '2': 'Approved',
+      '1': 'Pending',
+      '2': 'In Review',
       '3': 'Revision Required',
-      '4': 'Rejected',
+      '4': 'Approved',
+      '5': 'Rejected',
     };
     return statusMap[status] || 'Unknown';
   };
